@@ -1,0 +1,12 @@
+[submodule "lib/mclib"]
+	path = lib/mclib
+	url = git@github.com:McCurtjs/mclib.git
+[submodule "lib/cspec"]
+	path = lib/cspec
+	url = git@github.com:McCurtjs/cspec.git
+[submodule "lib/sdl"]
+	path = lib/sdl
+	url = https://github.com/libsdl-org/SDL.git
+[submodule "lib/wasi-libc"]
+	path = lib/wasi-libc
+	url = https://github.com/WebAssembly/wasi-libc.git
