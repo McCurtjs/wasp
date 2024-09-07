@@ -67,6 +67,7 @@ void process_system_events(Game* game) {
         if (event.key.repeat) break;
         for (uint i = 0; i < game_key_count; ++i) {
           if (event.key.keysym.sym == game->input.mapping.keys[i]) {
+            SDL_KeyboardEvent asdf;
 
             // sometimes when getting a key-up event, it'll also send a
             // "helpful" reminder that other keys are still down... avoid double

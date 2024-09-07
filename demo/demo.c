@@ -39,6 +39,7 @@ static Image image_anim_test;
 #endif
 
 int export(canary) (int _) {
+  PARAM_UNUSED(_);
   print("WASM is connected!");
   return 0;
 }
