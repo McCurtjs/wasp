@@ -30,7 +30,7 @@ function renderTimer(now) {
 window.onload = async() => {
   game = new Game();
 
-  await game.initialize('test.wasm');
+  await game.initialize('game.wasm');
 
   if (game.tests_only) {
     game.wasm.exports.wasm_tests();

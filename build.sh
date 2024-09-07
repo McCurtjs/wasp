@@ -104,6 +104,10 @@ sources_test=" \
   ./tst/*.c \
 "
 
+sources_demo=" \
+  ./demo/*.c \
+"
+
 sources=" \
   ./lib/mclib/src/*.c \
   ./src/*.c \
@@ -114,19 +118,24 @@ includes=" \
   -I ./lib/mclib/include \
 "
 
+build_native=" \
+  ./lib/galogen/galogen.c
+  -I ./lib/galogen
+"
+
 flags_memtest=" \
   -Dmalloc=cspec_malloc -Drealloc=cspec_realloc \
   -Dcalloc=cspec_calloc -Dfree=cspec_free \
 ";
 
-flags_common="-Wall -Wextra -Wno-missing-braces"
+flags_common="-Wall -Wextra -Wno-missing-braces -Wno-deprecated-declarations"
 
 flags_debug_opt="-g -O0 -I ./lib/cspec"
 if [ "$build_type" = "Release" ]; then
   flags_debug_opt="-Oz -flto"
 fi
 
-# WASM not supported here
+# WASM
 if [ "$build_target" = "wasm" ]; then
 
   # -nostdinc doesn't work because wasi doesn't ship with stddef for some reason
@@ -165,14 +174,19 @@ if [ "$build_target" = "wasm" ]; then
       cp lib/cspec/web/* build/wasm/$build_type/ -r
     fi
 
-    clang -o build/wasm/$build_type/test.wasm \
-      $flags_wasm $flags_common $flags_debug_opt $sources $includes \
-      $sources_test $flags_memtest
+    clang $flags_memtest -o build/wasm/$build_type/test.wasm \
+      $flags_wasm $flags_common $flags_debug_opt $includes \
+      $sources $sources_test
 
   else
 
     clang -o build/wasm/$build_type/game.wasm \
-      $flags_wasm $flags_common $flags_debug_opt $sources $includes
+      $flags_wasm $flags_common $flags_debug_opt $includes \
+      $sources $sources_demo
+
+    if [ "$?" = "0" ]; then
+      cp build/wasm/$build_type/game.wasm web/game.wasm
+    fi
 
   fi
 
@@ -182,7 +196,7 @@ elif [ "$build_target" = "clang" ]; then
   mkdir -p build/$build_target
 
   clang $flags_memtest -o build/clang/test.exe \
-    $flags_common $flags_debug_opt $includes $sources $sources_test
+    $flags_common $flags_debug_opt $includes $build_native $sources $sources_test
 
   if [ "$?" == "0" ]; then
     ./build/clang/test.exe $args
@@ -193,7 +207,8 @@ elif [ "$build_target" = "gcc" ]; then
 
   mkdir -p build/gcc
 
-  gcc -o build/gcc/test.exe $flags_memtest $includes $sources $sources_test
+  gcc $flags_memtest -o build/gcc/test.exe -Wno-cast-function-type \
+    $flags_common $flags_debug_opt $includes $build_native $sources $sources_test
 
   if [ "$?" == "0" ]; then
     ./build/gcc/test.exe $args

@@ -14,10 +14,10 @@ typedef struct Vert {
 #undef con_prefix
 
 DebugDrawState draw = {
-  .color = sc4black, 
-  .color_gradient_start = sc4black, 
-  .use_gradient = FALSE, 
-  .vector_offset = svNzero, 
+  .color = sc4black,
+  .color_gradient_start = sc4black,
+  .use_gradient = FALSE,
+  .vector_offset = svNzero,
   .scale = 0.1f
 };
 
@@ -45,8 +45,9 @@ static void draw_add_point(vec3 pos, color4 col) {
   arr_vert_push_back(geometry, (Vert){pos, col});
 }
 
-static void draw_init_gl() {
-  if (gl_buffer) return;
+static bool draw_init_gl() {
+  if (!geometry) return FALSE;
+  if (gl_buffer) return TRUE;
 
   const void* color_offset = (void*)sizeof(vec3);
 
@@ -58,6 +59,8 @@ static void draw_init_gl() {
   glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(Vert), color_offset);
   glEnableVertexAttribArray(0);
   glEnableVertexAttribArray(1);
+
+  return TRUE;
 }
 
 // State functions
@@ -156,7 +159,7 @@ void draw_rect(vec3 pos, vec3 a, vec3 b) {
 // Rendering and cleanup
 
 void draw_render() {
-  draw_init_gl();
+  if (!draw_init_gl()) return;
 
   int size_bytes = (int)geometry->size_bytes;
   int size_lines = (int)geometry->size;
