@@ -13,6 +13,9 @@
 // inlined static data declarations for model primitives
 #include "data/inline_primitives.h"
 
+// model data loaders
+#include "loaders/obj.h"
+
 // Shared bindings for primitives
 
 static GLuint cube_pos_buffer = 0;
@@ -326,17 +329,6 @@ typedef struct ObjVertex {
   vec2 uv;
 } ObjVertex;
 
-typedef struct ObjVertexPart {
-  vec3 pos;
-  vec3 color;
-} ObjVertexPart;
-
-typedef struct ObjFaceElem {
-  uint vert;
-  uint norm;
-  uint uv;
-} ObjFaceElem;
-
 static int model_build_obj(Model_Obj* obj) {
   glGenVertexArrays(1, &obj->vao);
   glBindVertexArray(obj->vao);
@@ -385,117 +377,7 @@ void model_load_obj(Model* model, File* file) {
   file_read(file);
   if (!file->text) return;
 
-  Array verts = array_new(ObjVertexPart);
-  Array norms = array_new(vec3);
-  Array uvs = array_new(vec2);
-  Array faces = array_new(ObjFaceElem);
-
-  char* next = strtok(file->text, " ");
-
-  while (next) {
-
-    // Skip to next line if it's a comment, object name, or whatever s means
-    if (!strcmp(next, "#") || !strcmp(next, "o") || !strcmp(next, "s")) {
-      next = strtok(NULL, "\n");
-      next = strtok(NULL, " ");
-
-    // Read a vertex
-    } else if (!strcmp(next, "v")) {
-      ObjVertexPart vert;
-
-      vert.pos.x = stof(strtok(NULL, " "));
-      vert.pos.y = stof(strtok(NULL, " "));
-      vert.pos.z = stof(strtok(NULL, " \n"));
-
-      next = strtok(NULL, " ");
-
-      if (strpbrk(next, "-1234567890")) {
-        vert.color.r = stof(next);
-        vert.color.g = stof(strtok(NULL, " "));
-        vert.color.b = stof(strtok(NULL, "\n"));
-
-        next = strtok(NULL, " ");
-      } else {
-        vert.color = c4white.rgb;
-      }
-
-      array_write_back(verts, &vert);
-
-    // Read a vertex normal
-    } else if (!strcmp(next, "vn")) {
-      vec3 norm;
-
-      norm.x = stof(strtok(NULL, " "));
-      norm.y = stof(strtok(NULL, " "));
-      norm.z = stof(strtok(NULL, "\n"));
-
-      array_write_back(norms, &norm);
-
-      next = strtok(NULL, " ");
-
-    // Read a UV coordinate
-    } else if (!strcmp(next, "vt")) {
-      vec2 uv;
-
-      uv.u = stof(strtok(NULL, " "));
-      uv.v = stof(strtok(NULL, "\n"));
-
-      array_write_back(uvs, &uv);
-
-      next = strtok(NULL, " ");
-
-    // Read a face
-    } else if (!strcmp(next, "f")) {
-      ObjFaceElem elem;
-
-      elem.vert = atoi(strtok(NULL, "/"));
-      elem.uv = atoi(strtok(NULL, "/"));
-      elem.norm = atoi(strtok(NULL, " "));
-      array_write_back(faces, &elem);
-
-      elem.vert = atoi(strtok(NULL, "/"));
-      elem.uv = atoi(strtok(NULL, "/"));
-      elem.norm = atoi(strtok(NULL, " "));
-      array_write_back(faces, &elem);
-
-      elem.vert = atoi(strtok(NULL, "/"));
-      elem.uv = atoi(strtok(NULL, "/"));
-      elem.norm = atoi(strtok(NULL, "\n"));
-      array_write_back(faces, &elem);
-
-      next = strtok(NULL, " ");
-
-    // End of file, end of read
-    } else if (!strcmp(next, "\n")) {
-      break;
-    }
-  }
-
-  model->obj.verts = array_new_reserve(ObjVertex, faces->size);
-  model->obj.indices = array_new_reserve(uint, faces->size);
-
-  for (index_s i = 0; i < faces->size; ++i) {
-    // -1's to account for obj's 1-indexing
-    ObjFaceElem* f = array_ref(faces, i);
-    ObjVertexPart* partial = array_ref(verts, f->vert-1);
-
-    array_write_back(model->obj.verts, &(ObjVertex) {
-      .pos = partial->pos,
-      .color = partial->color,
-      .norm = *((vec3*)array_ref(norms, f->norm-1)),
-      .uv = *((vec2*)array_ref(uvs, f->uv-1)),
-    });
-
-    // TODO: make this actually make sense, lol. This should put the faces
-    // in an actually indexed setup, but right now it's basically just a regular
-    // array instead, which defeats the purpose
-    array_write_back(model->obj.indices, &i);
-  }
-
-  array_delete(&faces);
-  array_delete(&verts);
-  array_delete(&uvs);
-  array_delete(&norms);
+  file_load_obj(&model->obj, file);
 }
 
 // Exported functions

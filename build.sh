@@ -97,35 +97,36 @@ esac
 
 # Run build based on target type
 
-sources_test=" \
-  ./lib/cspec/cspec.c \
-  ./lib/cspec/tst/cspec_spec.c \
-  ./lib/mclib/tst/*_spec.c \
-  ./tst/*.c \
+sources_test="
+  ./lib/cspec/cspec.c
+  ./lib/cspec/tst/cspec_spec.c
+  ./lib/mclib/tst/*_spec.c
+  ./tst/*.c
 "
 
-sources_demo=" \
-  ./demo/*.c \
+sources_demo="
+  ./demo/*.c
 "
 
-sources=" \
-  ./lib/mclib/src/*.c \
-  ./src/*.c \
+sources="
+  ./lib/mclib/src/*.c
+  ./src/*.c
+  ./src/loaders/*.c
 "
 
-includes=" \
-  -I ./include \
-  -I ./lib/mclib/include \
+includes="
+  -I ./include
+  -I ./lib/mclib/include
 "
 
-build_native=" \
+build_native="
   ./lib/galogen/galogen.c
   -I ./lib/galogen
 "
 
-flags_memtest=" \
-  -Dmalloc=cspec_malloc -Drealloc=cspec_realloc \
-  -Dcalloc=cspec_calloc -Dfree=cspec_free \
+flags_memtest="
+  -Dmalloc=cspec_malloc -Drealloc=cspec_realloc
+  -Dcalloc=cspec_calloc -Dfree=cspec_free
 ";
 
 flags_common="-Wall -Wextra -Wno-missing-braces -Wno-deprecated-declarations"
@@ -195,12 +196,27 @@ elif [ "$build_target" = "clang" ]; then
 
   mkdir -p build/$build_target
 
-  clang $flags_memtest -o build/clang/test.exe \
-    $flags_common $flags_debug_opt $includes $build_native $sources $sources_test
+  if [ "$build_type" == "Spec" ]; then
 
-  if [ "$?" == "0" ]; then
-    ./build/clang/test.exe $args
+    clang $flags_memtest -o build/clang/test.exe \
+      $flags_common $flags_debug_opt $includes $build_native $sources $sources_test
+
+    if [ "$?" == "0" ]; then
+      ./build/clang/test.exe $args
+    fi
+
+  else
+
+    clang $flags_memtest -o build/clang/test.exe \
+      $flags_common $flags_debug_opt $includes $build_native $sources $sources_demo
+
+    if [ "$?" == "0" ]; then
+      ./build/clang/demo.exe $args
+    fi
+
   fi
+
+
 
 # GCC
 elif [ "$build_target" = "gcc" ]; then

@@ -18,7 +18,8 @@ endif()
 
 function(compile_opts target)
   if (MSVC)
-    target_compile_options(${target} PRIVATE /W4 /WX /std:clatest)
+    target_compile_options(${target} PRIVATE
+      /W4 /WX /std:clatest)
   else()
     target_compile_options(${target} PRIVATE
       -Wall -Wextra -Wpedantic -Werror
@@ -27,8 +28,14 @@ function(compile_opts target)
 endfunction()
 
 add_library(Wasp)
-target_include_directories(Wasp PUBLIC ./include ./lib/galogen)
+target_include_directories(Wasp PUBLIC
+  ./include
+  ./lib/galogen
+)
+
+# All project sources
 target_sources(Wasp PRIVATE
+  src/loaders/obj.c
   src/camera.c
   src/draw.c
   src/file.c
@@ -38,6 +45,12 @@ target_sources(Wasp PRIVATE
   src/texture.c
   src/wasm.c # rename to bridge.c?
 )
+
+# Project source filters for Visual Studio
+source_group("Source Files\\Loaders" src/loaders/.*\.c)
+
+add_library(Galogen)
+target_sources(Galogen PRIVATE lib/galogen/galogen.c)
 
 compile_opts(Wasp)
 
@@ -59,6 +72,9 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   else()
     add_executable(Wasp_demo)
     set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Wasp_demo)
+    set_target_properties(Wasp_demo PROPERTIES
+      VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/web"
+    )
 
     target_sources(Wasp_demo PRIVATE
       demo/demo.c
@@ -69,7 +85,7 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
       demo/test_behaviors.c
     )
 
-    target_link_libraries(Wasp_demo PRIVATE Wasp)
+    target_link_libraries(Wasp_demo PRIVATE Wasp Galogen)
     compile_opts(Wasp_demo)
   endif()
 endif()

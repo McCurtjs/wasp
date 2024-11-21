@@ -5,11 +5,20 @@
 
 #include "wasm.h"
 
+extern bool game_continue;
+
 void process_system_events(Game* game) {
   SDL_Event event;
 
   while (SDL_PollEvent(&event)) {
     switch(event.type) {
+
+#ifndef __WASM__
+      case SDL_EVENT_WINDOW_CLOSE_REQUESTED: {
+        game_continue = false;
+      } break;
+#endif
+
       case SDL_EVENT_WINDOW_RESIZED: {
         game->window.w = event.window.data1;
         game->window.h = event.window.data2;
@@ -66,8 +75,7 @@ void process_system_events(Game* game) {
       case SDL_EVENT_KEY_DOWN: {
         if (event.key.repeat) break;
         for (uint i = 0; i < game_key_count; ++i) {
-          if (event.key.keysym.sym == game->input.mapping.keys[i]) {
-            SDL_KeyboardEvent asdf;
+          if (event.key.raw == game->input.mapping.keys[i]) {
 
             // sometimes when getting a key-up event, it'll also send a
             // "helpful" reminder that other keys are still down... avoid double
@@ -83,7 +91,7 @@ void process_system_events(Game* game) {
 
       case SDL_EVENT_KEY_UP: {
         for (uint i = 0; i < game_key_count; ++i) {
-          if (event.key.keysym.sym == game->input.mapping.keys[i]) {
+          if (event.key.raw == game->input.mapping.keys[i]) {
             game->input.pressed.keys[i] = FALSE;
             game->input.released.keys[i] = TRUE;
           }
