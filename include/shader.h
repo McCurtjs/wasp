@@ -16,7 +16,7 @@ typedef struct Shader {
 } Shader;
 
 int  shader_build(Shader* s, int type, const char* buffer, uint buffer_length);
-int  shader_build_from_file(Shader* s, File* f);
+int  shader_build_from_file(Shader* s, File f);
 void shader_delete(Shader* s);
 
 typedef enum UniformSet {

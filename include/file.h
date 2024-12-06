@@ -6,21 +6,22 @@
 
 typedef struct {
   void* handle; // standin for FILE*
-  const char* filename; // remove?
+  String name;
 
-  char* text;
-  int length;
+  union {
+    struct {
+      byte* data;
+      index_s length;
+    };
+    StringRange str;
+  };
 
-  StringRange str;
+}* File;
 
-} File;
-
-void file_new(File* file);
-void file_open_async(File* file, const char* filename);
-uint file_get_length(File* file);
-uint file_read(File* file);
-//uint file_load(File* file);
-void file_delete(File* file);
+File    file_new(StringRange filename);
+long    file_read_length(File file);
+bool    file_read(File file);
+void    file_delete(File* file);
 
 #endif
 

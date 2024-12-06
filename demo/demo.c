@@ -23,15 +23,15 @@
 
 static Game game;
 
-#define GAME_ON 0
+#define GAME_ON 1
 
 #if GAME_ON == 1
 // Async loaders
-static File file_vert;
-static File file_frag;
-static File file_model_test;
+static File file_vert = NULL;
+static File file_frag = NULL;
+static File file_model_test = NULL;
 //static File file_model_level_1;
-static File file_model_gear;
+static File file_model_gear = NULL;
 static Image image_crate;
 //static Image image_level;
 static Image image_tiles;
@@ -47,17 +47,17 @@ int export(canary) (int _) {
 
 void export(wasm_preload) (uint w, uint h) {
   #if GAME_ON == 1
-  file_open_async(&file_vert, "./res/shaders/basic.vert");
-  file_open_async(&file_frag, "./res/shaders/basic.frag");
-  file_open_async(&file_model_test, "./res/models/test.obj");
+  file_vert = file_new(R("./res/shaders/basic.vert"));
+  file_frag = file_new(R("./res/shaders/basic.frag"));
+  file_model_test = file_new(R("./res/models/test.obj"));
+  file_model_gear = file_new(R("./res/models/test_sphere.obj"));
   //file_open_async(&file_model_level_1, "./res/models/level_1.obj");
-  file_open_async(&file_model_gear, "./res/models/gear.obj");
-
+ 
   image_open_async(&image_crate, "./res/textures/crate.png");
-  //image_open_async(&image_level, "./res/textures/levels.jpg");
   image_open_async(&image_brass, "./res/textures/brass.jpg");
   image_open_async(&image_tiles, "./res/textures/tiles.png");
   image_open_async(&image_anim_test, "./res/textures/spritesheet.png");
+  //image_open_async(&image_level, "./res/textures/levels.jpg");
   #endif
 
   vec2i windim = v2i(w, h);
@@ -120,56 +120,36 @@ int export(wasm_load) (int await_count, float dt) {
 
   #if GAME_ON == 1
 
-  str_log("Shader1");
-
   // Build shaders from async data
   Shader light_vert, light_frag;
-  shader_build_from_file(&light_vert, &file_vert);
-  str_log("Shader2");
-  shader_build_from_file(&light_frag, &file_frag);
+  shader_build_from_file(&light_vert, file_vert);
+  shader_build_from_file(&light_frag, file_frag);
 
-  str_log("Test model");
-  model_load_obj(&game.models.level_test, &file_model_test);
-  str_log("Gear model");
-  model_load_obj(&game.models.gear, &file_model_gear);
+  model_load_obj(&game.models.level_test, file_model_test);
+  model_load_obj(&game.models.gear, file_model_gear);
   //model_load_obj(&game.models.level_1, &file_model_level_1);
-
-  str_log("Building shaders");
 
   shader_program_build(&game.shaders.light, &light_vert, &light_frag);
   shader_program_load_uniforms(&game.shaders.light, UNIFORMS_PHONG);
 
-  str_log("Loading textures");
-
   // Build textures from async data
   texture_build_from_image(&game.textures.crate, &image_crate);
-  str_log("texture2");
   //texture_build_from_image(&game.textures.level, &image_level);
   texture_build_from_image(&game.textures.brass, &image_brass);
-  str_log("texture3");
   texture_build_from_image(&game.textures.tiles, &image_tiles);
-  str_log("texture4");
   texture_build_from_image(&game.textures.player, &image_anim_test);
-
-  str_log("Deleting extras");
 
   // Delete async loaded resources
   file_delete(&file_vert);
-  str_log("deleting frag");
   file_delete(&file_frag);
-  str_log("deleting test");
   file_delete(&file_model_test);
-  str_log("deleting gear");
   file_delete(&file_model_gear);
   //file_delete(&file_model_level_1);
-  str_log("Deleting images");
   //image_delete(&image_level);
   image_delete(&image_crate);
   image_delete(&image_brass);
   image_delete(&image_tiles);
   image_delete(&image_anim_test);
-
-  str_log("Grids");
 
   // Set up game models
   game.models.grid.grid = (Model_Grid) {
@@ -184,8 +164,6 @@ int export(wasm_load) (int await_count, float dt) {
     .grid = {.w = 16, .h = 16},
   };
 
-  str_log("Building models");
-
   model_build(&game.models.player);
   model_build(&game.models.level_test);
   //model_build(&game.models.level_1);
@@ -198,8 +176,6 @@ int export(wasm_load) (int await_count, float dt) {
 
   // Load the first game level
   level_switch(&game, game.level);
-
-  str_log("Finished setup");
 
   #endif
 
@@ -246,7 +222,7 @@ int main(int argc, char* argv[]) {
   wasm_preload(400, 400);
 
   while (game_continue) {
-    float dt = 0.016f;
+    float dt = 0.00016f;
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 

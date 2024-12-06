@@ -1,16 +1,14 @@
 #include "shader.h"
 
 #include <string.h>
+#include <stdlib.h>
+
+#include "str.h"
 
 #include "gl.h"
 #include "wasm.h"
 
 #include "data/inline_shaders.h"
-
-int hasext(const char* str, const char* ext) {
-  const char* strext = strrchr(str, '.');
-  return strcmp(strext + 1, ext) == 0;
-}
 
 int shader_build(Shader* s, int type, const char* buffer, uint buf_len) {
   s->handle = glCreateShader(type);
@@ -18,15 +16,45 @@ int shader_build(Shader* s, int type, const char* buffer, uint buf_len) {
   glCompileShader(s->handle);
 
   glGetShaderiv(s->handle, GL_COMPILE_STATUS, &s->ready);
-  return s->ready;
+
+  if (s->ready) return s->ready;
+
+// compile_error:
+
+  int log_length = 0;
+  glGetShaderiv(s->handle, GL_INFO_LOG_LENGTH, &log_length);
+
+  char* log = malloc(log_length);
+  glGetShaderInfoLog(s->handle, log_length, &log_length, log);
+
+  str_log("[Shader.build] Error compiling shader:\n{}", log);
+  free(log);
+
+  return 0;
 }
 
-int shader_build_from_file(Shader* shader, File* file) {
+int shader_build_from_file(Shader* shader, File file) {
+  if (!file) goto build_fail;
+
   GLenum type = 0;
-  if (hasext(file->filename, "vert")) type = GL_VERTEX_SHADER;
-  else if (hasext(file->filename, "frag")) type = GL_FRAGMENT_SHADER;
-  file_read(file);
-  return shader_build(shader, type, file->text, file->length);
+  if (str_ends_with(file->name, ".vert")) type = GL_VERTEX_SHADER;
+  else if (str_ends_with(file->name, ".frag")) type = GL_FRAGMENT_SHADER;
+  else goto build_fail;
+
+  if (file_read(file)) {
+    int ret = shader_build(shader, type, file->str.begin, (uint)file->length);
+    if (!ret) {
+      str_log("[Shader.build] Failed to build shader: {}", file->name);
+    }
+    return ret;
+  }
+
+build_fail:
+
+  shader->handle = 0;
+  shader->ready = 0;
+
+  return 0;
 }
 
 void shader_delete(Shader* shader) {
@@ -39,6 +67,7 @@ void shader_program_new(ShaderProgram* program) {
 }
 
 int shader_program_build(ShaderProgram* p, Shader* vert, Shader* frag) {
+  if (!vert->ready || !frag->ready) return 0;
   p->handle = glCreateProgram();
   glAttachShader(p->handle, vert->handle);
   glAttachShader(p->handle, frag->handle);

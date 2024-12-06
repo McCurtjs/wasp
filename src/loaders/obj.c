@@ -22,7 +22,7 @@ typedef struct ObjFaceElem {
   int uv;
 } ObjFaceElem;
 
-void file_load_obj(Model_Obj* model, File* file) {
+void file_load_obj(Model_Obj* model, File file) {
 
   index_s pos = 0;
   StringRange str = file->str;

@@ -371,12 +371,13 @@ static void model_render_obj(Model_Obj* obj) {
   glBindVertexArray(0);
 }
 
-void model_load_obj(Model* model, File* file) {
+void model_load_obj(Model* model, File file) {
+  if (!file_read(file)) {
+    model->type = MODEL_NONE;
+    return;
+  }
+
   model->type = MODEL_OBJ;
-
-  file_read(file);
-  if (!file->text) return;
-
   file_load_obj(&model->obj, file);
 }
 
