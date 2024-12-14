@@ -2,13 +2,16 @@
 #define _GAME_H_
 
 #include "vec.h"
-#include "array.h"
 #include "camera.h"
 #include "entity.h"
 #include "shader.h"
 #include "texture.h"
 
 #include "levels.h"
+
+#define con_type int
+#include "array.h"
+#undef con_type
 
 typedef struct Game_Shaders {
   ShaderProgram basic;

@@ -66,7 +66,7 @@ void level_load_og_test(Game* game) {
     .render = render_phong,
   }); //*/
 
-  /* Crate
+  //* Crate
   game_add_entity(game, &(Entity) {
     .shader = &game->shaders.light,
     .model = &game->models.box,
@@ -75,7 +75,7 @@ void level_load_og_test(Game* game) {
     .render = render_phong,
   }); //*/
 
-  /* Bigger Crate
+  //* Bigger Crate
   game_add_entity(game, &(Entity) {
     .shader = &game->shaders.light,
     .model = &game->models.box,
@@ -84,7 +84,7 @@ void level_load_og_test(Game* game) {
     .render = render_phong,
   }); //*/
 
-  /* Even Bigger Crate
+  //* Even Bigger Crate
   game_add_entity(game, &(Entity) {
     .shader = &game->shaders.light,
     .model = &game->models.box,
@@ -93,7 +93,7 @@ void level_load_og_test(Game* game) {
     .render = render_phong,
   }); //*/
 
-  /* LORGE Cube
+  //* LORGE Cube
   game_add_entity(game, &(Entity) {
     .shader = &game->shaders.light,
     .model = &game->models.box,

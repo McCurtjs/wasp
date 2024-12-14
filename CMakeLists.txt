@@ -31,6 +31,7 @@ add_library(Wasp)
 target_include_directories(Wasp PUBLIC
   ./include
   ./lib/galogen
+  ./lib/stb
 )
 
 # All project sources

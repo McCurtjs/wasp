@@ -3,6 +3,11 @@
 #include "gl.h"
 
 int texture_build_from_image(Texture* texture, const Image* image) {
+  if (!image->ready) {
+    texture->handle = 0;
+    return 0;
+  }
+
   glPixelStorei(GL_UNPACK_FLIP_Y_WEBGL, GL_TRUE);
   glGenTextures(1, &texture->handle);
   glBindTexture(GL_TEXTURE_2D, texture->handle);

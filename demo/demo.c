@@ -36,7 +36,7 @@ static Image image_crate;
 //static Image image_level;
 static Image image_tiles;
 static Image image_brass;
-static Image image_anim_test;
+//static Image image_anim_test;
 #endif
 
 int export(canary) (int _) {
@@ -56,7 +56,7 @@ void export(wasm_preload) (uint w, uint h) {
   image_open_async(&image_crate, "./res/textures/crate.png");
   image_open_async(&image_brass, "./res/textures/brass.jpg");
   image_open_async(&image_tiles, "./res/textures/tiles.png");
-  image_open_async(&image_anim_test, "./res/textures/spritesheet.png");
+  //image_open_async(&image_anim_test, "./res/textures/spritesheet.png");
   //image_open_async(&image_level, "./res/textures/levels.jpg");
   #endif
 
@@ -137,7 +137,7 @@ int export(wasm_load) (int await_count, float dt) {
   //texture_build_from_image(&game.textures.level, &image_level);
   texture_build_from_image(&game.textures.brass, &image_brass);
   texture_build_from_image(&game.textures.tiles, &image_tiles);
-  texture_build_from_image(&game.textures.player, &image_anim_test);
+  //texture_build_from_image(&game.textures.player, &image_anim_test);
 
   // Delete async loaded resources
   file_delete(&file_vert);
@@ -147,9 +147,9 @@ int export(wasm_load) (int await_count, float dt) {
   //file_delete(&file_model_level_1);
   //image_delete(&image_level);
   image_delete(&image_crate);
-  image_delete(&image_brass);
-  image_delete(&image_tiles);
-  image_delete(&image_anim_test);
+  //image_delete(&image_brass);
+  //image_delete(&image_tiles);
+  //image_delete(&image_anim_test);
 
   // Set up game models
   game.models.grid.grid = (Model_Grid) {
