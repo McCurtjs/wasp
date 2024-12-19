@@ -10,3 +10,6 @@
 [submodule "lib/wasi-libc"]
 	path = lib/wasi-libc
 	url = https://github.com/WebAssembly/wasi-libc.git
+[submodule "lib/stb"]
+	path = lib/stb
+	url = https://github.com/nothings/stb.git
