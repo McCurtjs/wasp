@@ -14,6 +14,15 @@ extern void  js_image_delete(void* data_id);
 #include "stb_image.h"
 #endif
 
+#define F 255
+static byte image_default_data[] = {
+  0,0,0,F, F,0,F,F, 0,0,0,F, F,0,F,F,
+  F,0,F,F, 0,0,0,F, F,0,F,F, 0,0,0,F,
+  0,0,0,F, F,0,F,F, 0,0,0,F, F,0,F,F,
+  F,0,F,F, 0,0,0,F, F,0,F,F, 0,0,0,F,
+};
+static uint image_default_dim = 4;
+
 void image_open_async(Image* image, const char* filename) {
   #ifdef __WASM__
   image->handle = js_image_open(filename, strlen(filename));
@@ -25,7 +34,10 @@ void image_open_async(Image* image, const char* filename) {
   byte* data = stbi_load(filename, &w, &h, &n, 4);
 
   if (!data) {
-    image->ready = 0;
+    image->ready = 1;
+    image->width = image_default_dim;
+    image->height = image_default_dim;
+    image->handle = image_default_data;
     str_log("Error loading image: {}, file: {}", stbi_failure_reason(), filename);
     return;
   }
@@ -57,7 +69,7 @@ void image_delete(Image* image) {
   #ifdef __WASM__
   js_image_delete(image->handle);
   #else
-  if (image->ready) {
+  if (image->ready && image->handle != image_default_data) {
     image->ready = 0;
     stbi_image_free(image->handle);
   }
