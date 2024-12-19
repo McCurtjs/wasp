@@ -73,7 +73,7 @@ fi
 
 # executable checks
 case "$build_target" in
-  "wasm" )
+  "wasm" | "clang" )
     which clang &> /dev/null
     if [ "$?" != "0" ]; then
       echo ": build $build_target: clang compiler not found, exiting build."
@@ -246,11 +246,12 @@ elif [ "$build_target" = "mingw" ]; then
   if [ "$?" == "0" ]; then
     if [ "$build_type" == "Spec" ]; then
       ./Wasp_spec.exe $args
+      popd &> /dev/null
     else
-      ./Wasp_demo.exe $args
+      popd &> /dev/null
+      (cd web; "../build/mingw/$build_type/Wasp_demo.exe" $args)
     fi
   fi
-  popd &> /dev/null
 
 # CMake MSVC
 elif [ "$build_target" = "msvc" ]; then
