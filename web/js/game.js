@@ -21,7 +21,10 @@ class Game {
     this.frame_time = 0;
     this.tests_only = false;
 
-    this.utf8_decoder = new TextDecoder("utf-8");
+    this.utf8 = {
+      decoder: new TextDecoder("utf-8"),
+      encoder: new TextEncoder("utf-8"),
+    };
   }
 
   memory(index, size) {

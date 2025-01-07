@@ -12,7 +12,6 @@ extern void  js_image_delete(void* data_id);
 #define STB_IMAGE_IMPLEMENTATION
 #include "str.h"
 #include "stb_image.h"
-#endif
 
 #define F 255
 static byte image_default_data[] = {
@@ -22,6 +21,8 @@ static byte image_default_data[] = {
   F,0,F,F, 0,0,0,F, F,0,F,F, 0,0,0,F,
 };
 static uint image_default_dim = 4;
+
+#endif
 
 void image_open_async(Image* image, const char* filename) {
   #ifdef __WASM__

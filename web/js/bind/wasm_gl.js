@@ -47,8 +47,26 @@ function wasm_import_gl(imports, game) {
   imports["js_glGetShaderParameter"] = (data_id, pname) => {
     let data = game.data[data_id];
     if (!data || data.type != types.shader) return;
+    if (pname == 0x8b84) { // case: GL_INFO_LOG_LENGTH
+      return game.gl.getShaderInfoLog(data.shader) + 1;
+    }
     return game.gl.getShaderParameter(data.shader, pname) ? 1 : 0;
   };
+
+  imports["glGetShaderInfoLog"] = (data_id, exp_len, out_buf) => {
+    let data = game.data[data_id];
+    if (!data || data.type != types.shader) return;
+    let log = game.gl.getShaderInfoLog(data.shader);
+    log = game.utf8.encoder.encode(log);
+    let dat = game.memory(out_buf, exp_len);
+    let i = 0;
+    exp_len = Math.min(exp_len-1, log.length);
+    for (; i < exp_len; ++i) {
+      dat[i] = log[i];
+    }
+    dat[i] = 0;
+    return i;
+  }
 
   imports["glDeleteShader"] = (data_id) => {
     let data = game.data[data_id];

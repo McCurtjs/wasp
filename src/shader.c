@@ -21,8 +21,9 @@ int shader_build(Shader* s, int type, const char* buffer, uint buf_len) {
 
 // compile_error:
 
-  int log_length = 0;
-  glGetShaderiv(s->handle, GL_INFO_LOG_LENGTH, &log_length);
+  int ilog_len = 0;
+  glGetShaderiv(s->handle, GL_INFO_LOG_LENGTH, &ilog_len);
+  GLsizei log_length = (GLsizei)ilog_len;
 
   char* log = malloc(log_length);
   glGetShaderInfoLog(s->handle, log_length, &log_length, log);

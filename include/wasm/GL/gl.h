@@ -340,6 +340,7 @@ void    glShaderSource(
           GLuint shader, GLsizei count, const GLchar** str, const GLint *len);
 void    glCompileShader(GLuint shader);
 void    glGetShaderiv(GLuint shader, GLenum pname, GLint* params);
+void    glGetShaderInfoLog(GLuint shader, GLsizei max, GLsizei* len, char* buf);
 void    glDeleteShader(GLuint program);
 GLuint  glCreateProgram();
 void    glAttachShader(GLuint program, GLuint shader);

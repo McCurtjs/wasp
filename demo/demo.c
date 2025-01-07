@@ -50,7 +50,7 @@ void export(wasm_preload) (uint w, uint h) {
   file_vert = file_new(R("./res/shaders/basic.vert"));
   file_frag = file_new(R("./res/shaders/basic.frag"));
   file_model_test = file_new(R("./res/models/test.obj"));
-  file_model_gear = file_new(R("./res/models/test_sphere.obj"));
+  file_model_gear = file_new(R("./res/models/gear.obj"));
   //file_open_async(&file_model_level_1, "./res/models/level_1.obj");
  
   image_open_async(&image_crate, "./res/textures/crate.png");
