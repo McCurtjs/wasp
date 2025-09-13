@@ -134,8 +134,9 @@ endif()
 add_subdirectory(lib/mclib)
 
 # Definitions and import for SDL
-set(SDL_TEST_LIBRARY OFF)
-set(BUILD_SHARED_LIBS OFF)
+set(SDL_TESTS OFF)
+set(SDL_SHARED OFF)
+set(SDL_STATIC ON)
 set(ONLY_LIBS ON)
 
 add_subdirectory(lib/sdl)

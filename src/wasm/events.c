@@ -51,7 +51,7 @@ void export(wasm_push_keyboard_event) (
 ) {
   SDL_KeyboardEvent event = {
     .type = event_type,
-    .state = SDL_EVENT_KEY_DOWN ? SDL_PRESSED : SDL_RELEASED,
+    .down = event_type == SDL_EVENT_KEY_DOWN,
     .repeat = repeat,
     .keysym = { .sym = tolower(key), .mod = mod }
   };

@@ -21,7 +21,7 @@ extern int    js_glGetShaderParameter(GLuint data_id, GLenum pname);
 void          glGetShaderiv(GLuint data_id, GLenum pname, GLint* params) {
   *params = js_glGetShaderParameter(data_id, pname);
 }
-extern int   js_glGetShaderInfoLog(GLuint data_id, GLsizei len, char* out_log);
+extern int    js_glGetShaderInfoLog(GLuint data_id, GLsizei len, char* out_log);
 void          glGetShaderInfoLog(
   GLuint shader, GLsizei maxLength, GLsizei *length, GLchar* infoLog
 ) {

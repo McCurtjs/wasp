@@ -53,7 +53,7 @@ function wasm_import_gl(imports, game) {
     return game.gl.getShaderParameter(data.shader, pname) ? 1 : 0;
   };
 
-  imports["glGetShaderInfoLog"] = (data_id, exp_len, out_buf) => {
+  imports["js_glGetShaderInfoLog"] = (data_id, exp_len, out_buf) => {
     let data = game.data[data_id];
     if (!data || data.type != types.shader) return;
     let log = game.gl.getShaderInfoLog(data.shader);

@@ -102,9 +102,10 @@ typedef struct SDL_KeyboardEvent
 {
   Uint32 type;        /**< ::SDL_EVENT_KEY_DOWN or ::SDL_EVENT_KEY_UP */
   Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
-  Uint8 state;        /**< ::SDL_PRESSED or ::SDL_RELEASED */
-  Uint8 repeat;       /**< Non-zero if this is a key repeat */
   SDL_Keysym keysym;  /**< The key that was pressed or released */
+  Uint16 raw;         /**< The platform dependent scancode for this event */
+  bool down;
+  bool repeat;
 } SDL_KeyboardEvent;
 
 /**

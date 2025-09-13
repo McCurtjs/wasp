@@ -11,7 +11,7 @@ extern size_t js_fread (int data_id, int ptr, size_t size, size_t max_count);
 extern int    js_fclose(int data_id);
 
 FILE* fopen(const char* path, const char* mode) {
-  if (mode[0] != 'r') alert("fopen read mode other than 'r' not supported!");
+  if (mode[0] != 'r') wasm_alert(S("fopen read mode other than 'r' not supported!"));
   int data_id = js_fopen(path, strlen(path));
   js_fopen_async(data_id);
   return (FILE*) data_id;

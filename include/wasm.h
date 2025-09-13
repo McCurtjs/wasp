@@ -59,13 +59,8 @@ typedef enum {
 
 #endif
 
-void print(const char* str);
-void print_str(slice_t str);
-void str_print_color(slice_t str, ConsoleColor color);
-void print_int(long long int i);
-void print_ptr(const void* p);
-void print_float(float f);
-void print_floats(const float* f, uint count);
-void alert(const char* str);
+void wasm_write(slice_t slice);
+void wasm_write_color(slice_t slice, ConsoleColor color);
+void wasm_alert(slice_t slice);
 
 #endif

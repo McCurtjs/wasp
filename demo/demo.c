@@ -21,6 +21,9 @@
 #include "system_events.h"
 #include "test_behaviors.h"
 
+//#define SDL_MAIN_USE_CALLBACKS
+//#include "SDL3/SDL_main.h"
+
 static Game game;
 
 #define GAME_ON 1
@@ -29,9 +32,9 @@ static Game game;
 // Async loaders
 static File file_vert = NULL;
 static File file_frag = NULL;
-static File file_model_test = NULL;
+//static File file_model_test = NULL;
 //static File file_model_level_1;
-static File file_model_gear = NULL;
+//static File file_model_gear = NULL;
 static Image image_crate;
 //static Image image_level;
 static Image image_tiles;
@@ -39,22 +42,29 @@ static Image image_brass;
 //static Image image_anim_test;
 #endif
 
+#ifdef __clang__
+# pragma clang diagnostic ignored "-Wconstant-logical-operand"
+#endif
+
+#ifdef __WASM__
 int export(canary) (int _) {
   PARAM_UNUSED(_);
-  print("WASM is connected!");
+  slice_write = wasm_write;
+  str_write("WASM is connected!");
   return 0;
 }
+#endif
 
 void export(wasm_preload) (uint w, uint h) {
   #if GAME_ON == 1
   file_vert = file_new(S("./res/shaders/basic.vert"));
   file_frag = file_new(S("./res/shaders/basic.frag"));
-  file_model_test = file_new(S("./res/models/test.obj"));
-  file_model_gear = file_new(S("./res/models/gear.obj"));
+  //file_model_test = file_new(S("./res/models/test.obj"));
+  //file_model_gear = file_new(S("./res/models/gear.obj"));
   //file_open_async(&file_model_level_1, "./res/models/level_1.obj");
- 
+
   image_open_async(&image_crate, "./res/textures/crate.png");
-  image_open_async(&image_brass, "./res/textures/brass.jpg");
+  //image_open_async(&image_brass, "./res/textures/brass.jpg");
   image_open_async(&image_tiles, "./res/textures/tiles.png");
   //image_open_async(&image_anim_test, "./res/textures/spritesheet.png");
   //image_open_async(&image_level, "./res/textures/levels.jpg");
@@ -125,8 +135,8 @@ int export(wasm_load) (int await_count, float dt) {
   shader_build_from_file(&light_vert, file_vert);
   shader_build_from_file(&light_frag, file_frag);
 
-  model_load_obj(&game.models.level_test, file_model_test);
-  model_load_obj(&game.models.gear, file_model_gear);
+  //model_load_obj(&game.models.level_test, file_model_test);
+  //model_load_obj(&game.models.gear, file_model_gear);
   //model_load_obj(&game.models.level_1, &file_model_level_1);
 
   shader_program_build(&game.shaders.light, &light_vert, &light_frag);
@@ -142,8 +152,8 @@ int export(wasm_load) (int await_count, float dt) {
   // Delete async loaded resources
   file_delete(&file_vert);
   file_delete(&file_frag);
-  file_delete(&file_model_test);
-  file_delete(&file_model_gear);
+  //file_delete(&file_model_test);
+  //file_delete(&file_model_gear);
   //file_delete(&file_model_level_1);
   //image_delete(&image_level);
   image_delete(&image_crate);
@@ -167,7 +177,7 @@ int export(wasm_load) (int await_count, float dt) {
   model_build(&game.models.player);
   model_build(&game.models.level_test);
   //model_build(&game.models.level_1);
-  model_build(&game.models.gear);
+  //model_build(&game.models.gear);
   model_grid_set_default(&game.models.gizmo, -2);
   game.models.box.type = MODEL_CUBE;
   model_build(&game.models.box);
@@ -197,6 +207,24 @@ void export(wasm_render) () {
 
 bool game_continue = true;
 bool game_loaded = false;
+
+/*
+SDL_AppResult SDL_AppInit(void** app_state, int argc, char* argv[]) {
+  return SDL_APP_CONTINUE;
+}
+
+SDL_AppResult SDL_AppIterate(void* app_state) {
+  return SDL_APP_CONTINUE;
+}
+
+SDL_AppResult SDL_AppEvent(void* app_state, SDL_Event* event) {
+  return SDL_APP_CONTINUE;
+}
+
+void SDL_AppQuit(void* app_state, SDL_AppResult result) {
+
+}
+//*/
 
 int main(int argc, char* argv[]) {
   PARAM_UNUSED(argc);
