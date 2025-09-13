@@ -83,6 +83,6 @@ void model_load_obj(Model* model, File file);
 
 void model_grid_set_default(Model* model, int extent);
 void model_sprites_draw(
-  const Model_Sprites* spr, vec2 pos, vec2 scale, index_s frame, bool mirror);
+  const Model_Sprites* spr, vec2 pos, vec2 scale, index_t frame, bool mirror);
 
 #endif

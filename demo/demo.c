@@ -47,10 +47,10 @@ int export(canary) (int _) {
 
 void export(wasm_preload) (uint w, uint h) {
   #if GAME_ON == 1
-  file_vert = file_new(R("./res/shaders/basic.vert"));
-  file_frag = file_new(R("./res/shaders/basic.frag"));
-  file_model_test = file_new(R("./res/models/test.obj"));
-  file_model_gear = file_new(R("./res/models/gear.obj"));
+  file_vert = file_new(S("./res/shaders/basic.vert"));
+  file_frag = file_new(S("./res/shaders/basic.frag"));
+  file_model_test = file_new(S("./res/models/test.obj"));
+  file_model_gear = file_new(S("./res/models/gear.obj"));
   //file_open_async(&file_model_level_1, "./res/models/level_1.obj");
  
   image_open_async(&image_crate, "./res/textures/crate.png");
@@ -67,7 +67,7 @@ void export(wasm_preload) (uint w, uint h) {
       .pos = v4f(0, 0, 60, 1),
       .front = v4front,
       .up = v4y,
-      .persp = {d2r(20), i2aspect(windim), 0.1f, 500}
+      .persp = {d2r(60), i2aspect(windim), 0.1f, 500}
       //.ortho = {-6 * i2aspect(windim), 6 * i2aspect(windim), 6, -6, 0.1, 500}
     },
     .target = v3zero,

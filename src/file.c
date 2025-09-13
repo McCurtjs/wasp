@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-File file_new(StringRange filename) {
+File file_new(slice_t filename) {
   String name = str_copy(filename);
   FILE* handle = fopen(name->begin, "r");
   File file = NULL;
@@ -53,7 +53,7 @@ bool file_read(File file) {
   fseek(file->handle, 0, SEEK_SET);
 
   // Get the actual read length, ftell can overshoot, apparently
-  file->length = (index_s)fread(file->data, sizeof(byte), length, file->handle);
+  file->length = (index_t)fread(file->data, sizeof(byte), length, file->handle);
 
   fclose(file->handle);
   file->handle = NULL;

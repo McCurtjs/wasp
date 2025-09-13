@@ -249,7 +249,7 @@ static void model_render_sprites(Model_Sprites* sprites) {
   glBindVertexArray(sprites->vao);
   glBindBuffer(GL_ARRAY_BUFFER, sprites->buffer);
 
-  index_s size_bytes = sprites->verts->size_bytes;
+  index_t size_bytes = sprites->verts->size_bytes;
   void* data_start = array_ref_front(sprites->verts);
   glBufferData(GL_ARRAY_BUFFER, size_bytes, data_start, GL_DYNAMIC_DRAW);
 
@@ -264,7 +264,7 @@ static void model_render_sprites(Model_Sprites* sprites) {
 }
 
 void model_sprites_draw(
-  const Model_Sprites* sprites, vec2 pos, vec2 scale, index_s frame, bool mirror
+  const Model_Sprites* sprites, vec2 pos, vec2 scale, index_t frame, bool mirror
 ) {
   Model_Sprites* spr = (Model_Sprites*)sprites;
 

@@ -1,48 +1,67 @@
 #!/bin/bash
 
-build_target="wasm"
+build_target="clang"
 build_type="Debug"
 build_library=false
 clean=false
+clean_only=false
 skip_cmake=false
 args=""
+open=false
 
 while [ "$1" != "" ]; do
   case "$1" in
-    -t | --target)
-      build_target="$2"
-      shift 1
-      ;;
     -h | --help)
       echo ":"
       echo ": Wasp Engine Build System"
       echo ":"
       echo ": - -- Options"
       echo ": h help                                 : prints this message"
-      echo ": t target  [wasm|clang|gcc|mingw|msvc]  : sets build target"
-      echo ": c clean                                : cleans build files for target"
+      echo ": t target  [clang|wasm|gcc|mingw|msvc]  : sets build target"
+      echo ": c clean                                : cleans build files for target then exits"
+      echo ":   rebuild                              : cleans files for target before building"
       echo ": r release                              : release build (default is debug)"
-      echo ": u unit-test test spec                  : unit-test/spec build"
-      echo ": a args    \" \"                          : passes args to built exe (if any)"
-      echo ": s skip-cmake                           : skips cmake"
+      echo ": s spec                                 : unit-test/spec build"
+      echo ": u update                               : update submodules"
+      echo ": p pull                                 : pull with submodules"
       echo ": l library                              : builds as a library"
+      echo ": o open                                 : opens the IDE for msvc target"
+      echo ": -- <args>                              : passes remaining args to built exe"
       exit
+      ;;
+    -t | --target)
+      build_target="$2"
+      shift 1
+      ;;
+    -- )
+      args="$@"
+      break 1
       ;;
     -c | --clean)
       clean=true
+      clean_only=true
       ;;
-    -a | --args)
-      args="$2"
-      shift 1
+    --rebuild)
+      clean=true
+      ;;
+    -u | --update)
+      git submodule update --init --remote --recursive
+      echo ": Updating with submodules"
+      build_target="none"
+      ;;
+    -p | --pull)
+      git pull --recurse-submodules
+      echo ": Pulling with submodules"
+      build_target="none"
       ;;
     -r | --release)
       build_type="Release"
       ;;
-    -u | --unit-test | --test | --spec)
+    -s | --spec)
       build_type="Spec"
       ;;
-    -s | --skip-cmake)
-      skip_cmake=true
+    -o | --open)
+      open=true
       ;;
     *)
       echo ": Unknown parameter: $1"
@@ -54,8 +73,13 @@ done
 
 # Clean files from build target
 if [ $clean = true ]; then
+  echo ": Deleting build files for $build_target"
   rm -rf ./build/$build_target
-  exit
+  if [ $clean_only = true ]; then
+    echo ": Done"
+    exit
+  fi
+  echo ": Continuing build..."
 fi
 
 # Get make executable
@@ -233,11 +257,9 @@ elif [ "$build_target" = "gcc" ]; then
 # CMake MinGW on Windows with GCC
 elif [ "$build_target" = "mingw" ]; then
 
-  if [ "$skip_cmake" != true ]; then
-    cmake -G "MinGW Makefiles" -S . -B build/mingw/$build_type -DCMAKE_BUILD_TYPE=$build_type
-    if [ "$?" != "0" ]; then
-      exit
-    fi
+  cmake -G "MinGW Makefiles" -S . -B build/mingw/$build_type -DCMAKE_BUILD_TYPE=$build_type
+  if [ "$?" != "0" ]; then
+    exit
   fi
 
   pushd . &> /dev/null
@@ -260,8 +282,18 @@ elif [ "$build_target" = "msvc" ]; then
     cmake -G "Visual Studio 17 2022" -S . -B build/msvc/Spec -DCMAKE_BUILD_TYPE=Spec
   else
     cmake -G "Visual Studio 17 2022" -S . -B build/msvc/Demo
-    if [ "$?" != "0" ]; then
-      exit
+  fi
+
+  if [ "$?" != "0" ]; then
+    exit
+  fi
+
+  if [ "$?" == "0" ] && [ "$open" == true ]; then
+    echo ": Opening Visual Studio"
+    if [ "$build_type" = "Spec" ]; then
+      start ./build/msvc/Spec/Wasp.sln
+    else
+      start ./build/msvc/Demo/Wasp.sln
     fi
   fi
 

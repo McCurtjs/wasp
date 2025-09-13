@@ -60,8 +60,8 @@ typedef enum {
 #endif
 
 void print(const char* str);
-void print_str(StringRange str);
-void str_print_color(StringRange str, ConsoleColor color);
+void print_str(slice_t str);
+void str_print_color(slice_t str, ConsoleColor color);
 void print_int(long long int i);
 void print_ptr(const void* p);
 void print_float(float f);

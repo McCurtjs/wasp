@@ -51,7 +51,7 @@ class Game {
 
   str(index, size) {
     let arr = this.memory(index, size);
-    return this.utf8_decoder.decode(arr);
+    return this.utf8.decoder.decode(arr);
   }
 
   store(data) {

@@ -9,6 +9,7 @@ typedef struct Vert {
 
 #define con_type Vert
 #define con_prefix vert
+#include "span.h"
 #include "array.h"
 #undef con_type
 #undef con_prefix
@@ -23,13 +24,14 @@ DebugDrawState draw = {
 
 #define con_type DebugDrawState
 #define con_prefix dstate
+#include "span.h"
 #include "array.h"
 #undef con_type
 #undef con_prefix
 
 
-static Array_Vert geometry = NULL;
-static Array_DebugDrawState draw_state_stack = NULL;
+static Array_vert geometry = NULL;
+static Array_dstate draw_state_stack = NULL;
 static uint gl_vao = 0;
 static uint gl_buffer = 0;
 

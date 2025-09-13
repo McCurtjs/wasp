@@ -3,8 +3,8 @@
 #include "str.h"
 
 #define FN_SIGNATURE_PRINT void print(const char* str)
-#define FN_SIGNATURE_PRINT_STR void print_str(StringRange str)
-#define FN_SIGNATURE_PRINT_STR_C void print_str_color(StringRange str, ConsoleColor c)
+#define FN_SIGNATURE_PRINT_STR void print_str(slice_t str)
+#define FN_SIGNATURE_PRINT_STR_C void print_str_color(slice_t str, ConsoleColor c)
 #define FN_SIGNATURE_PRINT_INT void print_int(long long int i)
 #define FN_SIGNATURE_PRINT_PTR void print_ptr(const void* p)
 #define FN_SIGNATURE_PRINT_FLOAT void print_float(float f)
@@ -67,7 +67,7 @@ FN_SIGNATURE_PRINT_STR {
 }
 
 FN_SIGNATURE_PRINT_STR_C {
-  Array_StringRange arr = str_split(str, "%c");
+  Array_slice arr = str_split(str, "%c");
   if (arr->size != 2) {
     printf("%.*s\n", (int)str.size, str.begin);
   } else {
@@ -78,16 +78,16 @@ FN_SIGNATURE_PRINT_STR_C {
       is_bold = 1;
     }
     sprintf(color, "\033[%01i;%02im", is_bold, c);
-    StringRange second = arr_str_get_back(arr);
-    arr_str_pop_back(arr);
-    arr_str_push_back(arr, R(color));
-    arr_str_push_back(arr, second);
-    arr_str_push_back(arr, R("\033[0m"));
-    String result = str_join(str_empty->range, arr);
+    slice_t second = arr_slice_get_back(arr);
+    arr_slice_pop_back(arr);
+    arr_slice_push_back(arr, S(color));
+    arr_slice_push_back(arr, second);
+    arr_slice_push_back(arr, S("\033[0m"));
+    String result = str_join(str_empty->slice, arr);
     printf("%.*s\n", (int)result->size, result->begin);
     str_delete(&result);
   }
-  arr_str_delete(&arr);
+  arr_slice_delete(&arr);
 }
 
 FN_SIGNATURE_PRINT_INT {

@@ -11,18 +11,16 @@ typedef struct {
   union {
     struct {
       byte* data;
-      index_s length;
+      index_t length;
     };
-    StringRange str;
+    slice_t str;
   };
 
 }* File;
 
-File    file_new(StringRange filename);
+File    file_new(slice_t filename);
 long    file_read_length(File file);
 bool    file_read(File file);
 void    file_delete(File* file);
 
 #endif
-
-// TODO: Update to use better types (StringRanges, index_s, etc)

@@ -5,11 +5,11 @@
 #include "wasm.h"
 
 void game_init(Game* game) {
-  game->entities = arr_ety_new();
+  game->entities = arr_entity_new();
 }
 
 void game_add_entity(Game* game, const Entity* entity) {
-  arr_ety_write_back(game->entities, entity);
+  arr_entity_write_back(game->entities, entity);
 }
 
 void game_update(Game* game, float dt) {
@@ -46,5 +46,5 @@ void game_cleanup(Game* game) {
     }
   }
 
-  arr_ety_delete(&game->entities);
+  arr_entity_delete(&game->entities);
 }

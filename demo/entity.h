@@ -42,7 +42,8 @@ typedef struct Entity {
 
 
 #define con_type Entity
-#define con_prefix ety
+#define con_prefix entity
+#include "span.h"
 #include "array.h"
 #undef con_type
 #undef con_prefix

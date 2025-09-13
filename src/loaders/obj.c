@@ -24,8 +24,8 @@ typedef struct ObjFaceElem {
 
 void file_load_obj(Model_Obj* model, File file) {
 
-  index_s pos = 0;
-  StringRange str = file->str;
+  index_t pos = 0;
+  slice_t str = file->str;
 
   Array verts = array_new(ObjVertexPart);
   Array norms = array_new(vec3);
@@ -33,7 +33,7 @@ void file_load_obj(Model_Obj* model, File file) {
   Array faces = array_new(ObjFaceElem);
 
   while (pos < file->str.length) {
-    StringRange token = str_token(str, " ", &pos);
+    slice_t token = str_token(str, " ", &pos);
 
     if (token.length == 0) break;
 
@@ -50,9 +50,9 @@ void file_load_obj(Model_Obj* model, File file) {
 
             vec3 norm;
 
-            istr_to_float(str_token(str, " ", &pos), &norm.x);
-            istr_to_float(str_token(str, " ", &pos), &norm.y);
-            istr_to_float(str_token(str, "\n", &pos), &norm.z);
+            slice_to_float(str_token(str, " ", &pos), &norm.x);
+            slice_to_float(str_token(str, " ", &pos), &norm.y);
+            slice_to_float(str_token(str, "\n", &pos), &norm.z);
 
             array_write_back(norms, &norm);
 
@@ -64,8 +64,8 @@ void file_load_obj(Model_Obj* model, File file) {
 
             vec3 uv;
 
-            istr_to_float(str_token(str, " ", &pos), &uv.u);
-            istr_to_float(str_token(str, "\n", &pos), &uv.v);
+            slice_to_float(str_token(str, " ", &pos), &uv.u);
+            slice_to_float(str_token(str, "\n", &pos), &uv.v);
 
             array_write_back(uvs, &uv);
 
@@ -77,16 +77,16 @@ void file_load_obj(Model_Obj* model, File file) {
             ObjVertexPart vert;
 
             // coordinate
-            istr_to_float(str_token(str, " ", &pos), &vert.pos.x);
-            istr_to_float(str_token(str, " ", &pos), &vert.pos.y);
-            istr_to_float(str_token(str, " \n", &pos), &vert.pos.z);
+            slice_to_float(str_token(str, " ", &pos), &vert.pos.x);
+            slice_to_float(str_token(str, " ", &pos), &vert.pos.y);
+            slice_to_float(str_token(str, " \n", &pos), &vert.pos.z);
 
             // optional vertex color
             if (str.begin[pos - 1] == ' ') {
 
-              istr_to_float(str_token(str, " ", &pos), &vert.color.r);
-              istr_to_float(str_token(str, " ", &pos), &vert.color.g);
-              istr_to_float(str_token(str, "\n", &pos), &vert.color.b);
+              slice_to_float(str_token(str, " ", &pos), &vert.color.r);
+              slice_to_float(str_token(str, " ", &pos), &vert.color.g);
+              slice_to_float(str_token(str, "\n", &pos), &vert.color.b);
 
             } else {
               vert.color = c4white.rgb;
@@ -105,19 +105,19 @@ void file_load_obj(Model_Obj* model, File file) {
 
         ObjFaceElem elem;
 
-        istr_to_int(str_token(str, "/", &pos), &elem.vert);
-        istr_to_int(str_token(str, "/", &pos), &elem.uv);
-        istr_to_int(str_token(str, " ", &pos), &elem.norm);
+        slice_to_int(str_token(str, "/", &pos), &elem.vert);
+        slice_to_int(str_token(str, "/", &pos), &elem.uv);
+        slice_to_int(str_token(str, " ", &pos), &elem.norm);
         array_write_back(faces, &elem);
 
-        istr_to_int(str_token(str, "/", &pos), &elem.vert);
-        istr_to_int(str_token(str, "/", &pos), &elem.uv);
-        istr_to_int(str_token(str, " ", &pos), &elem.norm);
+        slice_to_int(str_token(str, "/", &pos), &elem.vert);
+        slice_to_int(str_token(str, "/", &pos), &elem.uv);
+        slice_to_int(str_token(str, " ", &pos), &elem.norm);
         array_write_back(faces, &elem);
 
-        istr_to_int(str_token(str, "/", &pos), &elem.vert);
-        istr_to_int(str_token(str, "/", &pos), &elem.uv);
-        istr_to_int(str_token(str, "\n", &pos), &elem.norm);
+        slice_to_int(str_token(str, "/", &pos), &elem.vert);
+        slice_to_int(str_token(str, "/", &pos), &elem.uv);
+        slice_to_int(str_token(str, "\n", &pos), &elem.norm);
         array_write_back(faces, &elem);
 
       } break;
@@ -134,7 +134,8 @@ void file_load_obj(Model_Obj* model, File file) {
   model->verts = array_new_reserve(ObjVertex, faces->size);
   model->indices = array_new_reserve(uint, faces->size);
 
-  for (index_s i = 0; i < faces->size; ++i) {
+  /*
+  for (index_t i = 0; i < faces->size; ++i) {
     // -1's to account for obj's 1-indexing
     ObjFaceElem* f = array_ref(faces, i);
     ObjVertexPart* partial = array_ref(verts, f->vert - 1);
@@ -151,6 +152,9 @@ void file_load_obj(Model_Obj* model, File file) {
     // array instead, which defeats the purpose
     array_write_back(model->indices, &i);
   }
+  /*/
+
+  //*/
 
   array_delete(&faces);
   array_delete(&verts);

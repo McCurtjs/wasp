@@ -1,40 +1,46 @@
 option(CSPEC_MEMTEST "Enable memory testing defines for spec build" OFF)
+option(CSPEC_ASSERT "Enable assert override for spec build" OFF)
 
 if(CMAKE_BUILD_TYPE STREQUAL Spec)
   set(CSPEC_MEMTEST ON)
+  set(CSPEC_ASSERT ON)
   set(CMAKE_BUILD_TYPE Debug)
 endif()
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   cmake_minimum_required(VERSION 3.6)
+  # don't include library paths to linker search paths
   cmake_policy(SET CMP0003 NEW)
   project(Wasp)
 endif()
 
+# TODO remove this?
 if(!MSVC)
-  set(CMAKE_C_STANDARD 17)
+  set(CMAKE_C_STANDARD 23)
   set(CMAKE_C_STANDARD_REQUIRED ON)
 endif()
 
+# Function to set up compile options for a target
 function(compile_opts target)
   if (MSVC)
     target_compile_options(${target} PRIVATE
       /W4 /WX /std:clatest)
   else()
     target_compile_options(${target} PRIVATE
-      -Wall -Wextra -Wpedantic -Werror
+      -std=c2x -Wall -Wextra -Wpedantic -Werror -Wno-unused-value
     )
   endif()
 endfunction()
 
+# Setup for Wasp
 add_library(Wasp)
+set_property(TARGET Wasp PROPERTY C_STANDARD 23)
+
 target_include_directories(Wasp PUBLIC
-  ./include
-  ./lib/galogen
-  ./lib/stb
+  include
+  lib/stb
 )
 
-# All project sources
 target_sources(Wasp PRIVATE
   src/loaders/obj.c
   src/camera.c
@@ -45,17 +51,43 @@ target_sources(Wasp PRIVATE
   src/shader.c
   src/texture.c
   src/wasm.c # rename to bridge.c?
+  include/camera.h
+  include/draw.h
+  include/file.h
+  include/gl.h
+  include/image.h
+  include/model.h
+  include/shader.h
+  include/texture.h
+  include/wasm.h
 )
+
+compile_opts(Wasp)
 
 # Project source filters for Visual Studio
 source_group("Source Files\\Loaders" src/loaders/.*\.c)
 
+# Include Galogen library for OpenGL function loading
 add_library(Galogen)
-target_sources(Galogen PRIVATE lib/galogen/galogen.c)
+set_property(TARGET Galogen PROPERTY C_STANDARD 23)
+target_include_directories(Galogen PUBLIC lib/galogen)
+target_sources(Galogen PRIVATE
+  lib/galogen/galogen.c
+  lib/galogen/galogen.h
+)
 
-compile_opts(Wasp)
+target_link_libraries(Wasp PUBLIC Galogen)
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+
+  # Add blank C++ project for Natvis support in MSVC
+  if(MSVC)
+    add_library(Natvis_injector)
+    target_sources(Natvis_injector PRIVATE lib/mclib/McLib.natvis)
+    set_target_properties(Natvis_injector PROPERTIES LINKER_LANGUAGE CXX)
+  endif()
+
+  # Settings for spec build
   if(CSPEC_MEMTEST STREQUAL ON)
     add_executable(Wasp_spec)
     set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Wasp_spec)
@@ -70,6 +102,8 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 
     target_link_libraries(Wasp PUBLIC CSpec)
     target_link_libraries(Wasp_spec PRIVATE Wasp)
+
+  # Settings for demo project
   else()
     add_executable(Wasp_demo)
     set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Wasp_demo)
@@ -84,6 +118,11 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
       demo/levels.c
       demo/system_events.c
       demo/test_behaviors.c
+      demo/entity.h
+      demo/game.h
+      demo/levels.h
+      demo/system_events.h
+      demo/test_behaviors.h
     )
 
     target_link_libraries(Wasp_demo PRIVATE Wasp Galogen)

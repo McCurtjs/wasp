@@ -10,6 +10,7 @@
 #include "levels.h"
 
 #define con_type int
+#include "span.h"
 #include "array.h"
 #undef con_type
 
@@ -104,7 +105,7 @@ typedef struct Game {
   Game_Models models;
   Game_Textures textures;
 
-  Array_Entity entities;
+  Array_entity entities;
 
   uint    level;
 
