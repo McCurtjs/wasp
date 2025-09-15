@@ -148,7 +148,7 @@ class Game {
 
     game.gl.canvas.addEventListener('mousedown', (e) => {
       game.wasm.exports.wasm_push_mouse_button_event(
-        sdl.mouse_button_down, e.buttons, e.offsetX, e.offsetY);
+        sdl.mouse_button_down, e.button + 1, e.offsetX, e.offsetY);
     });
 
     // attach to window so we still get "up" events when dragged out the window
@@ -156,7 +156,7 @@ class Game {
       let b = game.gl.canvas.getBoundingClientRect();
       let pos = { x: e.clientX - b.x, y: e.clientY - b.y };
       game.wasm.exports.wasm_push_mouse_button_event(
-        sdl.mouse_button_up, e.button, pos.x, pos.y);
+        sdl.mouse_button_up, e.button + 1, pos.x, pos.y);
     });
 
     window.addEventListener('mousemove', (e) => {
