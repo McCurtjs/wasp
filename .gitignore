@@ -1,4 +1,6 @@
 build
 web/test.wasm
+web/game.wasm
 web/Wasp_demo.exe
 .vscode
+.vs

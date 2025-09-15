@@ -168,7 +168,7 @@ if [ "$build_target" = "wasm" ]; then
   # -nostdinc doesn't work because wasi doesn't ship with stddef for some reason
   # --target=wasm32 for non-wasi build. It works, but no standard lib is painful
   # -fgnuc-version=0 : tells clang to stop pretending to be GCC for ifdefs
-  flags_wasm="--target=wasm32-unknown-wasi -D__WASM__ -fgnuc-version=0
+  flags_wasm="--target=wasm32-wasi -D__WASM__ -fgnuc-version=0
     -Wl,--allow-undefined -Wl,--no-entry -Wl,--lto-O3
     --no-standard-libraries -std=c23
     -isystem ./lib/wasi-libc/sysroot/include/wasm32-wasi
