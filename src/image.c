@@ -2,12 +2,21 @@
 
 #ifdef __WASM__
 #include <string.h>
+#include "wasm.h"
 
-extern void* js_image_open(const char* src, uint src_len);
+extern void* js_image_open(Image* image, const char* src, uint src_len);
 extern void  js_image_open_async(void* data_id);
 extern uint  js_image_width(void* data_id);
 extern uint  js_image_height(void* data_id);
 extern void  js_image_delete(void* data_id);
+
+void export(image_open_async_done) (Image* image, uint width, uint height) {
+  if (!image) return;
+  image->ready = 1;
+  image->width = width;
+  image->height = height;
+}
+
 #else
 #define STB_IMAGE_IMPLEMENTATION
 #include "str.h"
@@ -26,7 +35,7 @@ static uint image_default_dim = 4;
 
 void image_open_async(Image* image, const char* filename) {
   #ifdef __WASM__
-  image->handle = js_image_open(filename, strlen(filename));
+  image->handle = js_image_open(image, filename, strlen(filename));
   image->ready = 0;
   js_image_open_async(image->handle);
   #else

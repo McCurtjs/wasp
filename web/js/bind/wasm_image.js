@@ -3,12 +3,13 @@ import { types } from "./wasm_const.js";
 
 function wasm_import_image(imports, game) {
 
-  imports['js_image_open'] =  (path, path_len) => {
+  imports['js_image_open'] =  (image_ptr, path, path_len) => {
     return game.store({
       type: types.image,
       ready: false,
       path: game.str(path, path_len),
       image: null,
+      wasm_ptr: image_ptr
     });
   }
 
@@ -21,6 +22,18 @@ function wasm_import_image(imports, game) {
     data.image.onload = () => {
       data.ready = true;
       --game.await_count;
+
+      game.wasm.exports.image_open_async_done(
+        data.wasm_ptr, data.image.width, data.image.height
+      );
+
+      /* Test output to display images as they load.
+      let img = document.createElement("img");
+      img.setAttribute("src", data.path);
+      img.setAttribute("height", 50);
+      img.classList.add("console");
+      document.querySelector("body").appendChild(img);
+      //*/
     };
     data.image.src = data.path;
   }

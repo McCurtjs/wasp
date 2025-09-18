@@ -38,7 +38,7 @@ static File file_frag = NULL;
 static Image image_crate;
 //static Image image_level;
 static Image image_tiles;
-static Image image_brass;
+//static Image image_brass;
 //static Image image_anim_test;
 #endif
 
@@ -145,7 +145,7 @@ int export(wasm_load) (int await_count, float dt) {
   // Build textures from async data
   texture_build_from_image(&game.textures.crate, &image_crate);
   //texture_build_from_image(&game.textures.level, &image_level);
-  texture_build_from_image(&game.textures.brass, &image_brass);
+  //texture_build_from_image(&game.textures.brass, &image_brass);
   texture_build_from_image(&game.textures.tiles, &image_tiles);
   //texture_build_from_image(&game.textures.player, &image_anim_test);
 
