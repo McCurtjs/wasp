@@ -3,10 +3,11 @@
 
 #include "image.h"
 
-typedef struct Texture {
+typedef struct texture_t {
   uint handle;
-} Texture;
+} texture_t;
 
-int texture_build_from_image(Texture* texture, const Image* image);
+texture_t tex_from_image(Image image);
+void tex_free(texture_t* handle);
 
 #endif

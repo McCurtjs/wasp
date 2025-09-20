@@ -61,7 +61,7 @@ void level_load_og_test(Game* game) {
   game_add_entity(game, &(Entity) {
     .shader = &game->shaders.light,
     .model = &game->models.gear,
-    .texture = &game->textures.brass,
+    .texture = game->textures.brass,
     .transform = m4translation(v3f(0, 3, -5)),
     .render = render_phong,
   }); //*/
@@ -70,7 +70,7 @@ void level_load_og_test(Game* game) {
   game_add_entity(game, &(Entity) {
     .shader = &game->shaders.light,
     .model = &game->models.box,
-    .texture = &game->textures.crate,
+    .texture = game->textures.crate,
     .transform = m4translation(v3f(0, -0.5, 0)),
     .render = render_phong,
   }); //*/
@@ -79,7 +79,7 @@ void level_load_og_test(Game* game) {
   game_add_entity(game, &(Entity) {
     .shader = &game->shaders.light,
     .model = &game->models.box,
-    .texture = &game->textures.crate,
+    .texture = game->textures.crate,
     .transform = m4mul(m4translation(v3f(2, 0, 0)), m4uniform(2)),
     .render = render_phong,
   }); //*/
@@ -88,7 +88,7 @@ void level_load_og_test(Game* game) {
   game_add_entity(game, &(Entity) {
     .shader = &game->shaders.light,
     .model = &game->models.box,
-    .texture = &game->textures.crate,
+    .texture = game->textures.crate,
     .transform = m4mul(m4translation(v3f(5, 0.5, 0)), m4uniform(3)),
     .render = render_phong,
   }); //*/
@@ -97,7 +97,7 @@ void level_load_og_test(Game* game) {
   game_add_entity(game, &(Entity) {
     .shader = &game->shaders.light,
     .model = &game->models.box,
-    .texture = &game->textures.tiles,
+    .texture = game->textures.tiles,
     .transform = m4mul(m4translation(v3f(0, -10.5, -5)), m4uniform(19)),
     .render = render_phong,
   }); //*/

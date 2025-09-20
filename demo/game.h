@@ -31,11 +31,11 @@ typedef struct Game_Models {
 } Game_Models;
 
 typedef struct Game_Textures {
-  Texture crate;
-  Texture brass;
-  Texture tiles;
-  Texture level;
-  Texture player;
+  texture_t crate;
+  texture_t brass;
+  texture_t tiles;
+  texture_t level;
+  texture_t player;
 } Game_Textures;
 
 #define game_key_count (9 + LEVEL_COUNT)

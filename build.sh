@@ -45,13 +45,13 @@ while [ "$1" != "" ]; do
       clean=true
       ;;
     -u | --update)
-      git submodule update --init --remote --recursive
       echo ": Updating with submodules"
+      git submodule update --init --remote --recursive
       build_target="none"
       ;;
     -p | --pull)
-      git pull --recurse-submodules
       echo ": Pulling with submodules"
+      git pull --recurse-submodules
       build_target="none"
       ;;
     -r | --release)

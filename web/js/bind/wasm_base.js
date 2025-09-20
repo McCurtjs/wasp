@@ -1,4 +1,6 @@
 
+import { types } from "./wasm_const.js";
+
 function wasm_import_base(imports, game) {
 
   imports['js_alert'] = (str, len) => {
@@ -15,6 +17,21 @@ function wasm_import_base(imports, game) {
       }
       console.log(game.str(str, len), format);
     }
+  }
+
+  // Generic byte buffer handling
+  imports['js_buffer_create'] = (ptr, size) => {
+    return game.store({
+      type: types.bytes,
+      buffer: game.memory(ptr, size),
+      size: size,
+    });
+  }
+
+  imports['js_buffer_delete'] = (data_id) => {
+    let data = game.data[data_id];
+    if (!data || data.type != types.bytes) return;
+    game.free(data_id);
   }
 }
 

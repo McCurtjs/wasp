@@ -34,6 +34,10 @@ typedef enum {
   CONCOL_bWhite  = 0x1ffffff,
 } ConsoleColor;
 
+void wasm_write(slice_t slice);
+void wasm_write_color(slice_t slice, ConsoleColor color);
+void wasm_alert(slice_t slice);
+
 // ndef __WASM__
 #else
 # define export(fn_name) fn_name
@@ -58,9 +62,5 @@ typedef enum {
 } ConsoleColor;
 
 #endif
-
-void wasm_write(slice_t slice);
-void wasm_write_color(slice_t slice, ConsoleColor color);
-void wasm_alert(slice_t slice);
 
 #endif

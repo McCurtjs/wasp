@@ -84,16 +84,17 @@ void          glGenTextures(GLsizei n, GLuint* textures) {
 extern void   glActiveTexture(GLenum texture);
 extern void   glBindTexture(GLenum target, GLuint texture);
 extern void   js_glTexImage2D(
-                GLenum target, GLint level, GLint internalFormat, GLenum format,
-                GLenum type, const void* image_id);
+                GLenum target, GLint level, GLint internalFormat,
+                GLsizei width, GLsizei height,
+                GLenum format, GLenum type, const void* image_id);
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-parameter"
 void          glTexImage2D(
-                GLenum target, GLint level, GLint internalFormat,
-                GLsizei _width, GLsizei _height, GLint _border, GLenum format,
+                GLenum target, GLint level, GLint inFormat,
+                GLsizei width, GLsizei height, GLint _border, GLenum format,
                 GLenum type, const void* data
 ) {
-  js_glTexImage2D(target, level, internalFormat, format, type, data);
+  js_glTexImage2D(target, level, inFormat, width, height, format, type, data);
 }
 #pragma clang diagnostic pop
 extern void   glGenerateMipmap(GLenum target);
