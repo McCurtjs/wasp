@@ -123,10 +123,10 @@ static int model_build_grid(Model_Grid* grid) {
       points[i+1] = v3add(v3scale(basis[ga],-exf), v3scale(basis[gb], jf));
       points[i+2] = v3add(v3scale(basis[ga], exf), v3scale(basis[gb],-jf));
       points[i+3] = v3add(v3scale(basis[ga],-exf), v3scale(basis[gb],-jf));
-      points[i+4] = v3add(v3scale(basis[ga], jf), v3scale(basis[gb], exf));
-      points[i+5] = v3add(v3scale(basis[ga], jf), v3scale(basis[gb],-exf));
-      points[i+6] = v3add(v3scale(basis[ga],-jf), v3scale(basis[gb], exf));
-      points[i+7] = v3add(v3scale(basis[ga],-jf), v3scale(basis[gb],-exf));
+      points[i+4] = v3add(v3scale(basis[ga], jf),  v3scale(basis[gb], exf));
+      points[i+5] = v3add(v3scale(basis[ga], jf),  v3scale(basis[gb],-exf));
+      points[i+6] = v3add(v3scale(basis[ga],-jf),  v3scale(basis[gb], exf));
+      points[i+7] = v3add(v3scale(basis[ga],-jf),  v3scale(basis[gb],-exf));
 
       byte c = (j % 10 == 0 ? 128 : (j % 5 == 0 ? 0 : 63));
       color3b color = v3b(c, c, c);
@@ -329,15 +329,25 @@ typedef struct ObjVertex {
   vec2 uv;
 } ObjVertex;
 
-static int model_build_obj(Model_Obj* obj) {
-  glGenVertexArrays(1, &obj->vao);
-  glBindVertexArray(obj->vao);
+void model_load_obj(Model* model, File file) {
+  if (!file_read(file)) {
+    model->type = MODEL_NONE;
+    return;
+  }
 
-  glGenBuffers(2, obj->buffers);
+  model->type = MODEL_OBJ;
+  file_load_obj(&model->mesh, file);
+}
 
-  glBindBuffer(GL_ARRAY_BUFFER, obj->vert_buffer);
-  glBufferData(GL_ARRAY_BUFFER, obj->verts->size_bytes,
-               array_ref_front(obj->verts), GL_STATIC_DRAW);
+static int model_build_mesh(Model_Mesh* mesh) {
+  glGenVertexArrays(1, &mesh->vao);
+  glBindVertexArray(mesh->vao);
+
+  glGenBuffers(2, mesh->buffers);
+
+  glBindBuffer(GL_ARRAY_BUFFER, mesh->vert_buffer);
+  glBufferData(GL_ARRAY_BUFFER, mesh->verts->size_bytes,
+               array_ref_front(mesh->verts), GL_STATIC_DRAW);
   glEnableVertexAttribArray(0);
   glVertexAttribPointer(0, v3floats, GL_FLOAT, GL_FALSE,
                         sizeof(ObjVertex), &((ObjVertex*)0)->pos);
@@ -351,34 +361,24 @@ static int model_build_obj(Model_Obj* obj) {
   glVertexAttribPointer(3, v3floats, GL_FLOAT, GL_FALSE,
                         sizeof(ObjVertex), &((ObjVertex*)0)->color);
 
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, obj->ebo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, obj->indices->size_bytes,
-               array_ref_front(obj->indices), GL_STATIC_DRAW);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh->indices->size_bytes,
+               array_ref_front(mesh->indices), GL_STATIC_DRAW);
 
   glBindVertexArray(0);
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-  obj->ready = TRUE;
+  mesh->ready = TRUE;
   return 1;
 }
 
-static void model_render_obj(Model_Obj* obj) {
-  glBindVertexArray(obj->vao);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, obj->ebo);
-  glDrawElements(GL_TRIANGLES, (int)obj->indices->size, GL_UNSIGNED_INT, 0);
+static void model_render_mesh(Model_Mesh* mesh) {
+  glBindVertexArray(mesh->vao);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
+  glDrawElements(GL_TRIANGLES, (int)mesh->indices->size, GL_UNSIGNED_INT, 0);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
-}
-
-void model_load_obj(Model* model, File file) {
-  if (!file_read(file)) {
-    model->type = MODEL_NONE;
-    return;
-  }
-
-  model->type = MODEL_OBJ;
-  file_load_obj(&model->obj, file);
 }
 
 // Exported functions
@@ -391,7 +391,7 @@ static model_build_pfn model_build_fns[MODEL_TYPES_COUNT] = {
   (model_build_pfn)model_build_cube,
   (model_build_pfn)model_build_cube_color,
   (model_build_pfn)model_build_sprites,
-  (model_build_pfn)model_build_obj,
+  (model_build_pfn)model_build_mesh,
 };
 
 int model_build(Model* model) {
@@ -405,7 +405,7 @@ static model_render_pfn model_render_fns[MODEL_TYPES_COUNT] = {
   (model_render_pfn)model_render_cube,
   (model_render_pfn)model_render_cube_color,
   (model_render_pfn)model_render_sprites,
-  (model_render_pfn)model_render_obj
+  (model_render_pfn)model_render_mesh
 };
 
 void model_render(const Model* model) {

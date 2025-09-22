@@ -49,7 +49,7 @@ typedef struct Model_Sprites {
   Array verts;
 } Model_Sprites;
 
-typedef struct Model_Obj {
+typedef struct Model_Mesh {
   uint type;
   uint ready;
   Array verts;
@@ -62,7 +62,7 @@ typedef struct Model_Obj {
       uint ebo;
     };
   };
-} Model_Obj;
+} Model_Mesh;
 
 typedef union Model {
   struct {
@@ -73,7 +73,7 @@ typedef union Model {
   Model_Cube cube;
   Model_CubeColor cube_color;
   Model_Sprites sprites;
-  Model_Obj obj;
+  Model_Mesh mesh;
 } Model;
 
 int  model_build(Model* model);

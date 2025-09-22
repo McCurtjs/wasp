@@ -153,7 +153,7 @@ int export(wasm_load) (int await_count, float dt) {
   file_delete(&file_vert);
   file_delete(&file_frag);
   //file_delete(&file_model_test);
-  //file_delete(&file_model_gear);
+  file_delete(&file_model_gear);
   //file_delete(&file_model_level_1);
   //image_delete(&image_level);
   img_delete(&image_brass);

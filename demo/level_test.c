@@ -62,7 +62,7 @@ void level_load_og_test(Game* game) {
     .shader = &game->shaders.light,
     .model = &game->models.gear,
     .texture = game->textures.brass,
-    .transform = m4translation(v3f(0, 3, -5)),
+    .transform = m4translation(v3f(0, 7, -5)),
     .render = render_phong,
   }); //*/
 
