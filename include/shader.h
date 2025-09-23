@@ -29,6 +29,7 @@ typedef struct UniformLocsPhong {
   shaderloc lightPos;
   shaderloc cameraPos;
   shaderloc sampler;
+  shaderloc useVertexColor;
 } UniformLocsPhong;
 
 typedef struct ShaderUniformLocs {

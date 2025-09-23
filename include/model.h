@@ -52,8 +52,10 @@ typedef struct Model_Sprites {
 typedef struct Model_Mesh {
   uint type;
   uint ready;
+  bool use_color;
   Array verts;
   Array indices;
+  int index_count;
   uint vao;
   union {
     uint buffers[2];

@@ -5,33 +5,26 @@
 #include "array.h"
 #include "map.h"
 
-typedef struct ObjVertex {
+typedef struct {
   vec3 pos;
   vec3 color;
-  vec3 norm;
-  vec2 uv;
-} ObjVertex;
+} obj_vertex_part_t;
 
-typedef struct ObjVertexPart {
-  vec3 pos;
-  vec3 color;
-} ObjVertexPart;
-
-typedef struct ObjFaceElem {
+typedef struct {
   int vert;
   int norm;
   int uv;
-} ObjFaceElem;
+} obj_face_elem_t;
 
 void file_load_obj(Model_Mesh* model, File file) {
 
   index_t pos = 0;
   slice_t str = file->str;
 
-  Array verts = array_new(ObjVertexPart);
+  Array verts = array_new(obj_vertex_part_t);
   Array norms = array_new(vec3);
   Array uvs   = array_new(vec2);
-  Array faces = array_new(ObjFaceElem);
+  Array faces = array_new(obj_face_elem_t);
 
   str_log("Model_Obj - Loading: {}", file->name);
 
@@ -48,24 +41,23 @@ void file_load_obj(Model_Mesh* model, File file) {
         // Just 'v', read a vertex coordinate:
         if (token.size == 1) {
 
-          ObjVertexPart vert;
+          obj_vertex_part_t* vert = array_emplace_back(verts);
 
           // coordinate
-          slice_to_float(str_token(str, " ", &pos), &vert.pos.x);
-          slice_to_float(str_token(str, " ", &pos), &vert.pos.y);
-          slice_to_float(str_token(str, " \n", &pos), &vert.pos.z);
+          slice_to_float(str_token(str, " ", &pos), &vert->pos.x);
+          slice_to_float(str_token(str, " ", &pos), &vert->pos.y);
+          slice_to_float(str_token(str, " \n", &pos), &vert->pos.z);
 
           // optional vertex color
           if (str.begin[pos - 1] == ' ') {
-            slice_to_float(str_token(str, " ", &pos), &vert.color.r);
-            slice_to_float(str_token(str, " ", &pos), &vert.color.g);
-            slice_to_float(str_token(str, "\n", &pos), &vert.color.b);
+            model->use_color = true;
+            slice_to_float(str_token(str, " ", &pos), &vert->color.r);
+            slice_to_float(str_token(str, " ", &pos), &vert->color.g);
+            slice_to_float(str_token(str, "\n", &pos), &vert->color.b);
           }
           else {
-            vert.color = c4white.rgb;
+            vert->color = c4white.rgb;
           }
-
-          array_write_back(verts, &vert);
         }
 
         // Either 'vt' or 'vn' sections, read a texcoord or normal
@@ -75,24 +67,20 @@ void file_load_obj(Model_Mesh* model, File file) {
 
             // Read a vertex normal
             case 'n': {
-              vec3 norm;
+              vec3* norm = array_emplace_back(norms);
 
-              slice_to_float(str_token(str, " ", &pos), &norm.x);
-              slice_to_float(str_token(str, " ", &pos), &norm.y);
-              slice_to_float(str_token(str, "\n", &pos), &norm.z);
-
-              array_write_back(norms, &norm);
+              slice_to_float(str_token(str, " ", &pos), &norm->x);
+              slice_to_float(str_token(str, " ", &pos), &norm->y);
+              slice_to_float(str_token(str, "\n", &pos), &norm->z);
 
             } break;
 
             // Read a UV coordinate
             case 't': {
-              vec2 uv;
+              vec2* uv = array_emplace_back(uvs);
 
-              slice_to_float(str_token(str, " ", &pos), &uv.u);
-              slice_to_float(str_token(str, "\n", &pos), &uv.v);
-
-              array_write_back(uvs, &uv);
+              slice_to_float(str_token(str, " ", &pos), &uv->u);
+              slice_to_float(str_token(str, "\n", &pos), &uv->v);
 
             } break;
 
@@ -110,7 +98,7 @@ void file_load_obj(Model_Mesh* model, File file) {
       // Read a face
       case 'f': {
 
-        ObjFaceElem elem;
+        obj_face_elem_t elem;
 
         slice_to_int(str_token(str, "/", &pos), &elem.vert);
         slice_to_int(str_token(str, "/", &pos), &elem.uv);
@@ -138,23 +126,25 @@ void file_load_obj(Model_Mesh* model, File file) {
 
   }
 
-  model->verts = array_new(ObjVertex);
   model->indices = array_new_reserve(uint, faces->size);
+  model->verts = model->use_color
+    ? array_new(obj_vertex_color_t)
+    : array_new(obj_vertex_t);
 
   // Collect face index values into into shared vertex data and the index list.
-  HMap vmap = map_new(ObjFaceElem, uint, NULL, NULL);
+  HMap vmap = map_new(obj_face_elem_t, uint, NULL, NULL);
 
-  ObjFaceElem* array_foreach(f, faces) {
+  obj_face_elem_t* array_foreach(f, faces) {
     ensure_t e = map_ensure(vmap, f);
     if (e.is_new) {
-      ObjVertexPart* vert = array_ref(verts, f->vert - 1);
+      obj_vertex_part_t* vert = array_ref(verts, f->vert - 1);
       *(uint*)e.value = (uint)model->verts->size;
       array_write_back(model->indices, e.value);
-      array_write_back(model->verts, &(ObjVertex) {
+      array_write_back(model->verts, &(obj_vertex_color_t) {
         .pos = vert->pos,
-        .color = vert->color,
         .norm = *((vec3*)array_ref(norms, f->norm - 1)),
         .uv = *((vec2*)array_ref(uvs, f->uv - 1)),
+        .color = vert->color,
       });
     }
     else {
@@ -170,6 +160,7 @@ void file_load_obj(Model_Mesh* model, File file) {
   array_delete(&norms);
 
   array_truncate(model->verts, model->verts->size);
+  model->index_count = (int)model->indices->size;
 
   str_log("  Loaded: verts: {}, indices: {}",
     model->verts->size, model->indices->size

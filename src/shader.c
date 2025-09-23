@@ -112,6 +112,7 @@ void shader_program_load_uniforms(ShaderProgram* p, UniformSet set) {
       p->uniform.phong.lightPos = glGetUniformLocation(p->handle, "lightPos");
       p->uniform.phong.cameraPos = glGetUniformLocation(p->handle, "cameraPos");
       p->uniform.phong.sampler = glGetUniformLocation(p->handle, "texSamp");
+      p->uniform.phong.useVertexColor = glGetUniformLocation(p->handle, "useVertexColor");
     } break;
   }
   glUseProgram(0);

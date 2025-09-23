@@ -13,9 +13,6 @@
 // inlined static data declarations for model primitives
 #include "data/inline_primitives.h"
 
-// model data loaders
-#include "loaders/obj.h"
-
 // Shared bindings for primitives
 
 static GLuint cube_pos_buffer = 0;
@@ -322,12 +319,7 @@ void model_sprites_draw(
 
 // Model OBJ
 
-typedef struct ObjVertex {
-  vec3 pos;
-  vec3 color;
-  vec3 norm;
-  vec2 uv;
-} ObjVertex;
+#include "loaders/obj.h"
 
 void model_load_obj(Model* model, File file) {
   if (!file_read(file)) {
@@ -336,6 +328,7 @@ void model_load_obj(Model* model, File file) {
   }
 
   model->type = MODEL_OBJ;
+  model->mesh.use_color = false;
   file_load_obj(&model->mesh, file);
 }
 
@@ -346,28 +339,50 @@ static int model_build_mesh(Model_Mesh* mesh) {
   glGenBuffers(2, mesh->buffers);
 
   glBindBuffer(GL_ARRAY_BUFFER, mesh->vert_buffer);
-  glBufferData(GL_ARRAY_BUFFER, mesh->verts->size_bytes,
-               array_ref_front(mesh->verts), GL_STATIC_DRAW);
+  glBufferData(
+    GL_ARRAY_BUFFER, mesh->verts->size_bytes,
+    array_ref_front(mesh->verts), GL_STATIC_DRAW
+  );
+
+  GLsizei vert_size = mesh->use_color
+    ? sizeof(obj_vertex_color_t)
+    : sizeof(obj_vertex_t);
+
   glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, v3floats, GL_FLOAT, GL_FALSE,
-                        sizeof(ObjVertex), &((ObjVertex*)0)->pos);
+  glVertexAttribPointer(
+    0, v3floats, GL_FLOAT, GL_FALSE, vert_size, &((obj_vertex_t*)0)->pos
+  );
+
   glEnableVertexAttribArray(1);
-  glVertexAttribPointer(1, v3floats, GL_FLOAT, GL_FALSE,
-                        sizeof(ObjVertex), &((ObjVertex*)0)->norm);
+  glVertexAttribPointer(
+    1, v3floats, GL_FLOAT, GL_FALSE, vert_size, &((obj_vertex_t*)0)->norm
+  );
+
   glEnableVertexAttribArray(2);
-  glVertexAttribPointer(2, v2floats, GL_FLOAT, GL_FALSE,
-                        sizeof(ObjVertex), &((ObjVertex*)0)->uv);
-  glEnableVertexAttribArray(3);
-  glVertexAttribPointer(3, v3floats, GL_FLOAT, GL_FALSE,
-                        sizeof(ObjVertex), &((ObjVertex*)0)->color);
+  glVertexAttribPointer(
+    2, v2floats, GL_FLOAT, GL_FALSE, vert_size, &((obj_vertex_t*)0)->uv
+  );
+
+  if (mesh->use_color) {
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(
+      3, v3floats, GL_FLOAT, GL_FALSE, vert_size,
+      &((obj_vertex_color_t*)0)->color
+    );
+  }
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh->indices->size_bytes,
-               array_ref_front(mesh->indices), GL_STATIC_DRAW);
+  glBufferData(
+    GL_ELEMENT_ARRAY_BUFFER, mesh->indices->size_bytes,
+    array_ref_front(mesh->indices), GL_STATIC_DRAW
+  );
 
   glBindVertexArray(0);
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+  array_delete(&mesh->verts);
+  array_delete(&mesh->indices);
 
   mesh->ready = TRUE;
   return 1;
@@ -376,7 +391,7 @@ static int model_build_mesh(Model_Mesh* mesh) {
 static void model_render_mesh(Model_Mesh* mesh) {
   glBindVertexArray(mesh->vao);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
-  glDrawElements(GL_TRIANGLES, (int)mesh->indices->size, GL_UNSIGNED_INT, 0);
+  glDrawElements(GL_TRIANGLES, mesh->index_count, GL_UNSIGNED_INT, 0);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
 }

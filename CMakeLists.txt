@@ -43,6 +43,7 @@ target_include_directories(Wasp PUBLIC
 
 target_sources(Wasp PRIVATE
   src/loaders/obj.c
+  src/loaders/obj.h
   src/camera.c
   src/draw.c
   src/file.c
@@ -66,6 +67,7 @@ compile_opts(Wasp)
 
 # Project source filters for Visual Studio
 source_group("Source Files\\Loaders" src/loaders/.*\.c)
+source_group("Header Files\\Loaders" src/loaders/.*\.h)
 
 # Include Galogen library for OpenGL function loading
 add_library(Galogen)
