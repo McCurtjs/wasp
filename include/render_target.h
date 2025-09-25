@@ -22,19 +22,23 @@
 * SOFTWARE.
 */
 
-#ifndef WASP_TEXTURE_H_
-#define WASP_TEXTURE_H_
+#ifndef WASP_RENDER_TARGET_H_
+#define WASP_RENDER_TARGET_H_
 
 #include "types.h"
-#include "image.h"
+#include "vec.h"
+#include "texture.h"
 
-typedef struct texture_t {
+typedef struct render_target_t {
   uint handle;
-} texture_t;
+  uint depth_buffer;
+  texture_t texture;
+  bool ready;
+} render_target_t;
 
-texture_t tex_from_image(Image image);
-texture_t tex_generate_blank(uint width, uint height);
-void tex_apply(texture_t texture, uint slot, int sampler);
-void tex_free(texture_t* handle);
+render_target_t rt_setup(vec2i screen);
+void rt_apply(render_target_t target);
+void rt_apply_default(void);
+void rt_delete(render_target_t* target);
 
 #endif

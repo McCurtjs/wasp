@@ -20,7 +20,7 @@ int  shader_build_from_file(Shader* s, File f);
 void shader_delete(Shader* s);
 
 typedef enum UniformSet {
-  UNIFORMS_PVM = 0, // only default project * view * model (always included)
+  UNIFORMS_PVM = 0, // only default project * view * model
   UNIFORMS_PHONG    // world, lightPos, cameraPos, texSamp
 } UniformSet;
 
@@ -48,6 +48,7 @@ typedef struct ShaderProgram {
 void shader_program_new(ShaderProgram* program);
 int  shader_program_build(ShaderProgram* program, Shader* vert, Shader* frag);
 int  shader_program_build_basic(ShaderProgram* program);
+int  shader_program_build_frame(ShaderProgram* program);
 int  shader_program_uniform_location(ShaderProgram* program, const char* name);
 void shader_program_load_uniforms(ShaderProgram* program, UniformSet set);
 void shader_program_use(const ShaderProgram* program);

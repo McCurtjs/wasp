@@ -20,6 +20,7 @@
 #include "game.h"
 #include "system_events.h"
 #include "test_behaviors.h"
+#include "render_target.h"
 
 //#define SDL_MAIN_USE_CALLBACKS
 //#include "SDL3/SDL_main.h"
@@ -54,6 +55,9 @@ int export(canary) (int _) {
   return 0;
 }
 #endif
+
+static Model model_frame = { .type = MODEL_FRAME };
+static ShaderProgram shader_frame;
 
 void export(wasm_preload) (uint w, uint h) {
   #if GAME_ON == 1
@@ -102,8 +106,10 @@ void export(wasm_preload) (uint w, uint h) {
   // load this first since it's the loading screen spinner
   game.models.color_cube.type = MODEL_CUBE_COLOR;
   model_build(&game.models.color_cube);
+  model_build(&model_frame);
 
   shader_program_build_basic(&game.shaders.basic);
+  shader_program_build_frame(&shader_frame);
 }
 
 static void cheesy_loading_animation(float dt) {
@@ -165,7 +171,7 @@ int export(wasm_load) (int await_count, float dt) {
   game.models.grid.grid = (Model_Grid) {
     .type = MODEL_GRID,
     .basis = {v3x, v3y, v3z},
-    .primary = {0, 1},
+    .primary = {0, 2},
     .extent = 100
   };
 
@@ -187,6 +193,8 @@ int export(wasm_load) (int await_count, float dt) {
   // Load the first game level
   level_switch(&game, game.level);
 
+  game.textures.render_target = rt_setup(v2i(400, 400));
+
   #endif
 
   return 1;
@@ -200,7 +208,13 @@ void export(wasm_update) (float dt) {
 }
 
 void export(wasm_render) () {
+  rt_apply(game.textures.render_target);
   game_render(&game);
+
+  rt_apply_default();
+  tex_apply(game.textures.render_target.texture, 0, 0);
+  shader_program_use(&shader_frame);
+  model_render(&model_frame);
 }
 
 #ifndef __WASM__
@@ -241,7 +255,7 @@ int main(int argc, char* argv[]) {
 
   if (!ctx) goto close_gl_context;
 
-  glClearColor(0, 0, 1, 1);
+  glClearColor(0.2f, 0.2f, 0.2f, 1);
   glClearDepth(1);
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_CULL_FACE);
@@ -250,9 +264,7 @@ int main(int argc, char* argv[]) {
   wasm_preload(400, 400);
 
   while (game_continue) {
-    float dt = 0.00016f;
-
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    float dt = 0.016f;
 
     if (!game_loaded) {
       process_system_events(&game);

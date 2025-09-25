@@ -55,15 +55,30 @@ static void prim_bind_cube_2() {
     glBindBuffer(GL_ARRAY_BUFFER, cube_vertex_buffer);
   }
   glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), 0);
+  glVertexAttribPointer(0, v3floats, GL_FLOAT, GL_FALSE, 8 * sizeof(float), 0);
 
   glEnableVertexAttribArray(1);
   const void* offset = (void*)12;
-  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
+  glVertexAttribPointer(1, v3floats, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
 
   glEnableVertexAttribArray(2);
   offset = (void*)24;
-  glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
+  glVertexAttribPointer(2, v2floats, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
+}
+
+static GLuint frame_verts_buffer = 0;
+static GLuint frame_vao = 0;
+static void prim_bind_frame() {
+  if (!frame_verts_buffer) {
+    GLsizeiptr size = sizeof(frame_verts);
+    glGenBuffers(1, &frame_verts_buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, frame_verts_buffer);
+    glBufferData(GL_ARRAY_BUFFER, size, frame_verts, GL_STATIC_DRAW);
+  } else {
+    glBindBuffer(GL_ARRAY_BUFFER, frame_verts_buffer);
+  }
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0, v3floats, GL_FLOAT, GL_FALSE, 0, 0);
 }
 
 // Model_Grid
@@ -198,6 +213,26 @@ static void model_render_cube_color(const Model_CubeColor* cube) {
 
   glBindVertexArray(cube_color_vao);
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 14);
+  glBindVertexArray(0);
+}
+
+// Model_Frame
+
+static int model_build_frame(Model_Frame* frame) {
+  if (frame_vao) return 1;
+  glGenVertexArrays(1, &frame_vao);
+  glBindVertexArray(frame_vao);
+  prim_bind_frame();
+  glBindVertexArray(0);
+  frame->ready = TRUE;
+  return 1;
+}
+
+static void model_render_frame(const Model_Frame* frame) {
+  PARAM_UNUSED(frame);
+
+  glBindVertexArray(frame_vao);
+  glDrawArrays(GL_TRIANGLES, 0, 3);
   glBindVertexArray(0);
 }
 
@@ -405,6 +440,7 @@ static model_build_pfn model_build_fns[MODEL_TYPES_COUNT] = {
   (model_build_pfn)model_build_grid,
   (model_build_pfn)model_build_cube,
   (model_build_pfn)model_build_cube_color,
+  (model_build_pfn)model_build_frame,
   (model_build_pfn)model_build_sprites,
   (model_build_pfn)model_build_mesh,
 };
@@ -419,6 +455,7 @@ static model_render_pfn model_render_fns[MODEL_TYPES_COUNT] = {
   (model_render_pfn)model_render_grid,
   (model_render_pfn)model_render_cube,
   (model_render_pfn)model_render_cube_color,
+  (model_render_pfn)model_render_frame,
   (model_render_pfn)model_render_sprites,
   (model_render_pfn)model_render_mesh
 };

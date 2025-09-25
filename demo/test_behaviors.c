@@ -97,10 +97,8 @@ void render_phong(Entity* e, Game* game) {
   if (e->model->type == MODEL_OBJ) use_color = e->model->mesh.use_color;
   glUniform1i(uniforms.useVertexColor, use_color);
 
-  glActiveTexture(GL_TEXTURE0);
-  glUniform1i(uniforms.sampler, 0);
+  tex_apply(e->texture, 0, uniforms.sampler);
 
-  glBindTexture(GL_TEXTURE_2D, e->texture.handle);
   glUniformMatrix4fv(uniforms.world, 1, 0, e->transform.f);
   model_render(e->model);
 
