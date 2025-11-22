@@ -45,10 +45,16 @@ bool file_read(File file) {
   assert(file->handle);
 
   long length = file_read_length(file);
-  if (length == 0) goto error_empty;
+  if (length == 0) {
+    str_log("[File.read] Empty file: {}", file->name);
+    return FALSE;
+  }
 
   file->data = (byte*)malloc(length + 1); // always null-terminate
-  if (!file->data) goto error_too_big;
+  if (!file->data) {
+    str_log("[File.read] File too large: {}", file->name);
+    return FALSE;
+  }
 
   fseek(file->handle, 0, SEEK_SET);
 
@@ -60,16 +66,6 @@ bool file_read(File file) {
   file->data[length] = '\0';
 
   return TRUE;
-
-error_too_big:
-
-  str_log("[File.read] File too large: {}", file->name);
-  return FALSE;
-
-error_empty:
-
-  str_log("[File.read] Empty file: {}", file->name);
-  return FALSE;
 }
 
 void file_delete(File* file) {

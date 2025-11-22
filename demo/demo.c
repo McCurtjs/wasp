@@ -48,7 +48,7 @@ static Image image_tiles;
 
 #ifdef __WASM__
 int export(canary) (int _) {
-  PARAM_UNUSED(_);
+  UNUSED(_);
   slice_write = wasm_write;
   str_write("WASM is connected!");
   return 0;
@@ -193,7 +193,7 @@ int export(wasm_load) (int await_count, float dt) {
 }
 
 void export(wasm_update) (float dt) {
-  PARAM_UNUSED(dt);
+  UNUSED(dt);
   process_system_events(&game);
   level_switch_check(&game);
   game_update(&game, dt);
@@ -227,10 +227,10 @@ void SDL_AppQuit(void* app_state, SDL_AppResult result) {
 //*/
 
 int main(int argc, char* argv[]) {
-  PARAM_UNUSED(argc);
-  PARAM_UNUSED(argv);
+  UNUSED(argc);
+  UNUSED(argv);
 
-  str_log("Here we go!");
+  str_write("Here we go!");
 
   SDL_WindowFlags flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
   SDL_Window* window = SDL_CreateWindow("Window Title", 400, 400, flags);
@@ -258,7 +258,7 @@ int main(int argc, char* argv[]) {
       process_system_events(&game);
 
       if (wasm_load(0, dt)) {
-        str_log("Loaded");
+        str_write("Loaded");
         game_loaded = true;
       }
 

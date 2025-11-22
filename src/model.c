@@ -176,7 +176,7 @@ static int model_build_cube(Model_Cube* cube) {
 }
 
 static void model_render_cube(const Model_Cube* cube) {\
-  PARAM_UNUSED(cube);
+  UNUSED(cube);
 
   glBindVertexArray(cube_vao);
   glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -197,7 +197,7 @@ static int model_build_cube_color(Model_CubeColor* cube) {
 }
 
 static void model_render_cube_color(const Model_CubeColor* cube) {
-  PARAM_UNUSED(cube);
+  UNUSED(cube);
 
   glBindVertexArray(cube_color_vao);
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 14);
@@ -214,7 +214,7 @@ typedef struct SpriteVertex {
 } SpriteVertex;
 
 static int model_build_sprites(Model_Sprites* sprites) {
-  sprites->verts = array_new(SpriteVertex);
+  sprites->verts = arr_new(SpriteVertex);
 
   glGenVertexArrays(1, &sprites->vao);
   glBindVertexArray(sprites->vao);
@@ -250,7 +250,7 @@ static void model_render_sprites(Model_Sprites* sprites) {
   glBindBuffer(GL_ARRAY_BUFFER, sprites->buffer);
 
   index_t size_bytes = sprites->verts->size_bytes;
-  void* data_start = array_ref_front(sprites->verts);
+  void* data_start = arr_ref_front(sprites->verts);
   glBufferData(GL_ARRAY_BUFFER, size_bytes, data_start, GL_DYNAMIC_DRAW);
 
   glEnable(GL_BLEND);
@@ -260,7 +260,7 @@ static void model_render_sprites(Model_Sprites* sprites) {
 
   glBindVertexArray(0);
 
-  array_clear(sprites->verts);
+  arr_clear(sprites->verts);
 }
 
 void model_sprites_draw(
@@ -312,12 +312,12 @@ void model_sprites_draw(
     .tint = b4white.rgb,
   };
 
-  array_write_back(spr->verts, &TR);
-  array_write_back(spr->verts, &TL);
-  array_write_back(spr->verts, &BL);
-  array_write_back(spr->verts, &TR);
-  array_write_back(spr->verts, &BL);
-  array_write_back(spr->verts, &BR);
+  arr_write_back(spr->verts, &TR);
+  arr_write_back(spr->verts, &TL);
+  arr_write_back(spr->verts, &BL);
+  arr_write_back(spr->verts, &TR);
+  arr_write_back(spr->verts, &BL);
+  arr_write_back(spr->verts, &BR);
 }
 
 // Model OBJ
@@ -337,7 +337,7 @@ static int model_build_obj(Model_Obj* obj) {
 
   glBindBuffer(GL_ARRAY_BUFFER, obj->vert_buffer);
   glBufferData(GL_ARRAY_BUFFER, obj->verts->size_bytes,
-               array_ref_front(obj->verts), GL_STATIC_DRAW);
+               arr_ref_front(obj->verts), GL_STATIC_DRAW);
   glEnableVertexAttribArray(0);
   glVertexAttribPointer(0, v3floats, GL_FLOAT, GL_FALSE,
                         sizeof(ObjVertex), &((ObjVertex*)0)->pos);
@@ -353,7 +353,7 @@ static int model_build_obj(Model_Obj* obj) {
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, obj->ebo);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, obj->indices->size_bytes,
-               array_ref_front(obj->indices), GL_STATIC_DRAW);
+               arr_ref_front(obj->indices), GL_STATIC_DRAW);
 
   glBindVertexArray(0);
   glBindBuffer(GL_ARRAY_BUFFER, 0);

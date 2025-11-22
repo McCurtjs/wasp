@@ -27,13 +27,13 @@ void file_load_obj(Model_Obj* model, File file) {
   index_t pos = 0;
   slice_t str = file->str;
 
-  Array verts = array_new(ObjVertexPart);
-  Array norms = array_new(vec3);
-  Array uvs   = array_new(vec2);
-  Array faces = array_new(ObjFaceElem);
+  Array verts = arr_new(ObjVertexPart);
+  Array norms = arr_new(vec3);
+  Array uvs   = arr_new(vec2);
+  Array faces = arr_new(ObjFaceElem);
 
   while (pos < file->str.length) {
-    slice_t token = str_token(str, " ", &pos);
+    slice_t token = str_token(str, S(" "), &pos).token;
 
     if (token.length == 0) break;
 
@@ -50,11 +50,11 @@ void file_load_obj(Model_Obj* model, File file) {
 
             vec3 norm;
 
-            slice_to_float(str_token(str, " ", &pos), &norm.x);
-            slice_to_float(str_token(str, " ", &pos), &norm.y);
-            slice_to_float(str_token(str, "\n", &pos), &norm.z);
+            slice_to_float(slice_token_char(str, S(" "), &pos).token, &norm.x);
+            slice_to_float(slice_token_char(str, S(" "), &pos).token, &norm.y);
+            slice_to_float(slice_token_char(str, S("\n"), &pos).token, &norm.z);
 
-            array_write_back(norms, &norm);
+            arr_write_back(norms, &norm);
 
           } break;
 
@@ -63,11 +63,10 @@ void file_load_obj(Model_Obj* model, File file) {
             ++pos;
 
             vec3 uv;
+            slice_to_float(slice_token_char(str, S(" "), &pos).token, &uv.u);
+            slice_to_float(slice_token_char(str, S("\n"), &pos).token, &uv.v);
 
-            slice_to_float(str_token(str, " ", &pos), &uv.u);
-            slice_to_float(str_token(str, "\n", &pos), &uv.v);
-
-            array_write_back(uvs, &uv);
+            arr_write_back(uvs, &uv);
 
           } break;
 
@@ -77,22 +76,22 @@ void file_load_obj(Model_Obj* model, File file) {
             ObjVertexPart vert;
 
             // coordinate
-            slice_to_float(str_token(str, " ", &pos), &vert.pos.x);
-            slice_to_float(str_token(str, " ", &pos), &vert.pos.y);
-            slice_to_float(str_token(str, " \n", &pos), &vert.pos.z);
+            slice_to_float(slice_token_char(str, S(" "), &pos).token, &vert.pos.x);
+            slice_to_float(slice_token_char(str, S(" "), &pos).token, &vert.pos.y);
+            slice_to_float(slice_token_char(str, S(" \n"), &pos).token, &vert.pos.z);
 
             // optional vertex color
             if (str.begin[pos - 1] == ' ') {
 
-              slice_to_float(str_token(str, " ", &pos), &vert.color.r);
-              slice_to_float(str_token(str, " ", &pos), &vert.color.g);
-              slice_to_float(str_token(str, "\n", &pos), &vert.color.b);
+              slice_to_float(slice_token_char(str, S(" "), &pos).token, &vert.color.r);
+              slice_to_float(slice_token_char(str, S(" "), &pos).token, &vert.color.g);
+              slice_to_float(slice_token_char(str, S("\n"), &pos).token, &vert.color.b);
 
             } else {
               vert.color = c4white.rgb;
             }
 
-            array_write_back(verts, &vert);
+            arr_write_back(verts, &vert);
 
           } break;
 
@@ -105,20 +104,20 @@ void file_load_obj(Model_Obj* model, File file) {
 
         ObjFaceElem elem;
 
-        slice_to_int(str_token(str, "/", &pos), &elem.vert);
-        slice_to_int(str_token(str, "/", &pos), &elem.uv);
-        slice_to_int(str_token(str, " ", &pos), &elem.norm);
-        array_write_back(faces, &elem);
+        slice_to_int(slice_token_char(str, S("/"), &pos).token, &elem.vert);
+        slice_to_int(slice_token_char(str, S("/"), &pos).token, &elem.uv);
+        slice_to_int(slice_token_char(str, S(" "), &pos).token, &elem.norm);
+        arr_write_back(faces, &elem);
 
-        slice_to_int(str_token(str, "/", &pos), &elem.vert);
-        slice_to_int(str_token(str, "/", &pos), &elem.uv);
-        slice_to_int(str_token(str, " ", &pos), &elem.norm);
-        array_write_back(faces, &elem);
+        slice_to_int(slice_token_char(str, S("/"), &pos).token, &elem.vert);
+        slice_to_int(slice_token_char(str, S("/"), &pos).token, &elem.uv);
+        slice_to_int(slice_token_char(str, S(" "), &pos).token, &elem.norm);
+        arr_write_back(faces, &elem);
 
-        slice_to_int(str_token(str, "/", &pos), &elem.vert);
-        slice_to_int(str_token(str, "/", &pos), &elem.uv);
-        slice_to_int(str_token(str, "\n", &pos), &elem.norm);
-        array_write_back(faces, &elem);
+        slice_to_int(slice_token_char(str, S("/"), &pos).token, &elem.vert);
+        slice_to_int(slice_token_char(str, S("/"), &pos).token, &elem.uv);
+        slice_to_int(slice_token_char(str, S("\n"), &pos).token, &elem.norm);
+        arr_write_back(faces, &elem);
 
       } break;
 
@@ -131,8 +130,8 @@ void file_load_obj(Model_Obj* model, File file) {
 
   }
 
-  model->verts = array_new_reserve(ObjVertex, faces->size);
-  model->indices = array_new_reserve(uint, faces->size);
+  model->verts = arr_new_reserve(ObjVertex, faces->size);
+  model->indices = arr_new_reserve(uint, faces->size);
 
   /*
   for (index_t i = 0; i < faces->size; ++i) {
@@ -156,8 +155,8 @@ void file_load_obj(Model_Obj* model, File file) {
 
   //*/
 
-  array_delete(&faces);
-  array_delete(&verts);
-  array_delete(&uvs);
-  array_delete(&norms);
+  arr_delete(&faces);
+  arr_delete(&verts);
+  arr_delete(&uvs);
+  arr_delete(&norms);
 }

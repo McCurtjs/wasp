@@ -165,7 +165,7 @@ void draw_render() {
 
   int size_bytes = (int)geometry->size_bytes;
   int size_lines = (int)geometry->size;
-  Vert* draw_buffer = geometry->buf;
+  Vert* draw_buffer = geometry->begin;
 
   glBindVertexArray(gl_vao);
   glBindBuffer(GL_ARRAY_BUFFER, gl_buffer);

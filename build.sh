@@ -143,6 +143,7 @@ includes="
   -I ./include
   -I ./lib/mclib/include
   -I ./lib/mclib/lib/murmur3
+  -I ./lib/stb/stb_image.h
 "
 
 build_native="
@@ -250,7 +251,7 @@ elif [ "$build_target" = "gcc" ]; then
 
   mkdir -p build/gcc
 
-  gcc $flags_memtest -o build/gcc/test.exe -Wno-cast-function-type \
+  gcc -o build/gcc/test.exe -Wno-cast-function-type -Wno-implicit-fallthrough \
     $flags_common $flags_debug_opt $includes $build_native $sources $sources_test
 
   if [ "$?" == "0" ]; then

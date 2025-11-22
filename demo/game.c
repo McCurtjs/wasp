@@ -13,8 +13,7 @@ void game_add_entity(Game* game, const Entity* entity) {
 }
 
 void game_update(Game* game, float dt) {
-
-  Entity* array_foreach(entity, game->entities) {
+  Entity* arr_foreach(entity, game->entities) {
     if (entity->behavior) {
       entity->behavior(entity, game, dt);
     }
@@ -32,7 +31,7 @@ void game_update(Game* game, float dt) {
 void game_render(Game* game) {
   game->camera.projview = camera_projection_view(&game->camera);
 
-  Entity* array_foreach(entity, game->entities) {
+  Entity* arr_foreach(entity, game->entities) {
     if (entity->render && !entity->hidden) {
       entity->render(entity, game);
     }
@@ -40,7 +39,7 @@ void game_render(Game* game) {
 }
 
 void game_cleanup(Game* game) {
-  Entity* array_foreach(entity, game->entities) {
+  Entity* arr_foreach(entity, game->entities) {
     if (entity->delete) {
       entity->delete(entity);
     }

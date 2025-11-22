@@ -21,9 +21,10 @@ void wasm_alert(slice_t slice) {
 #else
 #include <stdio.h> // printf, fprintf
 #include "str.h"
+#include "span_slice.h"
 
 void wasm_write_color(slice_t slice, ConsoleColor c) {
-  Array_slice arr = slice_split(slice, S("%c"));
+  Array_slice arr = slice_split_str(slice, S("%c"));
   if (arr->size != 2) {
     printf("%.*s\n", (int)slice.size, slice.begin);
   } else {
