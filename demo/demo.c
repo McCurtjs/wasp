@@ -20,6 +20,7 @@
 #include "game.h"
 #include "system_events.h"
 #include "test_behaviors.h"
+#include "render_target.h"
 
 //#define SDL_MAIN_USE_CALLBACKS
 //#include "SDL3/SDL_main.h"
@@ -34,11 +35,11 @@ static File file_vert = NULL;
 static File file_frag = NULL;
 //static File file_model_test = NULL;
 //static File file_model_level_1;
-//static File file_model_gear = NULL;
+static File file_model_gear = NULL;
 static Image image_crate;
 //static Image image_level;
 static Image image_tiles;
-//static Image image_brass;
+static Image image_brass;
 //static Image image_anim_test;
 #endif
 
@@ -55,17 +56,20 @@ int export(canary) (int _) {
 }
 #endif
 
+static Model model_frame = { .type = MODEL_FRAME };
+static ShaderProgram shader_frame;
+
 void export(wasm_preload) (uint w, uint h) {
   #if GAME_ON == 1
   file_vert = file_new(S("./res/shaders/basic.vert"));
   file_frag = file_new(S("./res/shaders/basic.frag"));
   //file_model_test = file_new(S("./res/models/test.obj"));
-  //file_model_gear = file_new(S("./res/models/gear.obj"));
+  file_model_gear = file_new(S("./res/models/gear.obj"));
   //file_open_async(&file_model_level_1, "./res/models/level_1.obj");
 
-  image_open_async(&image_crate, "./res/textures/crate.png");
-  //image_open_async(&image_brass, "./res/textures/brass.jpg");
-  image_open_async(&image_tiles, "./res/textures/tiles.png");
+  image_crate = img_load(S("./res/textures/crate.png"));
+  image_brass = img_load(S("./res/textures/brass.jpg"));
+  image_tiles = img_load(S("./res/textures/tiles.png"));
   //image_open_async(&image_anim_test, "./res/textures/spritesheet.png");
   //image_open_async(&image_level, "./res/textures/levels.jpg");
   #endif
@@ -102,8 +106,10 @@ void export(wasm_preload) (uint w, uint h) {
   // load this first since it's the loading screen spinner
   game.models.color_cube.type = MODEL_CUBE_COLOR;
   model_build(&game.models.color_cube);
+  model_build(&model_frame);
 
   shader_program_build_basic(&game.shaders.basic);
+  shader_program_build_frame(&shader_frame);
 }
 
 static void cheesy_loading_animation(float dt) {
@@ -136,36 +142,36 @@ int export(wasm_load) (int await_count, float dt) {
   shader_build_from_file(&light_frag, file_frag);
 
   //model_load_obj(&game.models.level_test, file_model_test);
-  //model_load_obj(&game.models.gear, file_model_gear);
+  model_load_obj(&game.models.gear, file_model_gear);
   //model_load_obj(&game.models.level_1, &file_model_level_1);
 
   shader_program_build(&game.shaders.light, &light_vert, &light_frag);
   shader_program_load_uniforms(&game.shaders.light, UNIFORMS_PHONG);
 
   // Build textures from async data
-  texture_build_from_image(&game.textures.crate, &image_crate);
+  game.textures.crate = tex_from_image(image_crate);
+  game.textures.tiles = tex_from_image(image_tiles);
+  game.textures.brass = tex_from_image(image_brass);
   //texture_build_from_image(&game.textures.level, &image_level);
-  //texture_build_from_image(&game.textures.brass, &image_brass);
-  texture_build_from_image(&game.textures.tiles, &image_tiles);
   //texture_build_from_image(&game.textures.player, &image_anim_test);
 
   // Delete async loaded resources
   file_delete(&file_vert);
   file_delete(&file_frag);
   //file_delete(&file_model_test);
-  //file_delete(&file_model_gear);
+  file_delete(&file_model_gear);
   //file_delete(&file_model_level_1);
   //image_delete(&image_level);
-  image_delete(&image_crate);
-  //image_delete(&image_brass);
-  //image_delete(&image_tiles);
+  img_delete(&image_brass);
+  img_delete(&image_crate);
+  img_delete(&image_tiles);
   //image_delete(&image_anim_test);
 
   // Set up game models
   game.models.grid.grid = (Model_Grid) {
     .type = MODEL_GRID,
     .basis = {v3x, v3y, v3z},
-    .primary = {0, 1},
+    .primary = {0, 2},
     .extent = 100
   };
 
@@ -177,7 +183,7 @@ int export(wasm_load) (int await_count, float dt) {
   model_build(&game.models.player);
   model_build(&game.models.level_test);
   //model_build(&game.models.level_1);
-  //model_build(&game.models.gear);
+  model_build(&game.models.gear);
   model_grid_set_default(&game.models.gizmo, -2);
   game.models.box.type = MODEL_CUBE;
   model_build(&game.models.box);
@@ -186,6 +192,8 @@ int export(wasm_load) (int await_count, float dt) {
 
   // Load the first game level
   level_switch(&game, game.level);
+
+  game.textures.render_target = rt_setup(v2i(400, 400));
 
   #endif
 
@@ -200,7 +208,13 @@ void export(wasm_update) (float dt) {
 }
 
 void export(wasm_render) () {
+  rt_apply(game.textures.render_target);
   game_render(&game);
+
+  rt_apply_default();
+  tex_apply(game.textures.render_target.texture, 0, 0);
+  shader_program_use(&shader_frame);
+  model_render(&model_frame);
 }
 
 #ifndef __WASM__
@@ -241,7 +255,7 @@ int main(int argc, char* argv[]) {
 
   if (!ctx) goto close_gl_context;
 
-  glClearColor(0, 0, 1, 1);
+  glClearColor(0.2f, 0.2f, 0.2f, 1);
   glClearDepth(1);
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_CULL_FACE);
@@ -250,9 +264,7 @@ int main(int argc, char* argv[]) {
   wasm_preload(400, 400);
 
   while (game_continue) {
-    float dt = 0.00016f;
-
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    float dt = 0.016f;
 
     if (!game_loaded) {
       process_system_events(&game);

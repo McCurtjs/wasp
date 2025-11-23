@@ -4,6 +4,7 @@
 #include "gl.h"
 
 #include "wasm.h"
+#include "render_target.h"
 
 extern bool game_continue;
 
@@ -22,7 +23,8 @@ void process_system_events(Game* game) {
       case SDL_EVENT_WINDOW_RESIZED: {
         game->window.w = event.window.data1;
         game->window.h = event.window.data2;
-        glViewport(0, 0, game->window.w, game->window.h);
+        rt_delete(&game->textures.render_target);
+        game->textures.render_target = rt_setup(game->window);
         float aspect = i2aspect(game->window);
         game->camera.persp.aspect = aspect;
         camera_build_perspective(&game->camera);

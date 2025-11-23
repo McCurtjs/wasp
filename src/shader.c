@@ -75,6 +75,19 @@ int shader_program_build(ShaderProgram* p, Shader* vert, Shader* frag) {
   glLinkProgram(p->handle);
 
   glGetProgramiv(p->handle, GL_LINK_STATUS, &p->ready);
+
+  if (!p->ready) {
+    int ilog_len = 0;
+    glGetProgramiv(p->handle, GL_INFO_LOG_LENGTH, &ilog_len);
+    GLsizei log_length = (GLsizei)ilog_len;
+
+    char* log = malloc(log_length);
+    glGetProgramInfoLog(p->handle, log_length, &log_length, log);
+
+    str_log("[Program.build] Error compiling shader program:\n{}", log);
+    free(log);
+  }
+
   return p->ready;
 }
 
@@ -96,6 +109,23 @@ int shader_program_build_basic(ShaderProgram* p) {
   return p->ready;
 }
 
+static Shader frame_vert;
+static Shader frame_frag;
+static ShaderProgram frame_prog;
+static int frame_loaded = 0;
+int shader_program_build_frame(ShaderProgram* p) {
+  if (!frame_loaded) {
+    uint vlen = sizeof(frame_vert_text);
+    uint flen = sizeof(frame_frag_text);
+    shader_build(&frame_vert, GL_VERTEX_SHADER, frame_vert_text, vlen);
+    shader_build(&frame_frag, GL_FRAGMENT_SHADER, frame_frag_text, flen);
+
+    frame_loaded = shader_program_build(&frame_prog, &frame_vert, &frame_frag);
+  }
+  *p = frame_prog;
+  return p->ready;
+}
+
 int shader_program_uniform_location(ShaderProgram* program, const char* name) {
   return glGetUniformLocation(program->handle, name);
 }
@@ -112,6 +142,7 @@ void shader_program_load_uniforms(ShaderProgram* p, UniformSet set) {
       p->uniform.phong.lightPos = glGetUniformLocation(p->handle, "lightPos");
       p->uniform.phong.cameraPos = glGetUniformLocation(p->handle, "cameraPos");
       p->uniform.phong.sampler = glGetUniformLocation(p->handle, "texSamp");
+      p->uniform.phong.useVertexColor = glGetUniformLocation(p->handle, "useVertexColor");
     } break;
   }
   glUseProgram(0);
@@ -122,7 +153,7 @@ void shader_program_use(const ShaderProgram* program) {
 }
 
 void shader_program_delete(ShaderProgram* p) {
-  if (p->handle != basic_prog.handle) {
+  if (p->handle != basic_prog.handle && p->handle != frame_prog.handle) {
     glDeleteProgram(p->handle);
   }
 }

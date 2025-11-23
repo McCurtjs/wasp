@@ -93,10 +93,12 @@ void render_phong(Entity* e, Game* game) {
   glUniform4fv(uniforms.lightPos, 1, game->light_pos.f);
   glUniform4fv(uniforms.cameraPos, 1, game->camera.pos.f);
 
-  glActiveTexture(GL_TEXTURE0);
-  glUniform1i(uniforms.sampler, 0);
+  GLint use_color = false;
+  if (e->model->type == MODEL_OBJ) use_color = e->model->mesh.use_color;
+  glUniform1i(uniforms.useVertexColor, use_color);
 
-  glBindTexture(GL_TEXTURE_2D, e->texture->handle);
+  tex_apply(e->texture, 0, uniforms.sampler);
+
   glUniformMatrix4fv(uniforms.world, 1, 0, e->transform.f);
   model_render(e->model);
 

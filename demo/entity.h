@@ -30,7 +30,7 @@ typedef struct Entity {
   mat4 transform;
   const ShaderProgram* shader;
   const Model* model;
-  const Texture* texture;
+  texture_t texture;
 
   bool hidden;
 

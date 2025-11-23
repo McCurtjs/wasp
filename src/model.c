@@ -13,9 +13,6 @@
 // inlined static data declarations for model primitives
 #include "data/inline_primitives.h"
 
-// model data loaders
-#include "loaders/obj.h"
-
 // Shared bindings for primitives
 
 static GLuint cube_pos_buffer = 0;
@@ -58,15 +55,30 @@ static void prim_bind_cube_2() {
     glBindBuffer(GL_ARRAY_BUFFER, cube_vertex_buffer);
   }
   glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), 0);
+  glVertexAttribPointer(0, v3floats, GL_FLOAT, GL_FALSE, 8 * sizeof(float), 0);
 
   glEnableVertexAttribArray(1);
   const void* offset = (void*)12;
-  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
+  glVertexAttribPointer(1, v3floats, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
 
   glEnableVertexAttribArray(2);
   offset = (void*)24;
-  glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
+  glVertexAttribPointer(2, v2floats, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
+}
+
+static GLuint frame_verts_buffer = 0;
+static GLuint frame_vao = 0;
+static void prim_bind_frame() {
+  if (!frame_verts_buffer) {
+    GLsizeiptr size = sizeof(frame_verts);
+    glGenBuffers(1, &frame_verts_buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, frame_verts_buffer);
+    glBufferData(GL_ARRAY_BUFFER, size, frame_verts, GL_STATIC_DRAW);
+  } else {
+    glBindBuffer(GL_ARRAY_BUFFER, frame_verts_buffer);
+  }
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0, v3floats, GL_FLOAT, GL_FALSE, 0, 0);
 }
 
 // Model_Grid
@@ -123,10 +135,10 @@ static int model_build_grid(Model_Grid* grid) {
       points[i+1] = v3add(v3scale(basis[ga],-exf), v3scale(basis[gb], jf));
       points[i+2] = v3add(v3scale(basis[ga], exf), v3scale(basis[gb],-jf));
       points[i+3] = v3add(v3scale(basis[ga],-exf), v3scale(basis[gb],-jf));
-      points[i+4] = v3add(v3scale(basis[ga], jf), v3scale(basis[gb], exf));
-      points[i+5] = v3add(v3scale(basis[ga], jf), v3scale(basis[gb],-exf));
-      points[i+6] = v3add(v3scale(basis[ga],-jf), v3scale(basis[gb], exf));
-      points[i+7] = v3add(v3scale(basis[ga],-jf), v3scale(basis[gb],-exf));
+      points[i+4] = v3add(v3scale(basis[ga], jf),  v3scale(basis[gb], exf));
+      points[i+5] = v3add(v3scale(basis[ga], jf),  v3scale(basis[gb],-exf));
+      points[i+6] = v3add(v3scale(basis[ga],-jf),  v3scale(basis[gb], exf));
+      points[i+7] = v3add(v3scale(basis[ga],-jf),  v3scale(basis[gb],-exf));
 
       byte c = (j % 10 == 0 ? 128 : (j % 5 == 0 ? 0 : 63));
       color3b color = v3b(c, c, c);
@@ -201,6 +213,26 @@ static void model_render_cube_color(const Model_CubeColor* cube) {
 
   glBindVertexArray(cube_color_vao);
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 14);
+  glBindVertexArray(0);
+}
+
+// Model_Frame
+
+static int model_build_frame(Model_Frame* frame) {
+  if (frame_vao) return 1;
+  glGenVertexArrays(1, &frame_vao);
+  glBindVertexArray(frame_vao);
+  prim_bind_frame();
+  glBindVertexArray(0);
+  frame->ready = TRUE;
+  return 1;
+}
+
+static void model_render_frame(const Model_Frame* frame) {
+  PARAM_UNUSED(frame);
+
+  glBindVertexArray(frame_vao);
+  glDrawArrays(GL_TRIANGLES, 0, 3);
   glBindVertexArray(0);
 }
 
@@ -322,54 +354,7 @@ void model_sprites_draw(
 
 // Model OBJ
 
-typedef struct ObjVertex {
-  vec3 pos;
-  vec3 color;
-  vec3 norm;
-  vec2 uv;
-} ObjVertex;
-
-static int model_build_obj(Model_Obj* obj) {
-  glGenVertexArrays(1, &obj->vao);
-  glBindVertexArray(obj->vao);
-
-  glGenBuffers(2, obj->buffers);
-
-  glBindBuffer(GL_ARRAY_BUFFER, obj->vert_buffer);
-  glBufferData(GL_ARRAY_BUFFER, obj->verts->size_bytes,
-               arr_ref_front(obj->verts), GL_STATIC_DRAW);
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, v3floats, GL_FLOAT, GL_FALSE,
-                        sizeof(ObjVertex), &((ObjVertex*)0)->pos);
-  glEnableVertexAttribArray(1);
-  glVertexAttribPointer(1, v3floats, GL_FLOAT, GL_FALSE,
-                        sizeof(ObjVertex), &((ObjVertex*)0)->norm);
-  glEnableVertexAttribArray(2);
-  glVertexAttribPointer(2, v2floats, GL_FLOAT, GL_FALSE,
-                        sizeof(ObjVertex), &((ObjVertex*)0)->uv);
-  glEnableVertexAttribArray(3);
-  glVertexAttribPointer(3, v3floats, GL_FLOAT, GL_FALSE,
-                        sizeof(ObjVertex), &((ObjVertex*)0)->color);
-
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, obj->ebo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, obj->indices->size_bytes,
-               arr_ref_front(obj->indices), GL_STATIC_DRAW);
-
-  glBindVertexArray(0);
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-  obj->ready = TRUE;
-  return 1;
-}
-
-static void model_render_obj(Model_Obj* obj) {
-  glBindVertexArray(obj->vao);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, obj->ebo);
-  glDrawElements(GL_TRIANGLES, (int)obj->indices->size, GL_UNSIGNED_INT, 0);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-  glBindVertexArray(0);
-}
+#include "loaders/obj.h"
 
 void model_load_obj(Model* model, File file) {
   if (!file_read(file)) {
@@ -378,7 +363,72 @@ void model_load_obj(Model* model, File file) {
   }
 
   model->type = MODEL_OBJ;
-  file_load_obj(&model->obj, file);
+  model->mesh.use_color = false;
+  file_load_obj(&model->mesh, file);
+}
+
+static int model_build_mesh(Model_Mesh* mesh) {
+  glGenVertexArrays(1, &mesh->vao);
+  glBindVertexArray(mesh->vao);
+
+  glGenBuffers(2, mesh->buffers);
+
+  glBindBuffer(GL_ARRAY_BUFFER, mesh->vert_buffer);
+  glBufferData(
+    GL_ARRAY_BUFFER, mesh->verts->size_bytes,
+    array_ref_front(mesh->verts), GL_STATIC_DRAW
+  );
+
+  GLsizei vert_size = mesh->use_color
+    ? sizeof(obj_vertex_color_t)
+    : sizeof(obj_vertex_t);
+
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(
+    0, v3floats, GL_FLOAT, GL_FALSE, vert_size, &((obj_vertex_t*)0)->pos
+  );
+
+  glEnableVertexAttribArray(1);
+  glVertexAttribPointer(
+    1, v3floats, GL_FLOAT, GL_FALSE, vert_size, &((obj_vertex_t*)0)->norm
+  );
+
+  glEnableVertexAttribArray(2);
+  glVertexAttribPointer(
+    2, v2floats, GL_FLOAT, GL_FALSE, vert_size, &((obj_vertex_t*)0)->uv
+  );
+
+  if (mesh->use_color) {
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(
+      3, v3floats, GL_FLOAT, GL_FALSE, vert_size,
+      &((obj_vertex_color_t*)0)->color
+    );
+  }
+
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
+  glBufferData(
+    GL_ELEMENT_ARRAY_BUFFER, mesh->indices->size_bytes,
+    array_ref_front(mesh->indices), GL_STATIC_DRAW
+  );
+
+  glBindVertexArray(0);
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+  array_delete(&mesh->verts);
+  array_delete(&mesh->indices);
+
+  mesh->ready = TRUE;
+  return 1;
+}
+
+static void model_render_mesh(Model_Mesh* mesh) {
+  glBindVertexArray(mesh->vao);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
+  glDrawElements(GL_TRIANGLES, mesh->index_count, GL_UNSIGNED_INT, 0);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+  glBindVertexArray(0);
 }
 
 // Exported functions
@@ -390,8 +440,9 @@ static model_build_pfn model_build_fns[MODEL_TYPES_COUNT] = {
   (model_build_pfn)model_build_grid,
   (model_build_pfn)model_build_cube,
   (model_build_pfn)model_build_cube_color,
+  (model_build_pfn)model_build_frame,
   (model_build_pfn)model_build_sprites,
-  (model_build_pfn)model_build_obj,
+  (model_build_pfn)model_build_mesh,
 };
 
 int model_build(Model* model) {
@@ -404,8 +455,9 @@ static model_render_pfn model_render_fns[MODEL_TYPES_COUNT] = {
   (model_render_pfn)model_render_grid,
   (model_render_pfn)model_render_cube,
   (model_render_pfn)model_render_cube_color,
+  (model_render_pfn)model_render_frame,
   (model_render_pfn)model_render_sprites,
-  (model_render_pfn)model_render_obj
+  (model_render_pfn)model_render_mesh
 };
 
 void model_render(const Model* model) {

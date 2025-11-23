@@ -6,6 +6,7 @@
 #include "entity.h"
 #include "shader.h"
 #include "texture.h"
+#include "render_target.h"
 
 #include "levels.h"
 
@@ -31,11 +32,12 @@ typedef struct Game_Models {
 } Game_Models;
 
 typedef struct Game_Textures {
-  Texture crate;
-  Texture brass;
-  Texture tiles;
-  Texture level;
-  Texture player;
+  texture_t crate;
+  texture_t brass;
+  texture_t tiles;
+  texture_t level;
+  texture_t player;
+  render_target_t render_target;
 } Game_Textures;
 
 #define game_key_count (9 + LEVEL_COUNT)

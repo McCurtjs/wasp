@@ -1,5 +1,29 @@
-#ifndef _WASP_MODEL_H_
-#define _WASP_MODEL_H_
+/*******************************************************************************
+* MIT License
+*
+* Copyright (c) 2025 Curtis McCoy
+*
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
+*
+* The above copyright notice and this permission notice shall be included in all
+* copies or substantial portions of the Software.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*/
+
+#ifndef WASP_MODEL_H_
+#define WASP_MODEL_H_
 
 #include "types.h"
 #include "mat.h"
@@ -11,6 +35,7 @@ typedef enum ModelType {
   MODEL_GRID,
   MODEL_CUBE,
   MODEL_CUBE_COLOR,
+  MODEL_FRAME,
   MODEL_SPRITES,
   MODEL_OBJ,
   MODEL_TYPES_COUNT
@@ -40,6 +65,11 @@ typedef struct Model_CubeColor {
   uint ready;
 } Model_CubeColor;
 
+typedef struct Model_Frame {
+  uint type;
+  uint ready;
+} Model_Frame;
+
 typedef struct Model_Sprites {
   uint type;
   uint ready;
@@ -49,11 +79,13 @@ typedef struct Model_Sprites {
   Array verts;
 } Model_Sprites;
 
-typedef struct Model_Obj {
+typedef struct Model_Mesh {
   uint type;
   uint ready;
+  bool use_color;
   Array verts;
   Array indices;
+  int index_count;
   uint vao;
   union {
     uint buffers[2];
@@ -62,7 +94,7 @@ typedef struct Model_Obj {
       uint ebo;
     };
   };
-} Model_Obj;
+} Model_Mesh;
 
 typedef union Model {
   struct {
@@ -72,8 +104,9 @@ typedef union Model {
   Model_Grid grid;
   Model_Cube cube;
   Model_CubeColor cube_color;
+  Model_Frame frame;
   Model_Sprites sprites;
-  Model_Obj obj;
+  Model_Mesh mesh;
 } Model;
 
 int  model_build(Model* model);

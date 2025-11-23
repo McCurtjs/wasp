@@ -230,10 +230,22 @@ function wasm_import_gl(imports, game) {
     game.gl.bindTexture(target, data.texture)
   }
 
-  imports["js_glTexImage2D"] = (target, level, iFmt, sFmt, sType, image_id) => {
+  imports["js_glTexImage2D"] = (
+    target, level, iFmt, width, height, fmt, sType, image_id
+  ) => {
     let data = game.data[image_id];
-    if (!data || data.type != types.image) return;
-    game.gl.texImage2D(target, level, iFmt, sFmt, sType, data.image);
+    if (!data) return;
+    switch (data.type) {
+      case types.image:
+        game.gl.texImage2D(target, level, iFmt, fmt, sType, data.image);
+      break;
+      case types.bytes:
+        game.gl.texImage2D(
+          target, level, iFmt, width, height, 0, fmt, sType, data.buffer
+        );
+      break;
+      default: return;
+    }
   }
 
   imports["glGenerateMipmap"] = (target) => {

@@ -3,26 +3,20 @@
 
 #include "str.h"
 #include "array.h"
+#include "map.h"
 
-typedef struct ObjVertex {
+typedef struct {
   vec3 pos;
   vec3 color;
-  vec3 norm;
-  vec2 uv;
-} ObjVertex;
+} obj_vertex_part_t;
 
-typedef struct ObjVertexPart {
-  vec3 pos;
-  vec3 color;
-} ObjVertexPart;
-
-typedef struct ObjFaceElem {
+typedef struct {
   int vert;
   int norm;
   int uv;
-} ObjFaceElem;
+} obj_face_elem_t;
 
-void file_load_obj(Model_Obj* model, File file) {
+void file_load_obj(Model_Mesh* model, File file) {
 
   index_t pos = 0;
   slice_t str = file->str;
@@ -31,6 +25,8 @@ void file_load_obj(Model_Obj* model, File file) {
   Array norms = arr_new(vec3);
   Array uvs   = arr_new(vec2);
   Array faces = arr_new(ObjFaceElem);
+  
+  str_log("Model_Obj - Loading: {}", file->name);
 
   while (pos < file->str.length) {
     slice_t token = str_token(str, S(" "), &pos).token;
@@ -42,58 +38,58 @@ void file_load_obj(Model_Obj* model, File file) {
       // Read vertex info
       case 'v': {
 
-        switch (token.begin[1]) {
+        // Just 'v', read a vertex coordinate:
+        if (token.size == 1) {
 
-          // Read a vertex normal
-          case 'n': {
-            ++pos;
+          obj_vertex_part_t* vert = arr_emplace_back(verts);
 
-            vec3 norm;
+          // coordinate
+          slice_to_float(str_token(str, " ", &pos), &vert->pos.x);
+          slice_to_float(str_token(str, " ", &pos), &vert->pos.y);
+          slice_to_float(str_token(str, " \n", &pos), &vert->pos.z);
 
-            slice_to_float(slice_token_char(str, S(" "), &pos).token, &norm.x);
-            slice_to_float(slice_token_char(str, S(" "), &pos).token, &norm.y);
-            slice_to_float(slice_token_char(str, S("\n"), &pos).token, &norm.z);
+          // optional vertex color
+          if (str.begin[pos - 1] == ' ') {
+            model->use_color = true;
+            slice_to_float(str_token(str, " ", &pos), &vert->color.r);
+            slice_to_float(str_token(str, " ", &pos), &vert->color.g);
+            slice_to_float(str_token(str, "\n", &pos), &vert->color.b);
+          }
+          else {
+            vert->color = c4white.rgb;
+          }
+        }
 
-            arr_write_back(norms, &norm);
+        // Either 'vt' or 'vn' sections, read a texcoord or normal
+        else {
 
-          } break;
+          switch (token.begin[1]) {
 
-          // Read a UV coordinate
-          case 't': {
-            ++pos;
+            // Read a vertex normal
+            case 'n': {
+              vec3* norm = arr_emplace_back(norms);
 
-            vec3 uv;
-            slice_to_float(slice_token_char(str, S(" "), &pos).token, &uv.u);
-            slice_to_float(slice_token_char(str, S("\n"), &pos).token, &uv.v);
+              slice_to_float(str_token(str, " ", &pos), &norm->x);
+              slice_to_float(str_token(str, " ", &pos), &norm->y);
+              slice_to_float(str_token(str, "\n", &pos), &norm->z);
 
-            arr_write_back(uvs, &uv);
+            } break;
 
-          } break;
+            // Read a UV coordinate
+            case 't': {
+              vec2* uv = arr_emplace_back(uvs);
 
-          // Read a vertex coordinate
-          default: {
+              slice_to_float(str_token(str, " ", &pos), &uv->u);
+              slice_to_float(str_token(str, "\n", &pos), &uv->v);
 
-            ObjVertexPart vert;
+            } break;
 
-            // coordinate
-            slice_to_float(slice_token_char(str, S(" "), &pos).token, &vert.pos.x);
-            slice_to_float(slice_token_char(str, S(" "), &pos).token, &vert.pos.y);
-            slice_to_float(slice_token_char(str, S(" \n"), &pos).token, &vert.pos.z);
+            // Read a vertex coordinate
+            default: {
+              assert(false);
+            } break;
 
-            // optional vertex color
-            if (str.begin[pos - 1] == ' ') {
-
-              slice_to_float(slice_token_char(str, S(" "), &pos).token, &vert.color.r);
-              slice_to_float(slice_token_char(str, S(" "), &pos).token, &vert.color.g);
-              slice_to_float(slice_token_char(str, S("\n"), &pos).token, &vert.color.b);
-
-            } else {
-              vert.color = c4white.rgb;
-            }
-
-            arr_write_back(verts, &vert);
-
-          } break;
+          }
 
         }
 
@@ -102,7 +98,7 @@ void file_load_obj(Model_Obj* model, File file) {
       // Read a face
       case 'f': {
 
-        ObjFaceElem elem;
+        obj_face_elem_t elem;
 
         slice_to_int(slice_token_char(str, S("/"), &pos).token, &elem.vert);
         slice_to_int(slice_token_char(str, S("/"), &pos).token, &elem.uv);
@@ -130,33 +126,43 @@ void file_load_obj(Model_Obj* model, File file) {
 
   }
 
-  model->verts = arr_new_reserve(ObjVertex, faces->size);
   model->indices = arr_new_reserve(uint, faces->size);
+  model->verts = model->use_color
+    ? arr_new(obj_vertex_color_t)
+    : arr_new(obj_vertex_t);
 
-  /*
-  for (index_t i = 0; i < faces->size; ++i) {
-    // -1's to account for obj's 1-indexing
-    ObjFaceElem* f = array_ref(faces, i);
-    ObjVertexPart* partial = array_ref(verts, f->vert - 1);
+  // Collect face index values into into shared vertex data and the index list.
+  HMap vmap = map_new(obj_face_elem_t, uint, NULL, NULL);
 
-    array_write_back(model->verts, &(ObjVertex) {
-      .pos = partial->pos,
-      .color = partial->color,
-      .norm = *((vec3*)array_ref(norms, f->norm - 1)),
-      .uv = *((vec2*)array_ref(uvs, f->uv - 1)),
-    });
-
-    // TODO: make this actually make sense, lol. This should put the faces
-    // in an actually indexed setup, but right now it's basically just a regular
-    // array instead, which defeats the purpose
-    array_write_back(model->indices, &i);
+  obj_face_elem_t* arr_foreach(f, faces) {
+    ensure_t e = map_ensure(vmap, f);
+    if (e.is_new) {
+      obj_vertex_part_t* vert = arr_ref(verts, f->vert - 1);
+      *(uint*)e.value = (uint)model->verts->size;
+      arr_write_back(model->indices, e.value);
+      arr_write_back(model->verts, &(obj_vertex_color_t) {
+        .pos = vert->pos,
+        .norm = *((vec3*)arr_ref(norms, f->norm - 1)),
+        .uv = *((vec2*)arr_ref(uvs, f->uv - 1)),
+        .color = vert->color,
+      });
+    }
+    else {
+      arr_write_back(model->indices, e.value);
+    }
   }
-  /*/
 
-  //*/
+  map_delete(&vmap);
 
   arr_delete(&faces);
   arr_delete(&verts);
   arr_delete(&uvs);
   arr_delete(&norms);
+
+  arr_truncate(model->verts, model->verts->size);
+  model->index_count = (int)model->indices->size;
+
+  str_log("  Loaded: verts: {}, indices: {}",
+    model->verts->size, model->indices->size
+  );
 }
