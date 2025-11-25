@@ -23,6 +23,7 @@ void process_system_events(Game* game) {
       case SDL_EVENT_WINDOW_RESIZED: {
         game->window.w = event.window.data1;
         game->window.h = event.window.data2;
+        str_log("Event: resizing window - {}", game->window);
         rt_delete(&game->textures.render_target);
         game->textures.render_target = rt_setup(game->window);
         float aspect = i2aspect(game->window);

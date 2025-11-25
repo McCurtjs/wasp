@@ -21,10 +21,10 @@ void file_load_obj(Model_Mesh* model, File file) {
   index_t pos = 0;
   slice_t str = file->str;
 
-  Array verts = arr_new(ObjVertexPart);
+  Array verts = arr_new(obj_vertex_part_t);
   Array norms = arr_new(vec3);
   Array uvs   = arr_new(vec2);
-  Array faces = arr_new(ObjFaceElem);
+  Array faces = arr_new(obj_face_elem_t);
   
   str_log("Model_Obj - Loading: {}", file->name);
 
@@ -44,16 +44,17 @@ void file_load_obj(Model_Mesh* model, File file) {
           obj_vertex_part_t* vert = arr_emplace_back(verts);
 
           // coordinate
-          slice_to_float(str_token(str, " ", &pos), &vert->pos.x);
-          slice_to_float(str_token(str, " ", &pos), &vert->pos.y);
-          slice_to_float(str_token(str, " \n", &pos), &vert->pos.z);
+          slice_to_float(str_token_char(str, " ", &pos).token, &vert->pos.x);
+          slice_to_float(str_token_char(str, " ", &pos).token, &vert->pos.y);
+          slice_to_float(str_token_char(str, " \n", &pos).token, &vert->pos.z);
 
           // optional vertex color
           if (str.begin[pos - 1] == ' ') {
             model->use_color = true;
-            slice_to_float(str_token(str, " ", &pos), &vert->color.r);
-            slice_to_float(str_token(str, " ", &pos), &vert->color.g);
-            slice_to_float(str_token(str, "\n", &pos), &vert->color.b);
+            vec3* color = &vert->color;
+            slice_to_float(str_token_char(str, " ", &pos).token, &color->r);
+            slice_to_float(str_token_char(str, " ", &pos).token, &color->g);
+            slice_to_float(str_token_char(str, "\n", &pos).token, &color->b);
           }
           else {
             vert->color = c4white.rgb;
@@ -69,9 +70,9 @@ void file_load_obj(Model_Mesh* model, File file) {
             case 'n': {
               vec3* norm = arr_emplace_back(norms);
 
-              slice_to_float(str_token(str, " ", &pos), &norm->x);
-              slice_to_float(str_token(str, " ", &pos), &norm->y);
-              slice_to_float(str_token(str, "\n", &pos), &norm->z);
+              slice_to_float(str_token_char(str, " ", &pos).token, &norm->x);
+              slice_to_float(str_token_char(str, " ", &pos).token, &norm->y);
+              slice_to_float(str_token_char(str, "\n", &pos).token, &norm->z);
 
             } break;
 
@@ -79,8 +80,8 @@ void file_load_obj(Model_Mesh* model, File file) {
             case 't': {
               vec2* uv = arr_emplace_back(uvs);
 
-              slice_to_float(str_token(str, " ", &pos), &uv->u);
-              slice_to_float(str_token(str, "\n", &pos), &uv->v);
+              slice_to_float(str_token_char(str, " ", &pos).token, &uv->u);
+              slice_to_float(str_token_char(str, "\n", &pos).token, &uv->v);
 
             } break;
 
@@ -135,7 +136,7 @@ void file_load_obj(Model_Mesh* model, File file) {
   HMap vmap = map_new(obj_face_elem_t, uint, NULL, NULL);
 
   obj_face_elem_t* arr_foreach(f, faces) {
-    ensure_t e = map_ensure(vmap, f);
+    res_ensure_t e = map_ensure(vmap, f);
     if (e.is_new) {
       obj_vertex_part_t* vert = arr_ref(verts, f->vert - 1);
       *(uint*)e.value = (uint)model->verts->size;

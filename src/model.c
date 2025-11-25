@@ -229,7 +229,7 @@ static int model_build_frame(Model_Frame* frame) {
 }
 
 static void model_render_frame(const Model_Frame* frame) {
-  PARAM_UNUSED(frame);
+  UNUSED(frame);
 
   glBindVertexArray(frame_vao);
   glDrawArrays(GL_TRIANGLES, 0, 3);
@@ -376,7 +376,7 @@ static int model_build_mesh(Model_Mesh* mesh) {
   glBindBuffer(GL_ARRAY_BUFFER, mesh->vert_buffer);
   glBufferData(
     GL_ARRAY_BUFFER, mesh->verts->size_bytes,
-    array_ref_front(mesh->verts), GL_STATIC_DRAW
+    arr_ref_front(mesh->verts), GL_STATIC_DRAW
   );
 
   GLsizei vert_size = mesh->use_color
@@ -409,15 +409,15 @@ static int model_build_mesh(Model_Mesh* mesh) {
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
   glBufferData(
     GL_ELEMENT_ARRAY_BUFFER, mesh->indices->size_bytes,
-    array_ref_front(mesh->indices), GL_STATIC_DRAW
+    arr_ref_front(mesh->indices), GL_STATIC_DRAW
   );
 
   glBindVertexArray(0);
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-  array_delete(&mesh->verts);
-  array_delete(&mesh->indices);
+  arr_delete(&mesh->verts);
+  arr_delete(&mesh->indices);
 
   mesh->ready = TRUE;
   return 1;

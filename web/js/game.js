@@ -35,12 +35,19 @@ class Game {
     return null;
   }
 
-  memory_f(index, size_f) {
+  memory_f(index, count) {
     if (this.initialized) {
       let array = new Float32Array(this.wasm.exports.memory.buffer);
-      return array.subarray(index/4, index/4 + size_f);
+      return array.subarray(index/4, index/4 + count);
     }
     return null;
+  }
+
+  memory_i(index, count) {
+    if (this.initialized) {
+      let array = new Uint32Array(this.wasm.exports.memory.buffer);
+      return array.subarray(index/4, index/4 + count)
+    }
   }
 
   clone_memory(index, size) {

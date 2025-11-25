@@ -7,16 +7,18 @@ export const
   },
 
   types = {
-    none:     0,
-    bytes:    1,
-    file:     2,
-    image:    3,
-    shader:   10,
-    sprog:    11,
-    vao:      12,
-    buffer:   13,
-    uniform:  14,
-    texture:  15,
+    none:       0,
+    bytes:      1,
+    file:       2,
+    image:      3,
+    shader:     10,
+    sprog:      11,
+    vao:        12,
+    buffer:     13,
+    uniform:    14,
+    texture:    15,
+    framebuf:   16,
+    renderbuf:  17,
   },
 
   sdl = {

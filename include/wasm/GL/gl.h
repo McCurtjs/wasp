@@ -154,6 +154,7 @@ typedef double GLclampd;
 #define GL_FLOAT                          0x1406
 #define GL_FIXED                          0x140C
 #define GL_DEPTH_COMPONENT                0x1902
+#define GL_DEPTH_COMPONENT32F             0x8CAC
 #define GL_ALPHA                          0x1906
 #define GL_RGB                            0x1907
 #define GL_RGBA                           0x1908
@@ -325,6 +326,8 @@ typedef double GLclampd;
 #define GL_RENDERBUFFER_BINDING           0x8CA7
 #define GL_MAX_RENDERBUFFER_SIZE          0x84E8
 #define GL_INVALID_FRAMEBUFFER_OPERATION  0x0506
+#define GL_RGB8                           0x8051
+#define GL_RGBA8                          0x8058
 
 #define GL_UNPACK_FLIP_Y_WEBGL            0x9240
 
@@ -334,18 +337,23 @@ void    glViewport(GLint x, GLint y, GLsizei width, GLsizei height);
 void    glEnable(GLenum cap);
 void    glDisable(GLenum cap);
 void    glBlendFunc(GLenum sfactor, GLenum dfactor);
+void    glClear(GLbitfield mask);
+void    glClearColor(GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha);
 
 GLuint  glCreateShader(GLenum shaderType);
 void    glShaderSource(
           GLuint shader, GLsizei count, const GLchar** str, const GLint *len);
 void    glCompileShader(GLuint shader);
 void    glGetShaderiv(GLuint shader, GLenum pname, GLint* params);
-void    glGetShaderInfoLog(GLuint shader, GLsizei max, GLsizei* len, char* buf);
+void    glGetShaderInfoLog(
+          GLuint shader, GLsizei max, GLsizei* out_length, GLchar* buffer);
 void    glDeleteShader(GLuint program);
-GLuint  glCreateProgram();
+GLuint  glCreateProgram(void);
 void    glAttachShader(GLuint program, GLuint shader);
 void    glLinkProgram(GLuint program);
 void    glGetProgramiv(GLuint program, GLenum pname, GLint* params);
+void    glGetProgramInfoLog(
+          GLuint program, GLsizei max, GLsizei* out_length, GLchar* buffer);
 void    glUseProgram(GLuint program);
 void    glDeleteProgram(GLuint program);
 
@@ -378,13 +386,31 @@ void    glTexImage2D(
           GLenum target, GLint level, GLint internalFormat,
           GLsizei width, GLsizei height, GLint border, GLenum format,
           GLenum type, const void* data);
-//void    glTexImage2D(
-//          GLenum target, GLint level, GLint internalFormat, GLenum format,
-//          GLenum type, int image_id);
 void    glGenerateMipmap(GLenum target);
 void    glTexParameteri(GLenum target, GLenum pname, GLint param);
 void    glPixelStorei(GLenum pname, GLint param);
 void    glDeleteTextures(GLsizei n, const GLuint* textures);
+
+void    glGenFramebuffers(GLsizei n, GLuint* framebuffers);
+void    glBindFramebuffer(GLenum target, GLuint framebuffer);
+GLenum  glCheckFramebufferStatus(GLenum target);
+void    glFramebufferTexture2D(
+          GLenum target, GLenum attachment,
+          GLenum textarget, GLuint texture, GLint level);
+void    glFramebufferTexture(
+          GLenum target, GLenum attachment, GLuint texture, GLint level);
+void    glFramebufferRenderbuffer(
+          GLenum target, GLenum attachment,
+          GLenum renderbuftarget, GLuint renderbuffer);
+void    glDeleteFramebuffers(GLsizei n, const GLuint* buffers);
+
+void    glGenRenderbuffers(GLsizei n, GLuint* renderbuffers);
+void    glBindRenderbuffer(GLenum target, GLuint renderbuffer);
+void    glRenderbufferStorage(
+          GLenum target, GLenum format, GLsizei width, GLsizei height);
+void    glDeleteRenderbuffers(GLsizei n, const GLuint* renderbuffers);
+
+void    glDrawBuffers(GLsizei n, const GLenum* bufs);
 
 #endif
 #endif

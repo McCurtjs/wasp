@@ -22,6 +22,14 @@ function wasm_import_gl(imports, game) {
     game.gl.blendFunc(sfactor, dfactor);
   }
 
+  imports["glClear"] = (mask) => {
+    game.gl.clear(mask);
+  }
+
+  imports["glClearColor"] = (red, green, blue, alpha) => {
+    game.gl.clearColor(red, green, blue, alpha);
+  }
+
   // Shaders
 
   imports["glCreateShader"] = (shader_type) => {
@@ -103,6 +111,21 @@ function wasm_import_gl(imports, game) {
     return game.gl.getProgramParameter(data.program, pname) ? 1 : 0;
   };
 
+  imports["js_glGetProgramInfoLog"] = (data_id, exp_len, out_buf) => {
+    let data = game.data[data_id];
+    if (!data || data.type != types.sprog) return;
+    let log = game.gl.getProgramInfoLog(data.program);
+    log = game.utf8.encoder.encode(log);
+    let dat = game.memory(out_buf, exp_len);
+    let i = 0;
+    exp_len = Math.min(exp_len-1, log.length);
+    for (; i < exp_len; ++i) {
+      dat[i] = log[i];
+    }
+    dat[i] = 0;
+    return i;
+  }
+
   imports["glUseProgram"] = (data_id) => {
     let data = game.data[data_id];
     if (!data || data.type != types.sprog) return;
@@ -153,9 +176,13 @@ function wasm_import_gl(imports, game) {
   }
 
   imports["glBindBuffer"] = (target, data_id) => {
-    let data = game.data[data_id];
-    if (!data || data.type != types.buffer) return;
-    game.gl.bindBuffer(target, data.buffer);
+    let buffer_obj = null;
+    if (data_id != 0) {
+      let data = game.data[data_id];
+      if (!data || data.type != types.buffer) return;
+      buffer_obj = data.buffer;
+    }
+    game.gl.bindBuffer(target, buffer_obj);
   }
 
   imports["glBufferData"] = (target, size, src, usage) => {
@@ -225,16 +252,26 @@ function wasm_import_gl(imports, game) {
   }
 
   imports["glBindTexture"] = (target, data_id) => {
-    let data = game.data[data_id];
-    if (!data || data.type != types.texture) return;
-    game.gl.bindTexture(target, data.texture)
+    let texture = null;
+    if (data_id != null) {
+      let data = game.data[data_id];
+      if (!data || data.type != types.texture) return;
+      texture = data.texture;
+    }
+    game.gl.bindTexture(target, texture);
   }
 
   imports["js_glTexImage2D"] = (
     target, level, iFmt, width, height, fmt, sType, image_id
   ) => {
-    let data = game.data[image_id];
-    if (!data) return;
+    let data = null;
+    if (image_id == 0) {
+      data = { type: types.bytes, buffer: null };
+    } else {
+      data = game.data[image_id];
+      if (!data || !data.ready) return;
+    }
+
     switch (data.type) {
       case types.image:
         game.gl.texImage2D(target, level, iFmt, fmt, sType, data.image);
@@ -266,6 +303,91 @@ function wasm_import_gl(imports, game) {
     game.gl.deleteTexture(data.texture);
     game.free(data_id);
   }
+
+  // Render targets
+
+  imports["js_glCreateFramebuffer"] = () => {
+    return game.store({
+      type: types.framebuf,
+      ready: true,
+      buffer: game.gl.createFramebuffer(),
+    });
+  }
+
+  imports["glBindFramebuffer"] = (target, framebuffer) => {
+    let fbo = null;
+    if (framebuffer != 0) {
+      let data = game.data[framebuffer];
+      if (!data || data.type != types.framebuf) return;
+      fbo = data.buffer;
+    }
+    game.gl.bindFramebuffer(target, fbo);
+  }
+
+  imports["glCheckFramebufferStatus"] = (target) => {
+    return game.gl.checkFramebufferStatus(target);
+  }
+
+  imports["glFramebufferTexture2D"] = (target, attachment, textgt, texture, level) => {
+    let texobj = null;
+    if (texture != 0) {
+      let texdata = game.data[texture];
+      if (!texdata || texdata.type != types.texture) return;
+      texobj = texdata.texture; 
+    }
+    game.gl.framebufferTexture2D(target, attachment, textgt, texobj, level);
+  }
+
+  imports["glFramebufferRenderbuffer"] = (
+    target, attachment, renderbuffertarget, renderbuffer
+  ) => {
+    let data = game.data[renderbuffer];
+    if (!data || data.type != types.renderbuf) return;
+    game.gl.framebufferRenderbuffer(target, attachment, renderbuffertarget, data.buffer);
+  }
+
+  imports["js_glDeleteFramebuffer"] = (data_id) => {
+    let data = game.data[data_id];
+    if (!data || data.type != types.framebuf) return;
+    game.gl.deleteFramebuffer(data.buffer);
+    game.free(data_id);
+  }
+
+  // Render buffers
+
+  imports["js_glCreateRenderbuffer"] = () => {
+    return game.store({
+      type: types.renderbuf,
+      ready: true,
+      buffer: game.gl.createRenderbuffer(),
+    });
+  }
+
+  imports["glBindRenderbuffer"] = (target, renderbuffer) => {
+    let rbo = null;
+    if (renderbuffer != 0) {
+      let data = game.data[renderbuffer];
+      if (!data || data.type != types.renderbuf) return;
+      rbo = data.buffer;
+    }
+    game.gl.bindRenderbuffer(target, rbo);
+  }
+
+  imports["glRenderbufferStorage"] = (target, format, width, height) => {
+    game.gl.renderbufferStorage(target, format, width, height);
+  }
+
+  imports["js_glDeleteRenderbuffer"] = (data_id) => {
+    let data = game.data[data_id];
+    if (!data || data.type != types.renderbuf) return;
+    game.gl.deleteRenderbuffer(data.buffer);
+    game.free(data_id);
+  }
+
+  imports["glDrawBuffers"] = (n, ptr) => {
+    game.gl.drawBuffers(Array.from(game.memory_i(ptr, n)));
+  }
+
 }
 
 export { wasm_import_gl };

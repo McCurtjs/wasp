@@ -38,26 +38,31 @@ render_target_t rt_setup(vec2i screen) {
   // Set up depth buffer for frame buffer
   glGenRenderbuffers(1, &target.depth_buffer);
   glBindRenderbuffer(GL_RENDERBUFFER, target.depth_buffer);
-  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, screen.w, screen.h);
-  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, target.depth_buffer);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, screen.w, screen.h);
+  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                            GL_RENDERBUFFER, target.depth_buffer);
 
   // Create texture target and assign to color slot 0
   target.texture = tex_generate_blank(screen.w, screen.h);
   glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, target.texture.handle, 0);
-
   GLenum draw_buffer[] = { GL_COLOR_ATTACHMENT0 };
   glDrawBuffers(ARRAY_COUNT(draw_buffer), draw_buffer);
+
+  glBindFramebuffer(GL_FRAMEBUFFER, target.handle);
 
   // Set viewport size
   glViewport(0, 0, screen.w, screen.h);
 
   // Validate
-  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-    str_log("Framebuffer didn't work");
-    target.ready = FALSE;
+  GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+  if (status == GL_FRAMEBUFFER_COMPLETE) {
+    target.ready = true;
   }
-
-  target.ready = TRUE;
+  else {
+    str_log("Framebuffer didn't work - error: {}", status);
+    target.ready = false;
+  }
+  
   return target;
 }
 
@@ -70,14 +75,16 @@ void rt_apply(render_target_t target) {
 
 void rt_apply_default(void) {
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glBindTexture(GL_TEXTURE_2D, 0);
+  glBindRenderbuffer(GL_RENDERBUFFER, 0);
   glClearColor(0.2f, 0.2f, 0.2f, 1);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 void rt_delete(render_target_t* target) {
   rt_apply_default();
+  glDeleteFramebuffers(1, &target->handle);
   glDeleteRenderbuffers(1, &target->depth_buffer);
   tex_free(&target->texture);
-  glDeleteFramebuffers(1, &target->handle);
   *target = (render_target_t){ 0 };
 }

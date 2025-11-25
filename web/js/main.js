@@ -15,7 +15,7 @@ function renderTimer(now) {
     WASM GL Test - FPS: ${Math.floor(fps)}
   `;
 
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); // shouldn't be needed
   if (!game.ready) {
     if (wasm_load(await_count, dt)) {
       game.ready = true;
@@ -23,6 +23,11 @@ function renderTimer(now) {
   } else {
     wasm_update(dt);
     wasm_render();
+
+    let err = game.gl.getError();
+    if (err != game.gl.NO_ERROR) {
+      console.log("OpenGL error: ", err);
+    }
   }
   requestAnimationFrame(renderTimer);
 }
@@ -39,6 +44,4 @@ window.onload = async() => {
 
     requestAnimationFrame(renderTimer);
   }
-
-  console.log('done');
 }

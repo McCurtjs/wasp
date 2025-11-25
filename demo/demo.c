@@ -56,7 +56,7 @@ int export(canary) (int _) {
 }
 #endif
 
-static Model model_frame = { .type = MODEL_FRAME };
+static Model model_frame = { .type = MODEL_FRAME };// { .type = MODEL_FRAME };
 static ShaderProgram shader_frame;
 
 void export(wasm_preload) (uint w, uint h) {
@@ -84,7 +84,7 @@ void export(wasm_preload) (uint w, uint h) {
       .persp = {d2r(60), i2aspect(windim), 0.1f, 500}
       //.ortho = {-6 * i2aspect(windim), 6 * i2aspect(windim), 6, -6, 0.1, 500}
     },
-    .target = v3zero,
+    .target = v3origin,
     .light_pos = v4f(4, 3, 5, 1),
     .input.mapping.keys = {'w', 's', 'a', 'd', 'c', 'r',
       /* // Attack button, useful on F for testing
@@ -129,10 +129,13 @@ static void cheesy_loading_animation(float dt) {
 }
 
 int export(wasm_load) (int await_count, float dt) {
+
   if (await_count || !GAME_ON) {
     cheesy_loading_animation(dt);
     return 0;
   };
+
+  str_write("Async load finished");
 
   #if GAME_ON == 1
 
