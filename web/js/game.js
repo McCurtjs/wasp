@@ -173,6 +173,6 @@ class Game {
         pos.x, pos.y, e.movementX, e.movementY);
     });
   }
-}
+};
 
 export { Game };

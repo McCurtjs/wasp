@@ -87,8 +87,8 @@ RenderTarget rt_new(index_t size, texture_format_t formats[]) {
 
   memcpy(ret->formats, formats, sizeof(texture_format_t) * size);
 
-  for (index_t i = 0; i < size; ++i) {
-    ret->color_attachments[i] = GL_COLOR_ATTACHMENT0;
+  for (GLenum i = 0; i < (GLenum)size; ++i) {
+    ret->color_attachments[i] = GL_COLOR_ATTACHMENT0 + i;
   }
 
   return (RenderTarget)ret;
@@ -208,9 +208,11 @@ void rt_bind(RenderTarget rt_in) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void rt_bind_default(void) {
+  GLenum draw_buffer = GL_BACK;
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   glBindTexture(GL_TEXTURE_2D, 0);
   glBindRenderbuffer(GL_RENDERBUFFER, 0);
+  glDrawBuffers(1, &draw_buffer);
   glClearColor(0.2f, 0.2f, 0.2f, 1);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }

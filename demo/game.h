@@ -18,6 +18,7 @@
 typedef struct Game_Shaders {
   ShaderProgram basic;
   ShaderProgram light;
+  ShaderProgram warhol;
 } Game_Shaders;
 
 typedef struct Game_Models {

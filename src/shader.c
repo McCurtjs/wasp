@@ -127,6 +127,7 @@ int shader_program_build_frame(ShaderProgram* p) {
 }
 
 int shader_program_uniform_location(ShaderProgram* program, const char* name) {
+  //assert(program->ready);
   return glGetUniformLocation(program->handle, name);
 }
 

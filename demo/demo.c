@@ -35,6 +35,8 @@ static File file_vert = NULL;
 static File file_frag = NULL;
 //static File file_model_test = NULL;
 //static File file_model_level_1;
+static File file_warhol_frag = NULL;
+static File file_warhol_vert = NULL;
 static File file_model_gear = NULL;
 static Image image_crate;
 //static Image image_level;
@@ -61,8 +63,10 @@ static ShaderProgram shader_frame;
 
 void export(wasm_preload) (uint w, uint h) {
   #if GAME_ON == 1
-  file_vert = file_new(S("./res/shaders/basic.vert"));
-  file_frag = file_new(S("./res/shaders/basic.frag"));
+  file_vert = file_new(S("./res/shaders/light.vert"));
+  file_frag = file_new(S("./res/shaders/light.frag"));
+  file_warhol_vert = file_new(S("./res/shaders/warhol.vert"));
+  file_warhol_frag = file_new(S("./res/shaders/warhol.frag"));
   //file_model_test = file_new(S("./res/models/test.obj"));
   file_model_gear = file_new(S("./res/models/gear.obj"));
   //file_open_async(&file_model_level_1, "./res/models/level_1.obj");
@@ -144,12 +148,18 @@ int export(wasm_load) (int await_count, float dt) {
   shader_build_from_file(&light_vert, file_vert);
   shader_build_from_file(&light_frag, file_frag);
 
+  Shader warhol_vert, warhol_frag;
+  shader_build_from_file(&warhol_vert, file_warhol_vert);
+  shader_build_from_file(&warhol_frag, file_warhol_frag);
+
   //model_load_obj(&game.models.level_test, file_model_test);
   model_load_obj(&game.models.gear, file_model_gear);
   //model_load_obj(&game.models.level_1, &file_model_level_1);
 
   shader_program_build(&game.shaders.light, &light_vert, &light_frag);
   shader_program_load_uniforms(&game.shaders.light, UNIFORMS_PHONG);
+
+  shader_program_build(&game.shaders.warhol, &warhol_vert, &warhol_frag);
 
   // Build textures from async data
   game.textures.crate = tex_from_image(image_crate);
@@ -196,7 +206,9 @@ int export(wasm_load) (int await_count, float dt) {
   // Load the first game level
   level_switch(&game, game.level);
 
-  game.textures.render_target = rt_new(1, (texture_format_t[]) {TF_RGBA_8 });
+  game.textures.render_target = rt_new(2, (texture_format_t[]) {
+    TF_RGBA_8, TF_RGBA_8
+  });
   rt_build(game.textures.render_target, v2i(400, 400));
 
   #endif
@@ -216,8 +228,16 @@ void export(wasm_render) () {
   game_render(&game);
 
   rt_bind_default();
-  tex_apply(game.textures.render_target->textures[0], 0, 0);
+  /*
   shader_program_use(&shader_frame);
+  tex_apply(game.textures.render_target->textures[0], 0, 0);
+  /*/
+  shader_program_use(&game.shaders.warhol);
+  int tex_sampler = shader_program_uniform_location(&game.shaders.warhol, "texSamp");
+  int norm_sampler = shader_program_uniform_location(&game.shaders.warhol, "normSamp");
+  tex_apply(game.textures.render_target->textures[0], 0, tex_sampler);
+  tex_apply(game.textures.render_target->textures[1], 1, norm_sampler);
+  //*/
   model_render(&model_frame);
 }
 

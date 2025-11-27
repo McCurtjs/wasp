@@ -7,7 +7,7 @@ extern int    js_fopen(const char* path, int path_len);
 extern void   js_fopen_async(int data_id);
 extern int    js_fseek(int data_id, int offset, int origin);
 extern int    js_ftell(int data_id);
-extern size_t js_fread (int data_id, int ptr, size_t size, size_t max_count);
+extern size_t js_fread(int data_id, int ptr, size_t size, size_t max_count);
 extern int    js_fclose(int data_id);
 
 FILE* fopen(const char* path, const char* mode) {

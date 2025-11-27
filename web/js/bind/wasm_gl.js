@@ -60,7 +60,7 @@ function wasm_import_gl(imports, game) {
     let data = game.data[data_id];
     if (!data || data.type != types.shader) return;
     if (pname == 0x8b84) { // case: GL_INFO_LOG_LENGTH
-      return game.gl.getShaderInfoLog(data.shader) + 1;
+      return game.gl.getShaderInfoLog(data.shader).length + 1;
     }
     return game.gl.getShaderParameter(data.shader, pname) ? 1 : 0;
   };
@@ -112,6 +112,9 @@ function wasm_import_gl(imports, game) {
   imports["js_glGetProgramParameter"] = (data_id, pname) => {
     let data = game.data[data_id];
     if (!data || data.type != types.sprog) return;
+    if (pname == 0x8b84) { // case: GL_INFO_LOG_LENGTH
+      return game.gl.getProgramInfoLog(data.shader).length + 1;
+    }
     return game.gl.getProgramParameter(data.program, pname) ? 1 : 0;
   };
 

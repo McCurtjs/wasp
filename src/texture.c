@@ -27,15 +27,15 @@
 #include "gl.h"
 
 const static GLenum _rt_formats_internal[] = {
-  GL_RGB8, GL_RGBA8, GL_RGB10_A2
+  GL_RGB8, GL_RGBA8, GL_RGBA16F, GL_RGB10_A2
 };
 
 const static GLenum _rt_formats[] = {
-  GL_RGB, GL_RGBA, GL_RGBA
+  GL_RGB, GL_RGBA, GL_RGBA, GL_RGBA
 };
 
 const static GLenum _rt_format_type[] = {
-  GL_UNSIGNED_BYTE, GL_UNSIGNED_BYTE, GL_UNSIGNED_BYTE
+  GL_UNSIGNED_BYTE, GL_UNSIGNED_BYTE, GL_FLOAT, GL_FLOAT
 };
 
 texture_t tex_from_image(Image image) {
@@ -43,34 +43,39 @@ texture_t tex_from_image(Image image) {
 
   if (!image || !image->ready) return ret;
 
+  GLenum fmt_internal = GL_RGBA8;
   GLenum fmt = GL_RGBA;
-  switch (image->channels) {
 
-    case 3:
-      fmt = GL_RGB;
-      glPixelStorei(GL_UNPACK_ALIGNMENT, GL_TRUE);
-      break;
-
-    case 4:
-      glPixelStorei(GL_UNPACK_ALIGNMENT, GL_FALSE);
-      break;
-
+  if (image->channels == 3) {
+    fmt = GL_RGB;
+    fmt_internal = GL_RGB8;
+  }
+  else if
+  (   image->channels != 4
 #ifdef __WASM__
-    case 0: break;
+  &&  image->channels != 0
 #endif
-
-    default:
-      assert(false);
-      break;
+  ) {
+    assert(false);
   }
 
+#ifdef __WASM__
   glPixelStorei(GL_UNPACK_FLIP_Y_WEBGL, GL_TRUE);
+#endif
+
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
   glGenTextures(1, &ret.handle);
   glBindTexture(GL_TEXTURE_2D, ret.handle);
-  glTexImage2D(
-    GL_TEXTURE_2D, 0, fmt, image->width, image->height,
-    0, fmt, GL_UNSIGNED_BYTE, image->data
+  glTexImage2D
+  ( GL_TEXTURE_2D
+  , 0
+  , fmt_internal
+  , image->width
+  , image->height
+  , 0
+  , fmt
+  , GL_UNSIGNED_BYTE
+  , image->data
   );
 
   if (isPow2(image->width) && isPow2(image->height)) {
@@ -81,7 +86,6 @@ texture_t tex_from_image(Image image) {
   }
 
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
   return ret;
 }
 
@@ -131,7 +135,6 @@ void tex_apply(texture_t texture, uint slot, int sampler) {
   glActiveTexture(GL_TEXTURE0 + slot);
   glUniform1i(sampler, slot);
   glBindTexture(GL_TEXTURE_2D, texture.handle);
-
 }
 
 void tex_free(texture_t* texture) {

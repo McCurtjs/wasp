@@ -21,6 +21,7 @@ function wasm_import_stdio(imports, game) {
     let res = await fetch(data.path);
 
     data.buffer = await res.arrayBuffer();
+    console.log("  Loaded (" + data_id + "): " + data.buffer.byteLength + " bytes");
     data.ready = true;
     --game.await_count;
   }

@@ -107,7 +107,7 @@ void export(img_open_async_done) (
 #endif
 
 Image img_load(slice_t filename) {
-  str_log("Image - Loading: {}", filename);
+  str_log("[Image.load] Loading: {}", filename);
   Image_Internal* ret;
 
 #ifdef __WASM__

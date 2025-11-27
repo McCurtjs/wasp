@@ -13,9 +13,11 @@ void main() {\n\
 static const char basic_frag_text[] = "\
 #version 300 es\n\
 in lowp vec4 vColor;\n\
-out lowp vec4 fragColor;\n\
+layout(location = 0) out lowp vec4 fragColor;\n\
+layout(location = 1) out lowp vec4 fragNormal;\n\
 void main() {\n\
   fragColor = vColor;\n\
+  fragNormal = vec4(0.0);\n\
 }";
 
 static const char frame_vert_text[] = "\

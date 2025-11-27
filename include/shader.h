@@ -54,4 +54,20 @@ void shader_program_load_uniforms(ShaderProgram* program, UniformSet set);
 void shader_program_use(const ShaderProgram* program);
 void shdaer_program_delete(ShaderProgram* program);
 
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct _opaque_Shader {
+  const slice_t name;
+  const index_t uniforms;
+  const bool ready;
+}* ShaderX;
+
+ShaderX shader_new(slice_t name);
+ShaderX shader_new_load(slice_t name);
+void    shader_load_async(ShaderX shader);
+void    shader_deletex(ShaderX* shader);
+
+
+void    shader_check_updates(void);
+
 #endif

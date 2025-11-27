@@ -19,6 +19,11 @@ File file_new(slice_t filename) {
   file->data = NULL;
   file->length = 0;
 
+  str_log("[File.new] Loading: {}", filename);
+#ifdef __WASM__
+  str_log("  Async ID: {}", (size_t)handle);
+#endif
+
   return file;
 
 error:

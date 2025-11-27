@@ -328,6 +328,7 @@ typedef double GLclampd;
 #define GL_INVALID_FRAMEBUFFER_OPERATION  0x0506
 #define GL_RGB8                           0x8051
 #define GL_RGBA8                          0x8058
+#define GL_RGBA16F                        0x881A
 #define GL_RGB10_A2                       0x8059
 #define GL_DEPTH24_STENCIL8               0x88F0
 #define GL_DEPTH_COMPONENT24              0x81A6
