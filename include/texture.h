@@ -27,6 +27,14 @@
 
 #include "types.h"
 #include "image.h"
+#include "vec.h"
+
+typedef enum texture_format_t {
+  TF_RGB_8,
+  TF_RGBA_8,
+  TF_RGB_10_A_2,
+  TF_SUPPORTED_MAX
+} texture_format_t;
 
 typedef struct texture_t {
   uint handle;
@@ -34,6 +42,7 @@ typedef struct texture_t {
 
 texture_t tex_from_image(Image image);
 texture_t tex_generate_blank(uint width, uint height);
+texture_t tex_generate(texture_format_t format, vec2i size);
 void tex_apply(texture_t texture, uint slot, int sampler);
 void tex_free(texture_t* handle);
 

@@ -29,16 +29,29 @@
 #include "vec.h"
 #include "texture.h"
 
-typedef struct render_target_t {
-  uint handle;
-  uint depth_buffer;
-  texture_t texture;
-  bool ready;
-} render_target_t;
+typedef enum depth_format_t {
+  F_DEPTH_NONE,
+  F_DEPTH_32, // default
+  F_DEPTH_24_STENCIL_8,
+  F_DEPTH_FORMAT_MAX
+} depth_format_t;
 
-render_target_t rt_setup(vec2i screen);
-void rt_apply(render_target_t target);
-void rt_apply_default(void);
-void rt_delete(render_target_t* target);
+typedef struct _opaque_RenderTarget {
+  const index_t                   slot_count;
+  const texture_t         * const textures;
+  const texture_format_t  * const formats;
+  const depth_format_t            depth_format;
+        color3                    clear_color;
+  const bool                      ready;
+}* RenderTarget;
+
+RenderTarget rt_new(index_t size, texture_format_t formats[]);
+bool rt_build(RenderTarget rt, vec2i screen);
+void rt_clear(RenderTarget rt);
+void rt_bind(RenderTarget rt);
+void rt_bind_default(void);
+bool rt_is_bound(RenderTarget rt);
+void rt_resize(RenderTarget rt, vec2i screen);
+void rt_delete(RenderTarget* rt);
 
 #endif

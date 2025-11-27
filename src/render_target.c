@@ -29,51 +29,185 @@
 #include "str.h"
 #include "gl.h"
 
-render_target_t rt_setup(vec2i screen) {
-  // Set up frame buffer object
-  render_target_t target;
-  glGenFramebuffers(1, &target.handle);
-  glBindFramebuffer(GL_FRAMEBUFFER, target.handle);
+#include <stdlib.h>
+#include <string.h>
 
-  // Set up depth buffer for frame buffer
-  glGenRenderbuffers(1, &target.depth_buffer);
-  glBindRenderbuffer(GL_RENDERBUFFER, target.depth_buffer);
-  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, screen.w, screen.h);
-  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
-                            GL_RENDERBUFFER, target.depth_buffer);
+typedef struct RenderTarget_Internal {
+  index_t           slot_count;
+  texture_t*        textures;
+  texture_format_t* formats;
+  depth_format_t    depth_format;
+  color3            clear_color;
+  bool              ready;
 
-  // Create texture target and assign to color slot 0
-  target.texture = tex_generate_blank(screen.w, screen.h);
-  glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, target.texture.handle, 0);
-  GLenum draw_buffer[] = { GL_COLOR_ATTACHMENT0 };
-  glDrawBuffers(ARRAY_COUNT(draw_buffer), draw_buffer);
+  // private
+  uint              handle;
+  uint              depth_buffer;
+  GLenum*           color_attachments;
 
-  glBindFramebuffer(GL_FRAMEBUFFER, target.handle);
+} RenderTarget_Internal;
 
-  // Set viewport size
+#define RT_INTERNAL \
+  RenderTarget_Internal* rt = (RenderTarget_Internal*)(rt_in); \
+  assert(rt);
+
+const static GLenum _rt_depth_formats[] = {
+  0, GL_DEPTH_COMPONENT32F, GL_DEPTH24_STENCIL8
+};
+
+const static GLenum _rt_depth_attachments[] = {
+  0, GL_DEPTH_ATTACHMENT, GL_DEPTH_STENCIL_ATTACHMENT
+};
+
+////////////////////////////////////////////////////////////////////////////////
+// Initialize a render target
+////////////////////////////////////////////////////////////////////////////////
+
+RenderTarget rt_new(index_t size, texture_format_t formats[]) {
+  RenderTarget_Internal* ret = malloc(
+    sizeof(RenderTarget_Internal) +
+    size * (sizeof(texture_t) + sizeof(texture_format_t) + sizeof(GLenum))
+  );
+  assert(ret);
+
+  byte* format_loc = (byte*)(ret + 1) + size * sizeof(texture_t);
+  byte* attach_loc = format_loc + size * sizeof(texture_format_t);
+
+  *ret = (RenderTarget_Internal) {
+    .slot_count = size,
+    .textures = NULL,
+    .formats = (texture_format_t*)format_loc,
+    .depth_format = F_DEPTH_32,
+    .clear_color = v3f(0.f, 0.f, 0.8f),
+    .ready = false,
+    .handle = 0,
+    .depth_buffer = 0,
+    .color_attachments = (GLenum*)attach_loc,
+  };
+
+  memcpy(ret->formats, formats, sizeof(texture_format_t) * size);
+
+  for (index_t i = 0; i < size; ++i) {
+    ret->color_attachments[i] = GL_COLOR_ATTACHMENT0;
+  }
+
+  return (RenderTarget)ret;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Build the textures and OpenGL objects for the render target
+////////////////////////////////////////////////////////////////////////////////
+
+bool rt_build(RenderTarget rt_in, vec2i screen) {
+  RT_INTERNAL;
+  if (rt->ready) return false;
+
+  // framebuffer
+  if (!rt->handle) {
+    glGenFramebuffers(1, &rt->handle);
+    glBindFramebuffer(GL_FRAMEBUFFER, rt->handle);
+  }
+
+  // depth and stencil
+  if (!rt->depth_buffer && rt->depth_format != F_DEPTH_NONE) {
+    assert(
+      rt->depth_format > F_DEPTH_NONE && rt->depth_format < F_DEPTH_FORMAT_MAX
+    );
+
+    GLenum depth_format = _rt_depth_formats[rt->depth_format];
+    GLenum depth_attachment = _rt_depth_attachments[rt->depth_format];
+
+    glGenRenderbuffers(1, &rt->depth_buffer);
+    glBindRenderbuffer(GL_RENDERBUFFER, rt->depth_buffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, depth_format, screen.w, screen.h);
+
+    glFramebufferRenderbuffer(
+      GL_FRAMEBUFFER, depth_attachment, GL_RENDERBUFFER, rt->depth_buffer
+    );
+  }
+
+  // textures
+  if (!rt->textures) {
+    rt->textures = (texture_t*)(rt + 1);
+
+    for (index_t i = 0; i < rt->slot_count; ++i) {
+      rt->textures[i] = tex_generate(rt->formats[i], screen);
+      glFramebufferTexture
+      ( GL_FRAMEBUFFER
+      , GL_COLOR_ATTACHMENT0 + (GLenum)i
+      , rt->textures[i].handle
+      , 0
+      );
+    }
+  }
+
+  // color attachments
+  glDrawBuffers((GLsizei)rt->slot_count, rt->color_attachments);
+
+  // viewport size
   glViewport(0, 0, screen.w, screen.h);
 
-  // Validate
+  // check success of the result
   GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
   if (status == GL_FRAMEBUFFER_COMPLETE) {
-    target.ready = true;
+    rt->ready = true;
   }
   else {
     str_log("Framebuffer didn't work - error: {}", status);
-    target.ready = false;
+    rt->ready = false;
   }
-  
-  return target;
+
+  return rt->ready;
 }
 
-void rt_apply(render_target_t target) {
-  if (!target.ready) return;
-  glBindFramebuffer(GL_FRAMEBUFFER, target.handle);
-  glClearColor(0, 0, 0.8f, 1);
+////////////////////////////////////////////////////////////////////////////////
+// Clears out textures and the depth buffer from this render target
+////////////////////////////////////////////////////////////////////////////////
+
+void rt_clear(RenderTarget rt_in) {
+  RT_INTERNAL;
+
+  if (rt->handle) {
+    glDeleteFramebuffers(1, &rt->handle);
+    rt->handle = 0;
+  }
+
+  if (rt->depth_buffer) {
+    glDeleteRenderbuffers(1, &rt->depth_buffer);
+    rt->depth_buffer = 0;
+  }
+
+  if (rt->textures) {
+    for (index_t i = 0; i < rt->slot_count; ++i) {
+      tex_free(&rt->textures[i]);
+    }
+    rt->textures = NULL;
+  }
+
+  rt->ready = false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Set the render target as the active target
+////////////////////////////////////////////////////////////////////////////////
+
+void rt_bind(RenderTarget rt_in) {
+  RT_INTERNAL;
+  if (!rt->ready) {
+    str_write("RenderTarget: Not ready to bind");
+    return;
+  }
+  color3 c = rt->clear_color;
+  glBindFramebuffer(GL_FRAMEBUFFER, rt->handle);
+  glClearColor(c.r, c.g, c.b, 1.f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
-void rt_apply_default(void) {
+////////////////////////////////////////////////////////////////////////////////
+// Binds the default backbuffer/screen
+////////////////////////////////////////////////////////////////////////////////
+
+void rt_bind_default(void) {
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   glBindTexture(GL_TEXTURE_2D, 0);
   glBindRenderbuffer(GL_RENDERBUFFER, 0);
@@ -81,10 +215,42 @@ void rt_apply_default(void) {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
-void rt_delete(render_target_t* target) {
-  rt_apply_default();
-  glDeleteFramebuffers(1, &target->handle);
-  glDeleteRenderbuffers(1, &target->depth_buffer);
-  tex_free(&target->texture);
-  *target = (render_target_t){ 0 };
+////////////////////////////////////////////////////////////////////////////////
+// Checks if the given render target is the active one
+////////////////////////////////////////////////////////////////////////////////
+
+bool rt_is_bound(RenderTarget rt_in) {
+  RT_INTERNAL;
+  GLint bound_value = 0;
+  glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &bound_value);
+  return (uint)bound_value == rt->handle;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Clears the render target textures and rebuild at the new screen size
+////////////////////////////////////////////////////////////////////////////////
+
+void rt_resize(RenderTarget rt, vec2i screen) {
+  if (rt_is_bound(rt)) {
+    rt_bind_default();
+  }
+
+  rt_clear(rt);
+  rt_build(rt, screen);
+
+  if (!rt->ready) {
+    str_write("RenderTarget: Failed to resize");
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Clears and deletes the render target
+////////////////////////////////////////////////////////////////////////////////
+
+void rt_delete(RenderTarget* rt_in) {
+  if (!rt_in || !*rt_in) return;
+  RenderTarget_Internal* rt = (RenderTarget_Internal*)*rt_in;
+  rt_clear((RenderTarget)rt);
+  free(rt);
+  *rt_in = NULL;
 }

@@ -196,7 +196,8 @@ int export(wasm_load) (int await_count, float dt) {
   // Load the first game level
   level_switch(&game, game.level);
 
-  game.textures.render_target = rt_setup(v2i(400, 400));
+  game.textures.render_target = rt_new(1, (texture_format_t[]) {TF_RGBA_8 });
+  rt_build(game.textures.render_target, v2i(400, 400));
 
   #endif
 
@@ -211,11 +212,11 @@ void export(wasm_update) (float dt) {
 }
 
 void export(wasm_render) () {
-  rt_apply(game.textures.render_target);
+  rt_bind(game.textures.render_target);
   game_render(&game);
 
-  rt_apply_default();
-  tex_apply(game.textures.render_target.texture, 0, 0);
+  rt_bind_default();
+  tex_apply(game.textures.render_target->textures[0], 0, 0);
   shader_program_use(&shader_frame);
   model_render(&model_frame);
 }

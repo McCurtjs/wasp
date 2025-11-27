@@ -5,6 +5,11 @@
 
 extern GLenum glGetError();
 
+extern int js_glGetParameter(GLenum);
+void glGetIntegerv(GLenum pname, GLint* data) {
+  *data = js_glGetParameter(pname);
+}
+
 extern void glViewport(GLint x, GLint y, GLsizei width, GLsizei height);
 
 extern void glEnable(GLenum cap);
@@ -83,7 +88,8 @@ extern void glUniform1i(GLint loc, GLint v0);
 extern void glUniform4fv(GLint loc, GLsizei count, const GLfloat* value);
 
 extern void glUniformMatrix4fv(
-                GLint loc, GLsizei count, GLboolean tpose, const GLfloat* mat);
+  GLint loc, GLsizei count, GLboolean tpose, const GLfloat* mat
+);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Buffers and VAO

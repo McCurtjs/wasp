@@ -24,8 +24,7 @@ void process_system_events(Game* game) {
         game->window.w = event.window.data1;
         game->window.h = event.window.data2;
         str_log("Event: resizing window - {}", game->window);
-        rt_delete(&game->textures.render_target);
-        game->textures.render_target = rt_setup(game->window);
+        rt_resize(game->textures.render_target, game->window);
         float aspect = i2aspect(game->window);
         game->camera.persp.aspect = aspect;
         camera_build_perspective(&game->camera);

@@ -26,6 +26,18 @@
 
 #include "gl.h"
 
+const static GLenum _rt_formats_internal[] = {
+  GL_RGB8, GL_RGBA8, GL_RGB10_A2
+};
+
+const static GLenum _rt_formats[] = {
+  GL_RGB, GL_RGBA, GL_RGBA
+};
+
+const static GLenum _rt_format_type[] = {
+  GL_UNSIGNED_BYTE, GL_UNSIGNED_BYTE, GL_UNSIGNED_BYTE
+};
+
 texture_t tex_from_image(Image image) {
   texture_t ret = { 0 };
 
@@ -79,6 +91,33 @@ texture_t tex_generate_blank(uint width, uint height) {
 
   glBindTexture(GL_TEXTURE_2D, texture.handle);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+  return texture;
+}
+
+texture_t tex_generate(texture_format_t format, vec2i size) {
+  texture_t texture;
+  assert(format >= 0 && format < TF_SUPPORTED_MAX);
+
+  glGenTextures(1, &texture.handle);
+
+  glBindTexture(GL_TEXTURE_2D, texture.handle);
+  glTexImage2D
+  ( GL_TEXTURE_2D
+  , 0
+  , _rt_formats_internal[format]
+  , size.w
+  , size.h
+  , 0
+  , _rt_formats[format]
+  , _rt_format_type[format]
+  , NULL
+  );
 
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);

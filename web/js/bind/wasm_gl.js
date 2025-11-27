@@ -6,6 +6,10 @@ function wasm_import_gl(imports, game) {
     return game.gl.getError();
   }
 
+  imports["js_glGetParameter"] = (pname) => {
+    return game.gl.getParameter(pname);
+  }
+
   imports["glViewport"] = (x, y, width, height) => {
     game.gl.viewport(x, y, width, height);
   }
