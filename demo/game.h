@@ -16,9 +16,10 @@
 #undef con_type
 
 typedef struct Game_Shaders {
-  ShaderProgram basic;
-  ShaderProgram light;
-  ShaderProgram warhol;
+  Shader frame;
+  Shader basic;
+  Shader light2;
+  Shader warhol;
 } Game_Shaders;
 
 typedef struct Game_Models {

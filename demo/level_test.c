@@ -11,7 +11,6 @@ void level_load_og_test(Game* game) {
 
   // Debug Renderer
   game_add_entity(game, &(Entity) {
-    .shader = &game->shaders.basic,
     .model = &game->models.grid,
     .transform = m4identity,
     .render = render_debug,
@@ -24,7 +23,6 @@ void level_load_og_test(Game* game) {
 
   //* Spinny Cube
   game_add_entity(game, &(Entity) {
-    .shader = &game->shaders.basic,
     .model = &game->models.color_cube,
     .pos = v3f(-2, 0, 0),
     .angle = 0,
@@ -35,7 +33,6 @@ void level_load_og_test(Game* game) {
 
   //* Staring Cube
   game_add_entity(game, &(Entity) {
-    .shader = &game->shaders.basic,
     .model = &game->models.color_cube,
     .pos = v3f(0, 0, 2),
     .render = render_basic,
@@ -44,14 +41,12 @@ void level_load_og_test(Game* game) {
 
   //* Gizmos
   game_add_entity(game, &(Entity) {
-    .shader = &game->shaders.basic,
     .model = &game->models.gizmo,
     .render = render_basic,
     .behavior = behavior_attach_to_camera_target,
   }); //*/
 
   game_add_entity(game, &(Entity) {
-    .shader = &game->shaders.basic,
     .model = &game->models.gizmo,
     .render = render_basic,
     .behavior = behavior_attach_to_light,
@@ -59,7 +54,6 @@ void level_load_og_test(Game* game) {
 
   //* Gear
   game_add_entity(game, &(Entity) {
-    .shader = &game->shaders.light,
     .model = &game->models.gear,
     .texture = game->textures.brass,
     .transform = m4translation(v3f(0, 7, -5)),
@@ -68,7 +62,6 @@ void level_load_og_test(Game* game) {
 
   //* Crate
   game_add_entity(game, &(Entity) {
-    .shader = &game->shaders.light,
     .model = &game->models.box,
     .texture = game->textures.crate,
     .transform = m4translation(v3f(0, -0.5, 0)),
@@ -77,7 +70,6 @@ void level_load_og_test(Game* game) {
 
   //* Bigger Crate
   game_add_entity(game, &(Entity) {
-    .shader = &game->shaders.light,
     .model = &game->models.box,
     .texture = game->textures.crate,
     .transform = m4mul(m4translation(v3f(2, 0, 0)), m4uniform(2)),
@@ -86,7 +78,6 @@ void level_load_og_test(Game* game) {
 
   //* Even Bigger Crate
   game_add_entity(game, &(Entity) {
-    .shader = &game->shaders.light,
     .model = &game->models.box,
     .texture = game->textures.crate,
     .transform = m4mul(m4translation(v3f(5, 0.5, 0)), m4uniform(3)),
@@ -95,7 +86,6 @@ void level_load_og_test(Game* game) {
 
   //* LORGE Cube
   game_add_entity(game, &(Entity) {
-    .shader = &game->shaders.light,
     .model = &game->models.box,
     .texture = game->textures.tiles,
     .transform = m4mul(m4translation(v3f(0, -10.5, -5)), m4uniform(19)),

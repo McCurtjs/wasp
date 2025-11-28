@@ -49,7 +49,7 @@ typedef struct RenderTarget_Internal {
 
 #define RT_INTERNAL \
   RenderTarget_Internal* rt = (RenderTarget_Internal*)(rt_in); \
-  assert(rt);
+  assert(rt)
 
 const static GLenum _rt_depth_formats[] = {
   0, GL_DEPTH_COMPONENT32F, GL_DEPTH24_STENCIL8
@@ -153,7 +153,7 @@ bool rt_build(RenderTarget rt_in, vec2i screen) {
     rt->ready = true;
   }
   else {
-    str_log("Framebuffer didn't work - error: {}", status);
+    str_log("[Framebuffer.build] Failed with error: {}", status);
     rt->ready = false;
   }
 
@@ -194,7 +194,7 @@ void rt_clear(RenderTarget rt_in) {
 void rt_bind(RenderTarget rt_in) {
   RT_INTERNAL;
   if (!rt->ready) {
-    str_write("RenderTarget: Not ready to bind");
+    str_write("[RenderTarget.bind] Target not ready");
     return;
   }
   color3 c = rt->clear_color;
@@ -233,15 +233,19 @@ bool rt_is_bound(RenderTarget rt_in) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void rt_resize(RenderTarget rt, vec2i screen) {
-  if (rt_is_bound(rt)) {
-    rt_bind_default();
+  rt_bind_default();
+
+  if (rt) {
+    rt_clear(rt);
+    rt_build(rt, screen);
+
+    if (!rt->ready) {
+      str_write("[RenderTarget.resize] Failed to resize");
+    }
   }
-
-  rt_clear(rt);
-  rt_build(rt, screen);
-
-  if (!rt->ready) {
-    str_write("RenderTarget: Failed to resize");
+  else {
+    // Resize the default back-buffer if no specific target was given
+    glViewport(0, 0, screen.w, screen.h);
   }
 }
 

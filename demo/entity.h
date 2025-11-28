@@ -28,7 +28,6 @@ typedef struct Entity {
   };
 
   mat4 transform;
-  const ShaderProgram* shader;
   const Model* model;
   texture_t texture;
 

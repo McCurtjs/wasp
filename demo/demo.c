@@ -31,12 +31,8 @@ static Game game;
 
 #if GAME_ON == 1
 // Async loaders
-static File file_vert = NULL;
-static File file_frag = NULL;
 //static File file_model_test = NULL;
 //static File file_model_level_1;
-static File file_warhol_frag = NULL;
-static File file_warhol_vert = NULL;
 static File file_model_gear = NULL;
 static Image image_crate;
 //static Image image_level;
@@ -59,14 +55,9 @@ int export(canary) (int _) {
 #endif
 
 static Model model_frame = { .type = MODEL_FRAME };// { .type = MODEL_FRAME };
-static ShaderProgram shader_frame;
 
 void export(wasm_preload) (uint w, uint h) {
   #if GAME_ON == 1
-  file_vert = file_new(S("./res/shaders/light.vert"));
-  file_frag = file_new(S("./res/shaders/light.frag"));
-  file_warhol_vert = file_new(S("./res/shaders/warhol.vert"));
-  file_warhol_frag = file_new(S("./res/shaders/warhol.frag"));
   //file_model_test = file_new(S("./res/models/test.obj"));
   file_model_gear = file_new(S("./res/models/gear.obj"));
   //file_open_async(&file_model_level_1, "./res/models/level_1.obj");
@@ -74,8 +65,6 @@ void export(wasm_preload) (uint w, uint h) {
   image_crate = img_load(S("./res/textures/crate.png"));
   image_brass = img_load(S("./res/textures/brass.jpg"));
   image_tiles = img_load(S("./res/textures/tiles.png"));
-  //image_open_async(&image_anim_test, "./res/textures/spritesheet.png");
-  //image_open_async(&image_level, "./res/textures/levels.jpg");
   #endif
 
   vec2i windim = v2i(w, h);
@@ -112,22 +101,27 @@ void export(wasm_preload) (uint w, uint h) {
   model_build(&game.models.color_cube);
   model_build(&model_frame);
 
-  shader_program_build_basic(&game.shaders.basic);
-  shader_program_build_frame(&shader_frame);
+  game.shaders.basic = shader_new(S("basic"));
+  game.shaders.light2 = shader_new_load(S("light"));
+  game.shaders.frame = shader_new_load(S("frame"));
+  game.shaders.warhol = shader_new_load(S("warhol"));
 }
 
 static void cheesy_loading_animation(float dt) {
   static float cubespin = 0;
+
+  rt_bind_default();
+
   mat4 projview = camera_projection_view(&game.camera);
 
-  shader_program_use(&game.shaders.basic);
-  int projViewMod_loc = game.shaders.basic.uniform.projViewMod;
+  shader_bind(game.shaders.basic);
+  int loc_pvm = shader_uniform_loc(game.shaders.basic, "projViewMod");
 
   mat4 model = m4translation(v3f(0, 0, 0));
   model = m4mul(model, m4rotation(v3norm(v3f(1.f, 1.5f, -.7f)), cubespin));
   model = m4mul(model, m4rotation(v3norm(v3f(-4.f, 1.5f, 1.f)), cubespin/3.6f));
 
-  glUniformMatrix4fv(projViewMod_loc, 1, 0, m4mul(projview, model).f);
+  glUniformMatrix4fv(loc_pvm, 1, 0, m4mul(projview, model).f);
   model_render(&game.models.color_cube);
   cubespin += 2 * dt;
 }
@@ -143,23 +137,13 @@ int export(wasm_load) (int await_count, float dt) {
 
   #if GAME_ON == 1
 
-  // Build shaders from async data
-  Shader light_vert, light_frag;
-  shader_build_from_file(&light_vert, file_vert);
-  shader_build_from_file(&light_frag, file_frag);
-
-  Shader warhol_vert, warhol_frag;
-  shader_build_from_file(&warhol_vert, file_warhol_vert);
-  shader_build_from_file(&warhol_frag, file_warhol_frag);
+  shader_build(game.shaders.light2);
+  shader_build(game.shaders.frame);
+  shader_build(game.shaders.warhol);
 
   //model_load_obj(&game.models.level_test, file_model_test);
   model_load_obj(&game.models.gear, file_model_gear);
   //model_load_obj(&game.models.level_1, &file_model_level_1);
-
-  shader_program_build(&game.shaders.light, &light_vert, &light_frag);
-  shader_program_load_uniforms(&game.shaders.light, UNIFORMS_PHONG);
-
-  shader_program_build(&game.shaders.warhol, &warhol_vert, &warhol_frag);
 
   // Build textures from async data
   game.textures.crate = tex_from_image(image_crate);
@@ -169,8 +153,6 @@ int export(wasm_load) (int await_count, float dt) {
   //texture_build_from_image(&game.textures.player, &image_anim_test);
 
   // Delete async loaded resources
-  file_delete(&file_vert);
-  file_delete(&file_frag);
   //file_delete(&file_model_test);
   file_delete(&file_model_gear);
   //file_delete(&file_model_level_1);
@@ -232,9 +214,9 @@ void export(wasm_render) () {
   shader_program_use(&shader_frame);
   tex_apply(game.textures.render_target->textures[0], 0, 0);
   /*/
-  shader_program_use(&game.shaders.warhol);
-  int tex_sampler = shader_program_uniform_location(&game.shaders.warhol, "texSamp");
-  int norm_sampler = shader_program_uniform_location(&game.shaders.warhol, "normSamp");
+  shader_bind(game.shaders.warhol);
+  int tex_sampler = shader_uniform_loc(game.shaders.warhol, "texSamp");
+  int norm_sampler = shader_uniform_loc(game.shaders.warhol, "normSamp");
   tex_apply(game.textures.render_target->textures[0], 0, tex_sampler);
   tex_apply(game.textures.render_target->textures[1], 1, norm_sampler);
   //*/

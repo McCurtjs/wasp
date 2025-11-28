@@ -70,11 +70,14 @@ void behavior_attach_to_camera_target(Entity* e, Game* game, float dt) {
 }
 
 void render_basic(Entity* e, Game* game) {
-  shader_program_use(e->shader);
-  int projViewMod_loc = e->shader->uniform.projViewMod;
+  Shader shader = game->shaders.basic;
+  shader_bind(shader);
+
+  int loc_pvm = shader_uniform_loc(shader, "projViewMod");
 
   mat4 pvm = m4mul(game->camera.projview, e->transform);
-  glUniformMatrix4fv(projViewMod_loc, 1, GL_FALSE, pvm.f);
+  glUniformMatrix4fv(loc_pvm, 1, GL_FALSE, pvm.f);
+
   model_render(e->model);
 }
 
@@ -84,22 +87,27 @@ void render_debug(Entity* e, Game* game) {
 }
 
 void render_phong(Entity* e, Game* game) {
-  shader_program_use(e->shader);
-  UniformLocsPhong uniforms = e->shader->uniform.phong;
-  uint pvm = e->shader->uniform.projViewMod;
-  // should also pass transpose(inverse(model)) to multiply against normal
+  Shader shader = game->shaders.light2;
+  shader_bind(shader);
 
-  glUniformMatrix4fv(pvm, 1, 0, m4mul(game->camera.projview, e->transform).f);
-  glUniform4fv(uniforms.lightPos, 1, game->light_pos.f);
-  glUniform4fv(uniforms.cameraPos, 1, game->camera.pos.f);
+  int loc_pvm = shader_uniform_loc(shader, "projViewMod");
+  int loc_light_pos = shader_uniform_loc(shader, "lightPos");
+  int loc_camera_pos = shader_uniform_loc(shader, "cameraPos");
+  int loc_use_vert_color = shader_uniform_loc(shader, "useVertexColor");
+  int loc_sampler_tex = shader_uniform_loc(shader, "texSamp");
+  int loc_world = shader_uniform_loc(shader, "world");
+
+  glUniformMatrix4fv(loc_pvm, 1, 0, m4mul(game->camera.projview, e->transform).f);
+  glUniform4fv(loc_light_pos, 1, game->light_pos.f);
+  glUniform4fv(loc_camera_pos, 1, game->camera.pos.f);
 
   GLint use_color = false;
   if (e->model->type == MODEL_OBJ) use_color = e->model->mesh.use_color;
-  glUniform1i(uniforms.useVertexColor, use_color);
+  glUniform1i(loc_use_vert_color, use_color);
 
-  tex_apply(e->texture, 0, uniforms.sampler);
+  tex_apply(e->texture, 0, loc_sampler_tex);
 
-  glUniformMatrix4fv(uniforms.world, 1, 0, e->transform.f);
+  glUniformMatrix4fv(loc_world, 1, 0, e->transform.f);
   model_render(e->model);
 
   glBindTexture(GL_TEXTURE_2D, 0);
