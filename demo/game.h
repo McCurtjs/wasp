@@ -18,7 +18,7 @@
 typedef struct Game_Shaders {
   Shader frame;
   Shader basic;
-  Shader light2;
+  Shader light;
   Shader warhol;
 } Game_Shaders;
 

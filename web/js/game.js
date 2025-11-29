@@ -28,32 +28,26 @@ class Game {
   }
 
   memory(index, size) {
-    if (this.initialized) {
-      let array = new Uint8Array(this.wasm.exports.memory.buffer);
-      return array.subarray(index, index + size);
-    }
-    return null;
+    if (!this.initialized) return null;
+    let array = new Uint8Array(this.wasm.exports.memory.buffer);
+    return array.subarray(index, index + size);
   }
 
   memory_f(index, count) {
-    if (this.initialized) {
-      let array = new Float32Array(this.wasm.exports.memory.buffer);
-      return array.subarray(index/4, index/4 + count);
-    }
-    return null;
+    if (!this.initialized) return null;
+    let array = new Float32Array(this.wasm.exports.memory.buffer);
+    return array.subarray(index/4, index/4 + count);
   }
 
   memory_i(index, count) {
-    if (this.initialized) {
-      let array = new Uint32Array(this.wasm.exports.memory.buffer);
-      return array.subarray(index/4, index/4 + count)
-    }
+    if (!this.initialized) return;
+    let array = new Uint32Array(this.wasm.exports.memory.buffer);
+    return array.subarray(index/4, index/4 + count);
   }
 
   clone_memory(index, size) {
-    if (this.initialized)
-      return this.wasm.exports.memory.buffer.slice(index, size);
-    return null;
+    if (!this.initialized) return null;
+    return this.wasm.exports.memory.buffer.slice(index, size);
   }
 
   str(index, size) {
@@ -130,6 +124,7 @@ class Game {
     }
 
     canvas_resize();
+    window.addEventListener("ready", canvas_resize);
     window.addEventListener("resize", canvas_resize);
 
     game.gl.canvas.addEventListener('contextmenu', (e) => {

@@ -75,6 +75,13 @@ typedef enum
   SDL_KMOD_RESERVED = SDL_KMOD_SCROLL /* This is for source-level compatibility with SDL 2.0.0. */
 } SDL_Keymod;
 
+typedef enum SDL_AppResult
+{
+    SDL_APP_CONTINUE,   /**< Value that requests that the app continue from the main callbacks. */
+    SDL_APP_SUCCESS,    /**< Value that requests termination with success from the main callbacks. */
+    SDL_APP_FAILURE     /**< Value that requests termination with error from the main callbacks. */
+} SDL_AppResult;
+
 typedef struct SDL_Keysym
 {
   //SDL_Scancode scancode;      /**< SDL physical key code - see ::SDL_Scancode for details */

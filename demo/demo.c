@@ -25,7 +25,7 @@
 //#define SDL_MAIN_USE_CALLBACKS
 //#include "SDL3/SDL_main.h"
 
-static Game game;
+Game game;
 
 #define GAME_ON 1
 
@@ -102,9 +102,15 @@ void export(wasm_preload) (uint w, uint h) {
   model_build(&model_frame);
 
   game.shaders.basic = shader_new(S("basic"));
-  game.shaders.light2 = shader_new_load(S("light"));
+  game.shaders.light = shader_new_load(S("light"));
   game.shaders.frame = shader_new_load(S("frame"));
   game.shaders.warhol = shader_new_load(S("warhol"));
+
+
+  game.textures.render_target = rt_new(2, (texture_format_t[]) {
+    TF_RGBA_8, TF_RGBA_8
+  });
+  rt_build(game.textures.render_target, windim);
 }
 
 static void cheesy_loading_animation(float dt) {
@@ -137,7 +143,7 @@ int export(wasm_load) (int await_count, float dt) {
 
   #if GAME_ON == 1
 
-  shader_build(game.shaders.light2);
+  shader_build(game.shaders.light);
   shader_build(game.shaders.frame);
   shader_build(game.shaders.warhol);
 
@@ -188,11 +194,6 @@ int export(wasm_load) (int await_count, float dt) {
   // Load the first game level
   level_switch(&game, game.level);
 
-  game.textures.render_target = rt_new(2, (texture_format_t[]) {
-    TF_RGBA_8, TF_RGBA_8
-  });
-  rt_build(game.textures.render_target, v2i(400, 400));
-
   #endif
 
   return 1;
@@ -200,7 +201,7 @@ int export(wasm_load) (int await_count, float dt) {
 
 void export(wasm_update) (float dt) {
   UNUSED(dt);
-  process_system_events(&game);
+  //process_system_events(&game);
   level_switch_check(&game);
   game_update(&game, dt);
 }
@@ -225,41 +226,34 @@ void export(wasm_render) () {
 
 #ifndef __WASM__
 
+#define SDL_MAIN_USE_CALLBACKS
+#include "SDL3/SDL_main.h"
+
 bool game_continue = true;
 bool game_loaded = false;
 
-/*
+//*
+
+struct {
+  SDL_Window* window;
+  SDL_GLContext gl_context;
+} sdl_info = { 0 };
+
 SDL_AppResult SDL_AppInit(void** app_state, int argc, char* argv[]) {
-  return SDL_APP_CONTINUE;
-}
-
-SDL_AppResult SDL_AppIterate(void* app_state) {
-  return SDL_APP_CONTINUE;
-}
-
-SDL_AppResult SDL_AppEvent(void* app_state, SDL_Event* event) {
-  return SDL_APP_CONTINUE;
-}
-
-void SDL_AppQuit(void* app_state, SDL_AppResult result) {
-
-}
-//*/
-
-int main(int argc, char* argv[]) {
+  UNUSED(app_state);
   UNUSED(argc);
   UNUSED(argv);
 
   str_write("Here we go!");
 
   SDL_WindowFlags flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
-  SDL_Window* window = SDL_CreateWindow("Window Title", 400, 400, flags);
+  sdl_info.window = SDL_CreateWindow("Window Title", 400, 400, flags);
 
-  if (!window) goto close_window;
+  if (!sdl_info.window) return SDL_APP_FAILURE;
 
-  SDL_GLContext ctx = SDL_GL_CreateContext(window);
+  sdl_info.gl_context = SDL_GL_CreateContext(sdl_info.window);
 
-  if (!ctx) goto close_gl_context;
+  if (!sdl_info.gl_context) return SDL_APP_FAILURE;
 
   glClearColor(0.2f, 0.2f, 0.2f, 1);
   glClearDepth(1);
@@ -269,34 +263,54 @@ int main(int argc, char* argv[]) {
 
   wasm_preload(400, 400);
 
-  while (game_continue) {
-    float dt = 0.016f;
+  return SDL_APP_CONTINUE;
+}
 
-    if (!game_loaded) {
-      process_system_events(&game);
+SDL_AppResult SDL_AppIterate(void* app_state) {
+  UNUSED(app_state);
 
-      if (wasm_load(0, dt)) {
-        str_write("Loaded");
-        game_loaded = true;
-      }
+  if (!game_continue) {
+    return SDL_APP_SUCCESS;
+  }
 
-    } else {
-      wasm_update(dt);
-      wasm_render();
+  float dt = 0.016f;
+
+  if (!game_loaded) {
+    if (wasm_load(0, dt)) {
+      str_write("Loaded");
+      game_loaded = true;
     }
 
-    SDL_GL_SwapWindow(window);
+    return SDL_APP_CONTINUE;
   }
+
+  wasm_update(dt);
+  wasm_render();
+
+  SDL_GL_SwapWindow(sdl_info.window);
+
+  return SDL_APP_CONTINUE;
+}
+
+SDL_AppResult SDL_AppEvent(void* app_state, SDL_Event* event) {
+  UNUSED(app_state);
+  return process_system_event(&game, event);
+}
+
+void SDL_AppQuit(void* app_state, SDL_AppResult result) {
+  UNUSED(app_state);
+  UNUSED(result);
 
   fflush(stdout);
 
-  close_gl_context:
-  SDL_GL_DestroyContext(ctx);
+  if (sdl_info.gl_context) {
+    SDL_GL_DestroyContext(sdl_info.gl_context);
+  }
 
-  close_window:
-  SDL_DestroyWindow(window);
-
-  return 0;
+  if (sdl_info.window) {
+    SDL_DestroyWindow(sdl_info.window);
+  }
 }
+//*/
 
 #endif

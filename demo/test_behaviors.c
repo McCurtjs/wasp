@@ -87,7 +87,7 @@ void render_debug(Entity* e, Game* game) {
 }
 
 void render_phong(Entity* e, Game* game) {
-  Shader shader = game->shaders.light2;
+  Shader shader = game->shaders.light;
   shader_bind(shader);
 
   int loc_pvm = shader_uniform_loc(shader, "projViewMod");
