@@ -2,5 +2,7 @@ build
 web/test.wasm
 web/game.wasm
 web/Wasp_demo.exe
+web/res/models
+web/res/textures
 .vscode
 .vs
