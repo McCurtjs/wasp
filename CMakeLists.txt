@@ -47,22 +47,28 @@ target_sources(Wasp PRIVATE
   src/camera.c
   src/draw.c
   src/file.c
+  src/game.c
   src/image.c
   src/model.c
   src/render_target.c
   src/shader.c
+  src/system_events.c
   src/texture.c
   src/wasm.c # rename to bridge.c?
   include/camera.h
   include/draw.h
+  include/entity.h
   include/file.h
+  include/game.h
   include/gl.h
   include/image.h
   include/model.h
   include/render_target.h
   include/shader.h
+  include/system_events.h
   include/texture.h
   include/wasm.h
+  include/wasp.h
 )
 
 compile_opts(Wasp)
@@ -117,16 +123,12 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     )
 
     target_sources(Wasp_demo PRIVATE
+      src/native/main.c
       demo/demo.c
-      demo/game.c
       demo/level_test.c
       demo/levels.c
-      demo/system_events.c
       demo/test_behaviors.c
-      demo/entity.h
-      demo/game.h
       demo/levels.h
-      demo/system_events.h
       demo/test_behaviors.h
     )
 

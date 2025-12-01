@@ -8,6 +8,7 @@ import { wasm_import_image } from "./bind/wasm_image.js";
 class Game {
 
   constructor() {
+    this.handle = 0;
     this.wasm = null; // wasm instance
     this.gl = null;
     this.canvas = null; // html canvas element (not gl.canvas!)
@@ -68,7 +69,6 @@ class Game {
     await this.initialize_wasm(wasm_filename);
     if (this.tests_only) return;
     this.initialize_webgl();
-    this.initialize_window_events();
   }
 
   async initialize_wasm(wasm_filename) {

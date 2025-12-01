@@ -26,15 +26,15 @@
 
 #include "gl.h"
 
-const static GLenum _rt_formats_internal[] = {
+static const GLenum _rt_formats_internal[] = {
   GL_RGB8, GL_RGBA8, GL_RGBA16F, GL_RGB10_A2
 };
 
-const static GLenum _rt_formats[] = {
+static const GLenum _rt_formats[] = {
   GL_RGB, GL_RGBA, GL_RGBA, GL_RGBA
 };
 
-const static GLenum _rt_format_type[] = {
+static const GLenum _rt_format_type[] = {
   GL_UNSIGNED_BYTE, GL_UNSIGNED_BYTE, GL_FLOAT, GL_FLOAT
 };
 

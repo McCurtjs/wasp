@@ -51,11 +51,11 @@ typedef struct RenderTarget_Internal {
   RenderTarget_Internal* rt = (RenderTarget_Internal*)(rt_in); \
   assert(rt)
 
-const static GLenum _rt_depth_formats[] = {
+static const GLenum _rt_depth_formats[] = {
   0, GL_DEPTH_COMPONENT32F, GL_DEPTH24_STENCIL8
 };
 
-const static GLenum _rt_depth_attachments[] = {
+static const GLenum _rt_depth_attachments[] = {
   0, GL_DEPTH_ATTACHMENT, GL_DEPTH_STENCIL_ATTACHMENT
 };
 

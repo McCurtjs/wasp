@@ -4,9 +4,9 @@
 #include <stdlib.h>
 #include <ctype.h>
 
-#include "../demo/system_events.h"
+#include "system_events.h"
 
-extern Game game;
+extern Game game_singleton;
 
 void export(wasm_push_window_event) (uint event_type, int x, int y) {
   SDL_WindowEvent event = {
@@ -16,7 +16,7 @@ void export(wasm_push_window_event) (uint event_type, int x, int y) {
     .data2 = y,
   };
 
-  process_system_event(&game, &event);
+  process_system_event(&game_singleton, &event);
 }
 
 void export(wasm_push_mouse_button_event) (
@@ -32,7 +32,7 @@ void export(wasm_push_mouse_button_event) (
     .x = x, .y = y
   };
 
-  process_system_event(&game, &event);
+  process_system_event(&game_singleton, &event);
 }
 
 void export(wasm_push_mouse_motion_event) (
@@ -47,7 +47,7 @@ void export(wasm_push_mouse_motion_event) (
     .yrel = yrel
   };
 
-  process_system_event(&game, &event);
+  process_system_event(&game_singleton, &event);
 }
 
 void export(wasm_push_keyboard_event) (
@@ -60,5 +60,5 @@ void export(wasm_push_keyboard_event) (
     .keysym = { .sym = tolower(key), .mod = mod }
   };
 
-  process_system_event(&game, &event);
+  process_system_event(&game_singleton, &event);
 }

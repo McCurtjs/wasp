@@ -22,10 +22,12 @@
 #include "test_behaviors.h"
 #include "render_target.h"
 
+#include "levels.h"
+
+#include "wasp.h"
+
 //#define SDL_MAIN_USE_CALLBACKS
 //#include "SDL3/SDL_main.h"
-
-Game game;
 
 #define GAME_ON 1
 
@@ -56,7 +58,12 @@ int export(canary) (int _) {
 
 static Model model_frame = { .type = MODEL_FRAME };// { .type = MODEL_FRAME };
 
-void export(wasm_preload) (uint w, uint h) {
+void wasp_init(app_defaults_t* game) {
+  game->window = v2i(1024, 768);
+  game->title = "WASP Demo";
+}
+
+bool export(wasp_preload) (Game* game) {
   #if GAME_ON == 1
   //file_model_test = file_new(S("./res/models/test.obj"));
   file_model_gear = file_new(S("./res/models/gear.obj"));
@@ -67,75 +74,49 @@ void export(wasm_preload) (uint w, uint h) {
   image_tiles = img_load(S("./res/textures/tiles.png"));
   #endif
 
-  vec2i windim = v2i(w, h);
-  game = (Game) {
-    .window = windim,
-    .camera = {
-      .pos = v4f(0, 0, 60, 1),
-      .front = v4front,
-      .up = v4y,
-      .persp = {d2r(60), i2aspect(windim), 0.1f, 500}
-      //.ortho = {-6 * i2aspect(windim), 6 * i2aspect(windim), 6, -6, 0.1, 500}
-    },
-    .target = v3origin,
-    .light_pos = v4f(4, 3, 5, 1),
-    .input.mapping.keys = {'w', 's', 'a', 'd', 'c', 'r',
-      /* // Attack button, useful on F for testing
-      'f',
-      /*/
-      SDLK_LEFT, // kick button
-      //*/
-      16, // shift keky, for editor
-      'p', // restart level
-      // Level Select
-      '1',
-    },
-    .level = 0,
-  };
-  game_init(&game);
-  camera_build_perspective(&game.camera);
+  camera_build_perspective(&game->camera);
   //camera_build_orthographic(&game.camera);
 
   // load this first since it's the loading screen spinner
-  game.models.color_cube.type = MODEL_CUBE_COLOR;
-  model_build(&game.models.color_cube);
+  game->models.color_cube.type = MODEL_CUBE_COLOR;
+  model_build(&game->models.color_cube);
   model_build(&model_frame);
 
-  game.shaders.basic = shader_new(S("basic"));
-  game.shaders.light = shader_new_load(S("light"));
-  game.shaders.frame = shader_new_load(S("frame"));
-  game.shaders.warhol = shader_new_load(S("warhol"));
+  game->shaders.basic = shader_new(S("basic"));
+  game->shaders.light = shader_new_load(S("light"));
+  game->shaders.frame = shader_new_load(S("frame"));
+  game->shaders.warhol = shader_new_load(S("warhol"));
 
-
-  game.textures.render_target = rt_new(2, (texture_format_t[]) {
+  game->textures.render_target = rt_new(2, (texture_format_t[]) {
     TF_RGBA_8, TF_RGBA_8
   });
-  rt_build(game.textures.render_target, windim);
+  rt_build(game->textures.render_target, game->window);
+  return true;
 }
 
-static void cheesy_loading_animation(float dt) {
+static void cheesy_loading_animation(Game* game, float dt) {
   static float cubespin = 0;
 
   rt_bind_default();
 
-  mat4 projview = camera_projection_view(&game.camera);
+  mat4 projview = camera_projection_view(&game->camera);
 
-  shader_bind(game.shaders.basic);
-  int loc_pvm = shader_uniform_loc(game.shaders.basic, "projViewMod");
+  shader_bind(game->shaders.basic);
+  int loc_pvm = shader_uniform_loc(game->shaders.basic, "projViewMod");
 
   mat4 model = m4translation(v3f(0, 0, 0));
   model = m4mul(model, m4rotation(v3norm(v3f(1.f, 1.5f, -.7f)), cubespin));
   model = m4mul(model, m4rotation(v3norm(v3f(-4.f, 1.5f, 1.f)), cubespin/3.6f));
 
   glUniformMatrix4fv(loc_pvm, 1, 0, m4mul(projview, model).f);
-  model_render(&game.models.color_cube);
+  model_render(&game->models.color_cube);
   cubespin += 2 * dt;
 }
 
-int export(wasm_load) (int await_count, float dt) {
+bool export(wasp_load) (Game* game, int await_count, float dt) {
 
   if (await_count || !GAME_ON) {
-    cheesy_loading_animation(dt);
+    cheesy_loading_animation(game, dt);
     return 0;
   };
 
@@ -143,18 +124,18 @@ int export(wasm_load) (int await_count, float dt) {
 
   #if GAME_ON == 1
 
-  shader_build(game.shaders.light);
-  shader_build(game.shaders.frame);
-  shader_build(game.shaders.warhol);
+  shader_build(game->shaders.light);
+  shader_build(game->shaders.frame);
+  shader_build(game->shaders.warhol);
 
   //model_load_obj(&game.models.level_test, file_model_test);
-  model_load_obj(&game.models.gear, file_model_gear);
+  model_load_obj(&game->models.gear, file_model_gear);
   //model_load_obj(&game.models.level_1, &file_model_level_1);
 
   // Build textures from async data
-  game.textures.crate = tex_from_image(image_crate);
-  game.textures.tiles = tex_from_image(image_tiles);
-  game.textures.brass = tex_from_image(image_brass);
+  game->textures.crate = tex_from_image(image_crate);
+  game->textures.tiles = tex_from_image(image_tiles);
+  game->textures.brass = tex_from_image(image_brass);
   //texture_build_from_image(&game.textures.level, &image_level);
   //texture_build_from_image(&game.textures.player, &image_anim_test);
 
@@ -169,148 +150,59 @@ int export(wasm_load) (int await_count, float dt) {
   //image_delete(&image_anim_test);
 
   // Set up game models
-  game.models.grid.grid = (Model_Grid) {
+  game->models.grid.grid = (Model_Grid) {
     .type = MODEL_GRID,
     .basis = {v3x, v3y, v3z},
     .primary = {0, 2},
     .extent = 100
   };
 
-  game.models.player.sprites = (Model_Sprites) {
+  game->models.player.sprites = (Model_Sprites) {
     .type = MODEL_SPRITES,
     .grid = {.w = 16, .h = 16},
   };
 
-  model_build(&game.models.player);
-  model_build(&game.models.level_test);
+  model_build(&game->models.player);
+  model_build(&game->models.level_test);
   //model_build(&game.models.level_1);
-  model_build(&game.models.gear);
-  model_grid_set_default(&game.models.gizmo, -2);
-  game.models.box.type = MODEL_CUBE;
-  model_build(&game.models.box);
-  model_build(&game.models.grid);
-  model_build(&game.models.gizmo);
+  model_build(&game->models.gear);
+  model_grid_set_default(&game->models.gizmo, -2);
+  game->models.box.type = MODEL_CUBE;
+  model_build(&game->models.box);
+  model_build(&game->models.grid);
+  model_build(&game->models.gizmo);
 
   // Load the first game level
-  level_switch(&game, game.level);
+  level_switch(game, game->level);
 
   #endif
 
   return 1;
 }
 
-void export(wasm_update) (float dt) {
+bool export(wasp_update) (Game* game, float dt) {
   UNUSED(dt);
   //process_system_events(&game);
-  level_switch_check(&game);
-  game_update(&game, dt);
+  level_switch_check(game);
+  game_update(game, dt);
+
+  return true;
 }
 
-void export(wasm_render) () {
-  rt_bind(game.textures.render_target);
-  game_render(&game);
+void export(wasp_render) (Game* game) {
+  rt_bind(game->textures.render_target);
+  game_render(game);
 
   rt_bind_default();
   /*
   shader_program_use(&shader_frame);
   tex_apply(game.textures.render_target->textures[0], 0, 0);
   /*/
-  shader_bind(game.shaders.warhol);
-  int tex_sampler = shader_uniform_loc(game.shaders.warhol, "texSamp");
-  int norm_sampler = shader_uniform_loc(game.shaders.warhol, "normSamp");
-  tex_apply(game.textures.render_target->textures[0], 0, tex_sampler);
-  tex_apply(game.textures.render_target->textures[1], 1, norm_sampler);
+  shader_bind(game->shaders.warhol);
+  int tex_sampler = shader_uniform_loc(game->shaders.warhol, "texSamp");
+  int norm_sampler = shader_uniform_loc(game->shaders.warhol, "normSamp");
+  tex_apply(game->textures.render_target->textures[0], 0, tex_sampler);
+  tex_apply(game->textures.render_target->textures[1], 1, norm_sampler);
   //*/
   model_render(&model_frame);
 }
-
-#ifndef __WASM__
-
-#define SDL_MAIN_USE_CALLBACKS
-#include "SDL3/SDL_main.h"
-
-bool game_continue = true;
-bool game_loaded = false;
-
-//*
-
-struct {
-  SDL_Window* window;
-  SDL_GLContext gl_context;
-} sdl_info = { 0 };
-
-SDL_AppResult SDL_AppInit(void** app_state, int argc, char* argv[]) {
-  UNUSED(app_state);
-  UNUSED(argc);
-  UNUSED(argv);
-
-  str_write("Here we go!");
-
-  SDL_WindowFlags flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
-  sdl_info.window = SDL_CreateWindow("Window Title", 400, 400, flags);
-
-  if (!sdl_info.window) return SDL_APP_FAILURE;
-
-  sdl_info.gl_context = SDL_GL_CreateContext(sdl_info.window);
-
-  if (!sdl_info.gl_context) return SDL_APP_FAILURE;
-
-  glClearColor(0.2f, 0.2f, 0.2f, 1);
-  glClearDepth(1);
-  glEnable(GL_DEPTH_TEST);
-  glEnable(GL_CULL_FACE);
-  glDepthFunc(GL_LEQUAL);
-
-  wasm_preload(400, 400);
-
-  return SDL_APP_CONTINUE;
-}
-
-SDL_AppResult SDL_AppIterate(void* app_state) {
-  UNUSED(app_state);
-
-  if (!game_continue) {
-    return SDL_APP_SUCCESS;
-  }
-
-  float dt = 0.016f;
-
-  if (!game_loaded) {
-    if (wasm_load(0, dt)) {
-      str_write("Loaded");
-      game_loaded = true;
-    }
-
-    return SDL_APP_CONTINUE;
-  }
-
-  wasm_update(dt);
-  wasm_render();
-
-  SDL_GL_SwapWindow(sdl_info.window);
-
-  return SDL_APP_CONTINUE;
-}
-
-SDL_AppResult SDL_AppEvent(void* app_state, SDL_Event* event) {
-  UNUSED(app_state);
-  return process_system_event(&game, event);
-}
-
-void SDL_AppQuit(void* app_state, SDL_AppResult result) {
-  UNUSED(app_state);
-  UNUSED(result);
-
-  fflush(stdout);
-
-  if (sdl_info.gl_context) {
-    SDL_GL_DestroyContext(sdl_info.gl_context);
-  }
-
-  if (sdl_info.window) {
-    SDL_DestroyWindow(sdl_info.window);
-  }
-}
-//*/
-
-#endif

@@ -21,7 +21,7 @@ void level_switch(Game* game, uint level) {
   if (level >= LEVEL_COUNT) return;
   if (!game_levels[level]) return;
   game_cleanup(game);
-  game_init(game);
+  game_reset(game);
   game_levels[level](game);
   game->level = level;
 }

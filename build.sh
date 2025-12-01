@@ -261,7 +261,8 @@ elif [ "$build_target" = "gcc" ]; then
 # CMake MinGW on Windows with GCC
 elif [ "$build_target" = "mingw" ]; then
 
-  cmake -G "MinGW Makefiles" -S . -B build/mingw/$build_type -DCMAKE_BUILD_TYPE=$build_type
+  cmake -G "MinGW Makefiles" -S . -B build/mingw/$build_type \
+    -DCMAKE_BUILD_TYPE=$build_type -DCMAKE_C_COMPILER=gcc
   if [ "$?" != "0" ]; then
     exit
   fi

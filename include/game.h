@@ -8,8 +8,6 @@
 #include "texture.h"
 #include "render_target.h"
 
-#include "levels.h"
-
 #define con_type int
 #include "span.h"
 #include "array.h"
@@ -42,7 +40,7 @@ typedef struct Game_Textures {
   RenderTarget render_target;
 } Game_Textures;
 
-#define game_key_count (9 + LEVEL_COUNT)
+#define game_key_count 10
 #define game_mouse_button_count 3
 #define game_button_input_count (game_key_count + game_mouse_button_count)
 
@@ -67,7 +65,7 @@ typedef struct Game_Buttons {
 
           // level skip buttons
           int level_reload;
-          int levels[LEVEL_COUNT];
+          int levels[1];
         };
       };
       // mouse
@@ -96,8 +94,14 @@ typedef struct Game_Inputs {
   Game_Mouse   mouse;
 } Game_Inputs;
 
+typedef struct app_defaults_t {
+  vec2i window;
+  const char* title;
+} app_defaults_t;
+
 typedef struct Game {
   vec2i window;
+  const char* title;
   Camera camera;
 
   vec3 target;
@@ -111,11 +115,14 @@ typedef struct Game {
 
   Array_entity entities;
 
-  uint    level;
+  uint level;
 
 } Game;
 
-void game_init(Game* game);
+Game* game_init(int window_width, int window_height);
+
+void game_reset(Game* game);
+
 void game_add_entity(Game* game, const Entity* entity);
 
 void game_update(Game* game, float dt);

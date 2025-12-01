@@ -2,10 +2,9 @@ import { Game } from "./game.js";
 
 var game = null;
 
-
 function renderTimer(now) {
   const { await_count, gl } = game;
-  const { wasm_load, wasm_update, wasm_render } = game.wasm.exports;
+  const { wasp_load, wasp_update, wasp_render } = game.wasm.exports;
   const ms = now - game.frame_time; // milliseconds per frame
   const dt = ms / 1000; // seconds per frame
   const fps = 1000 / ms; // frames per second
@@ -17,12 +16,12 @@ function renderTimer(now) {
 
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); // shouldn't be needed
   if (!game.ready) {
-    if (wasm_load(await_count, dt)) {
+    if (wasp_load(game.handle, await_count, dt)) {
       game.ready = true;
     }
   } else {
-    wasm_update(dt);
-    wasm_render();
+    wasp_update(game.handle, dt);
+    wasp_render(game.handle);
 
     let err = game.gl.getError();
     if (err != game.gl.NO_ERROR) {
@@ -40,8 +39,11 @@ window.onload = async() => {
   if (game.tests_only) {
     game.wasm.exports.wasm_tests();
   } else {
-    game.wasm.exports.wasm_preload(game.gl.canvas.width, game.gl.canvas.height);
-
-    requestAnimationFrame(renderTimer);
+    let canvas = game.gl.canvas;
+    game.handle = game.wasm.exports.game_init(canvas.width, canvas.height);
+    if (game.wasm.exports.wasp_preload(game.handle)) {
+      game.initialize_window_events();
+      requestAnimationFrame(renderTimer);
+    }
   }
 }
