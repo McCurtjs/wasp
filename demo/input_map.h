@@ -1,0 +1,21 @@
+#ifndef WASP_DEMO_INPUT_MAP_H_
+#define WASP_DEMO_INPUT_MAP_H_
+
+enum demo_key_t {
+  IN_JUMP,
+  IN_LEFT,
+  IN_DOWN,
+  IN_RIGHT,
+  IN_KICK,
+  IN_REWIND,
+  IN_CAMERA_LOCK,
+
+  // editor only
+  IN_CLICK,
+  IN_ROTATE_LIGHT,
+  IN_SHIFT,
+  IN_RELOAD,
+  IN_LEVEL_1,
+};
+
+#endif

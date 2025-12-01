@@ -23,6 +23,7 @@
 #include "render_target.h"
 
 #include "levels.h"
+#include "input_map.h"
 
 #include "wasp.h"
 
@@ -58,6 +59,21 @@ int export(canary) (int _) {
 
 static Model model_frame = { .type = MODEL_FRAME };// { .type = MODEL_FRAME };
 
+static keybind_t input_map[] = {
+  { .name = IN_JUMP, .key = 'w' },
+  { .name = IN_LEFT, .key = 'a' },
+  { .name = IN_DOWN, .key = 's' },
+  { .name = IN_RIGHT, .key = 'd' },
+  { .name = IN_KICK, .key = SDLK_LEFT },
+  { .name = IN_REWIND, .key = 'd' },
+  { .name = IN_CAMERA_LOCK, .key = 'c' },
+  { .name = IN_CLICK, .key = SDL_BUTTON_LEFT, .mouse = true },
+  { .name = IN_ROTATE_LIGHT, .key = SDL_BUTTON_RIGHT, .mouse = true },
+  { .name = IN_SHIFT, .key = 16 },
+  { .name = IN_RELOAD, .key = 'p' },
+  { .name = IN_LEVEL_1, .key = '1' },
+};
+
 void wasp_init(app_defaults_t* game) {
   game->window = v2i(1024, 768);
   game->title = "WASP Demo";
@@ -91,6 +107,9 @@ bool export(wasp_preload) (Game* game) {
     TF_RGBA_8, TF_RGBA_8
   });
   rt_build(game->textures.render_target, game->window);
+
+  game->inputs = span_keymap(input_map, ARRAY_COUNT(input_map));
+
   return true;
 }
 

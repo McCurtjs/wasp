@@ -18,18 +18,21 @@ Game* export(game_init) (int x, int y) {
     },
     .target = v3origin,
     .light_pos = v4f(4, 3, 5, 1),
-    .input.mapping.keys = {'w', 's', 'a', 'd', 'c', 'r',
-    /* // Attack button, useful on F for testing
-    'f',
-    /*/
-    0x40000050u, // SDLK_LEFT, // kick button
-    //*/
-    16, // shift keky, for editor
-    'p', // restart level
-    // Level Select
-    '1',
-  },
-  .level = 0,
+    .input.mapping = {
+      .forward = 'w',
+      .back = 's',
+      .left = 'a',
+      .right = 'd',
+      .camera_lock = 'c',
+      .run_replay = 'r',
+      .kick = 0x40000050u, // SDLK_LEFT
+      .shift = 16, // shift key, for editor
+
+      // level skip buttons
+      .level_reload = 'p',
+      .levels = { '1' },
+    },
+    .level = 0,
   };
 
   game_reset(&game_singleton);
@@ -50,6 +53,12 @@ void game_update(Game* game, float dt) {
     if (entity->behavior) {
       entity->behavior(entity, game, dt);
     }
+  }
+
+  // Reset button triggers (only one frame on trigger/release)
+  keybind_t* span_foreach(keybind, game->inputs) {
+    keybind->triggered = false;
+    keybind->released = false;
   }
 
   // reset button triggers (only one frame on trigger)
@@ -79,4 +88,31 @@ void game_cleanup(Game* game) {
   }
 
   arr_entity_delete(&game->entities);
+}
+
+bool input_triggered(Game* game, int input_name) {
+  keybind_t* span_foreach(keybind, game->inputs) {
+    if (keybind->name == input_name && keybind->triggered) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool input_pressed(Game* game, int input_name) {
+  keybind_t* span_foreach(keybind, game->inputs) {
+    if (keybind->name == input_name && keybind->pressed) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool input_released(Game* game, int input_name) {
+  keybind_t* span_foreach(keybind, game->inputs) {
+    if (keybind->name == input_name && keybind->released) {
+      return true;
+    }
+  }
+  return false;
 }

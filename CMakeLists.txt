@@ -128,6 +128,7 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
       demo/level_test.c
       demo/levels.c
       demo/test_behaviors.c
+      demo/input_map.h
       demo/levels.h
       demo/test_behaviors.h
     )

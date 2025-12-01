@@ -44,6 +44,21 @@ typedef struct Game_Textures {
 #define game_mouse_button_count 3
 #define game_button_input_count (game_key_count + game_mouse_button_count)
 
+typedef struct keybind_t {
+  int name; // pair with an enum value for the key name
+  int key;
+  bool mouse;
+  bool pressed;
+  bool triggered;
+  bool released;
+} keybind_t;
+
+#define con_type keybind_t
+#define con_prefix keymap
+#include "span.h"
+#undef con_type
+#undef con_prefix
+
 // TODO: should have a generic buttons poller separate from the keymapping
 // TODO: both should use a hashmap instead of these hardcoded values
 typedef struct Game_Buttons {
@@ -109,6 +124,8 @@ typedef struct Game {
 
   Game_Inputs input;
 
+  span_keymap_t inputs;
+
   Game_Shaders shaders;
   Game_Models models;
   Game_Textures textures;
@@ -128,5 +145,9 @@ void game_add_entity(Game* game, const Entity* entity);
 void game_update(Game* game, float dt);
 void game_render(Game* game);
 void game_cleanup(Game* game);
+
+bool input_triggered(Game* game, int input_name);
+bool input_pressed(Game* game, int input_name);
+bool input_released(Game* game, int input_name);
 
 #endif

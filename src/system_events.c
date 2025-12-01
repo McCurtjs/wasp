@@ -24,6 +24,14 @@ static uint _process_window_resize(Game* game, SDL_WindowEvent* window) {
 
 static uint _process_mouse_button_down(Game* game, SDL_MouseButtonEvent* button) {
 
+  keybind_t* span_foreach(keybind, game->inputs) {
+    if (keybind->mouse && keybind->key == button->button && !keybind->pressed) {
+      keybind->triggered = true;
+      keybind->pressed = true;
+    }
+  }
+
+
   if (button->button & SDL_BUTTON_LMASK) {
     game->input.pressed.lmb = TRUE;
     game->input.triggered.lmb = TRUE;
@@ -43,6 +51,16 @@ static uint _process_mouse_button_down(Game* game, SDL_MouseButtonEvent* button)
 }
 
 static uint _process_mouse_button_up(Game* game, SDL_MouseButtonEvent* button) {
+
+  keybind_t* span_foreach(keybind, game->inputs) {
+    if (keybind->mouse && keybind->key == button->button) {
+      keybind->pressed = false;
+      keybind->released = true;
+    }
+  }
+
+
+
   // web uses a button id instead of a mask for up events,
   // but it doesn't even match the mask index -_-
   if (button->button & SDL_BUTTON_LMASK) {
@@ -76,6 +94,20 @@ static uint _process_mouse_motion(Game* game, SDL_MouseMotionEvent* motion) {
 static uint _process_key_down(Game* game, SDL_KeyboardEvent* key) {
   if (key->repeat) return SDL_APP_CONTINUE;
 
+  keybind_t* span_foreach(keybind, game->inputs) {
+    if (key->key == (uint)keybind->key && !keybind->mouse) {
+
+      // sometimes when getting a key-up event, it'll also send a
+      // "helpful" reminder that other keys are still down... avoid double
+      // triggering when that happens (makes the repeat check redundant,
+      // but at least that check intuitively makes sense)
+      if (keybind->pressed) continue;
+
+      keybind->triggered = true;
+      keybind->pressed = true;
+    }
+  }
+
   for (uint i = 0; i < game_key_count; ++i) {
     if (key->raw == game->input.mapping.keys[i]) {
 
@@ -94,6 +126,13 @@ static uint _process_key_down(Game* game, SDL_KeyboardEvent* key) {
 }
 
 static uint _process_key_up(Game* game, SDL_KeyboardEvent* key) {
+  keybind_t* span_foreach(keybind, game->inputs) {
+    if (key->key == (uint)keybind->key && !keybind->mouse) {
+      keybind->pressed = false;
+      keybind->released = true;
+    }
+  }
+
   for (uint i = 0; i < game_key_count; ++i) {
     if (key->raw == game->input.mapping.keys[i]) {
       game->input.pressed.keys[i] = FALSE;
