@@ -18,9 +18,9 @@ typedef struct {
 
 }* File;
 
-File    file_new(slice_t filename);
-long    file_read_length(File file);
-bool    file_read(File file);
-void    file_delete(File* file);
+File file_new(slice_t filename);
+long file_read_length(File file);
+bool file_read(File file);
+void file_delete(File* file);
 
 #endif

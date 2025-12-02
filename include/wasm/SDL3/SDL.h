@@ -1,11 +1,10 @@
 #ifndef _WASM_SDL_H_
 #define _WASM_SDL_H_
 
-typedef unsigned char Uint8;
-typedef unsigned short Uint16;
-typedef unsigned int Uint32;
-typedef unsigned long Uint64;
-typedef int Sint32;
+#include "SDL_stdinc.h"
+#include "SDL_scancode.h"
+#include "SDL_keycode.h"
+
 typedef Uint32 SDL_WindowID;
 
 typedef int SDL_bool;
@@ -39,42 +38,6 @@ typedef enum {
 #define SDL_BUTTON_X1MASK   SDL_BUTTON(SDL_BUTTON_X1)
 #define SDL_BUTTON_X2MASK   SDL_BUTTON(SDL_BUTTON_X2)
 
-// SDL has a different keymapping than web keycodes...
-#define SDLK_LEFT   37
-#define SDLK_UP     38
-#define SDLK_RIGHT  39
-#define SDLK_DOWN   40
-#define SDLK_HOME   36 // 61
-#define SDLK_EQUALS 187
-#define SDLK_MINUS  189
-
-/**
- * Enumeration of valid key mods (possibly OR'd together).
- */
-typedef enum
-{
-  SDL_KMOD_NONE = 0x0000,
-  SDL_KMOD_LSHIFT = 0x0001,
-  SDL_KMOD_RSHIFT = 0x0002,
-  SDL_KMOD_LCTRL = 0x0040,
-  SDL_KMOD_RCTRL = 0x0080,
-  SDL_KMOD_LALT = 0x0100,
-  SDL_KMOD_RALT = 0x0200,
-  SDL_KMOD_LGUI = 0x0400,
-  SDL_KMOD_RGUI = 0x0800,
-  SDL_KMOD_NUM = 0x1000,
-  SDL_KMOD_CAPS = 0x2000,
-  SDL_KMOD_MODE = 0x4000,
-  SDL_KMOD_SCROLL = 0x8000,
-
-  SDL_KMOD_CTRL = SDL_KMOD_LCTRL | SDL_KMOD_RCTRL,
-  SDL_KMOD_SHIFT = SDL_KMOD_LSHIFT | SDL_KMOD_RSHIFT,
-  SDL_KMOD_ALT = SDL_KMOD_LALT | SDL_KMOD_RALT,
-  SDL_KMOD_GUI = SDL_KMOD_LGUI | SDL_KMOD_RGUI,
-
-  SDL_KMOD_RESERVED = SDL_KMOD_SCROLL /* This is for source-level compatibility with SDL 2.0.0. */
-} SDL_Keymod;
-
 typedef enum SDL_AppResult
 {
     SDL_APP_CONTINUE,   /**< Value that requests that the app continue from the main callbacks. */
@@ -107,10 +70,11 @@ typedef struct SDL_WindowEvent
  */
 typedef struct SDL_KeyboardEvent
 {
-  Uint32 type;        /**< ::SDL_EVENT_KEY_DOWN or ::SDL_EVENT_KEY_UP */
-  Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
-  SDL_Keysym keysym;  /**< The key that was pressed or released */
-  Uint16 raw;         /**< The platform dependent scancode for this event */
+  Uint32 type;            /**< ::SDL_EVENT_KEY_DOWN or ::SDL_EVENT_KEY_UP */
+  Uint64 timestamp;       /**< In nanoseconds, populated using SDL_GetTicksNS() */
+  SDL_Keysym keysym;      /**< The key that was pressed or released */
+  SDL_Scancode scancode;  /**< SDL physical key code */
+  SDL_Keycode key;        /**< SDL virtual key code */
   bool down;
   bool repeat;
 } SDL_KeyboardEvent;

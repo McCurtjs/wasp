@@ -1,6 +1,7 @@
 #include "SDL3/SDL.h"
 #include "types.h"
 #include "wasm.h"
+#include "str.h"
 #include <stdlib.h>
 #include <ctype.h>
 
@@ -57,7 +58,7 @@ void export(wasm_push_keyboard_event) (
     .type = event_type,
     .down = event_type == SDL_EVENT_KEY_DOWN,
     .repeat = repeat,
-    .keysym = { .sym = tolower(key), .mod = mod }
+    .key = tolower(key),
   };
 
   process_system_event(&game_singleton, &event);

@@ -18,20 +18,6 @@ Game* export(game_init) (int x, int y) {
     },
     .target = v3origin,
     .light_pos = v4f(4, 3, 5, 1),
-    .input.mapping = {
-      .forward = 'w',
-      .back = 's',
-      .left = 'a',
-      .right = 'd',
-      .camera_lock = 'c',
-      .run_replay = 'r',
-      .kick = 0x40000050u, // SDLK_LEFT
-      .shift = 16, // shift key, for editor
-
-      // level skip buttons
-      .level_reload = 'p',
-      .levels = { '1' },
-    },
     .level = 0,
   };
 
@@ -49,22 +35,11 @@ void game_add_entity(Game* game, const Entity* entity) {
 }
 
 void game_update(Game* game, float dt) {
+  // Reset button triggers (only one frame on trigger/release)
   Entity* arr_foreach(entity, game->entities) {
     if (entity->behavior) {
       entity->behavior(entity, game, dt);
     }
-  }
-
-  // Reset button triggers (only one frame on trigger/release)
-  keybind_t* span_foreach(keybind, game->inputs) {
-    keybind->triggered = false;
-    keybind->released = false;
-  }
-
-  // reset button triggers (only one frame on trigger)
-  for (int i = 0; i < game_button_input_count; ++i) {
-    game->input.triggered.buttons[i] = FALSE;
-    game->input.released.buttons[i] = FALSE;
   }
 
   game->input.mouse.move = v2zero;
@@ -91,7 +66,7 @@ void game_cleanup(Game* game) {
 }
 
 bool input_triggered(Game* game, int input_name) {
-  keybind_t* span_foreach(keybind, game->inputs) {
+  keybind_t* span_foreach(keybind, game->input.keymap) {
     if (keybind->name == input_name && keybind->triggered) {
       return true;
     }
@@ -100,7 +75,7 @@ bool input_triggered(Game* game, int input_name) {
 }
 
 bool input_pressed(Game* game, int input_name) {
-  keybind_t* span_foreach(keybind, game->inputs) {
+  keybind_t* span_foreach(keybind, game->input.keymap) {
     if (keybind->name == input_name && keybind->pressed) {
       return true;
     }
@@ -109,7 +84,7 @@ bool input_pressed(Game* game, int input_name) {
 }
 
 bool input_released(Game* game, int input_name) {
-  keybind_t* span_foreach(keybind, game->inputs) {
+  keybind_t* span_foreach(keybind, game->input.keymap) {
     if (keybind->name == input_name && keybind->released) {
       return true;
     }

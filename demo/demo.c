@@ -108,7 +108,7 @@ bool export(wasp_preload) (Game* game) {
   });
   rt_build(game->textures.render_target, game->window);
 
-  game->inputs = span_keymap(input_map, ARRAY_COUNT(input_map));
+  game->input.keymap = span_keymap(input_map, ARRAY_COUNT(input_map));
 
   return true;
 }

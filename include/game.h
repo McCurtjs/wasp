@@ -59,55 +59,15 @@ typedef struct keybind_t {
 #undef con_type
 #undef con_prefix
 
-// TODO: should have a generic buttons poller separate from the keymapping
-// TODO: both should use a hashmap instead of these hardcoded values
-typedef struct Game_Buttons {
-  union {
-    int buttons[game_button_input_count];
-    struct {
-      // keyboard
-      union {
-        int keys[game_key_count];
-        struct {
-          int forward;
-          int back;
-          int left;
-          int right;
-          int camera_lock;
-          int run_replay;
-          int kick;
-          int shift;
-
-          // level skip buttons
-          int level_reload;
-          int levels[1];
-        };
-      };
-      // mouse
-      union {
-        int mouse[game_mouse_button_count];
-        struct {
-          int lmb;
-          int mmb;
-          int rmb;
-        };
-      };
-    };
-  };
-} Game_Buttons;
-
-typedef struct Game_Mouse {
+typedef struct input_mouse_t {
   vec2 pos;
   vec2 move;
-} Game_Mouse;
+} input_mouse_t;
 
-typedef struct Game_Inputs {
-  Game_Buttons mapping;
-  Game_Buttons pressed;
-  Game_Buttons triggered;
-  Game_Buttons released;
-  Game_Mouse   mouse;
-} Game_Inputs;
+typedef struct input_t {
+  span_keymap_t keymap;
+  input_mouse_t mouse;
+} input_t;
 
 typedef struct app_defaults_t {
   vec2i window;
@@ -122,9 +82,7 @@ typedef struct Game {
   vec3 target;
   vec4 light_pos;
 
-  Game_Inputs input;
-
-  span_keymap_t inputs;
+  input_t input;
 
   Game_Shaders shaders;
   Game_Models models;

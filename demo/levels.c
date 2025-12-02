@@ -1,15 +1,16 @@
 #include "levels.h"
 
 #include "game.h"
+#include "input_map.h"
 
 void level_switch_check(Game* game) {
-  if (game->input.triggered.level_reload) {
+  if (input_triggered(game, IN_RELOAD)) {
     level_switch(game, game->level);
     return;
   }
 
   for (uint i = 0; i < LEVEL_COUNT; ++i) {
-    if (game->input.triggered.levels[i]) {
+    if (input_triggered(game, IN_LEVEL_1)) {
       game->level = i;
       level_switch(game, i);
       return;

@@ -19,7 +19,7 @@ void behavior_test_camera(Entity* e, Game* game, float dt) {
     camera_orbit(&game->camera, game->target, angles.xy);
   }
 
-  if (input_pressed(game, IN_RELOAD)) { //game->input.pressed.rmb) {
+  if (input_pressed(game, IN_ROTATE_LIGHT)) { //game->input.pressed.rmb) {
     mat4 light_rotation = m4rotation(v3y, yrot);
     game->light_pos = mv4mul(light_rotation, game->light_pos);
   }

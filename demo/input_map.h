@@ -2,6 +2,8 @@
 #define WASP_DEMO_INPUT_MAP_H_
 
 enum demo_key_t {
+  IN_LEVEL_1 = 1,
+  LEVEL_COUNT,
   IN_JUMP,
   IN_LEFT,
   IN_DOWN,
@@ -15,7 +17,6 @@ enum demo_key_t {
   IN_ROTATE_LIGHT,
   IN_SHIFT,
   IN_RELOAD,
-  IN_LEVEL_1,
 };
 
 #endif
