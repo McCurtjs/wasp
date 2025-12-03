@@ -24,6 +24,7 @@ typedef struct Camera {
 
   mat4 projection;
   mat4 projview;
+  mat4 view;
 
 } Camera;
 
@@ -34,6 +35,7 @@ void camera_rotate_local(Camera* camera, vec3 euler);
 void camera_orbit(Camera* camera, vec3 center, vec2 euler);
 void camera_orbit_local(Camera* camera, vec3 center, vec3 euler);
 void camera_look_at(Camera* camera, vec3 target);
+mat4 camera_view(const Camera* camera);
 mat4 camera_projection_view(const Camera* camera);
 vec2 camera_screen_to_ndc(vec2i screen, vec2 screen_pos);
 vec3 camera_screen_to_ray(const Camera* camera, vec2i scr, vec2 screen_pos);

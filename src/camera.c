@@ -88,10 +88,13 @@ void camera_look_at(Camera* camera, vec3 target) {
   camera->front.xyz = v3norm(v3sub(target, camera->pos.xyz));
 }
 
-mat4 camera_projection_view(const Camera* camera) {
+mat4 camera_view(const Camera* camera) {
   vec3 target = v3add(camera->pos.xyz, camera->front.xyz);
-  mat4 view = camera_look(camera->pos.xyz, target, camera->up.xyz);
-  return m4mul(camera->projection, view);
+  return camera_look(camera->pos.xyz, target, camera->up.xyz);
+}
+
+mat4 camera_projection_view(const Camera* camera) {
+  return m4mul(camera->projection, camera_view(camera));
 }
 
 // Gets a vector from the camera pos in the direction of the cursor

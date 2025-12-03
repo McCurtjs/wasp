@@ -91,12 +91,14 @@ typedef struct Game {
   Array_entity entities;
 
   uint level;
+  bool should_exit;
 
 } Game;
 
 Game* game_init(int window_width, int window_height);
 
 void game_reset(Game* game);
+void game_quit(Game* game);
 
 void game_add_entity(Game* game, const Entity* entity);
 

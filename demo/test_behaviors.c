@@ -7,6 +7,8 @@
 #include "types.h"
 #include "draw.h"
 
+#define CAMERA_SPEED 9.0f
+
 void behavior_test_camera(Entity* e, Game* game, float dt) {
   UNUSED(e);
 
@@ -19,27 +21,39 @@ void behavior_test_camera(Entity* e, Game* game, float dt) {
     camera_orbit(&game->camera, game->target, angles.xy);
   }
 
+  float cam_speed = CAMERA_SPEED * dt;
+
+  if (input_pressed(game, IN_CLOSE)) {
+    game_quit(game);
+  }
+
   if (input_pressed(game, IN_ROTATE_LIGHT)) { //game->input.pressed.rmb) {
     mat4 light_rotation = m4rotation(v3y, yrot);
     game->light_pos = mv4mul(light_rotation, game->light_pos);
   }
 
   if (input_pressed(game, IN_JUMP)) //game->input.pressed.forward)
-    game->camera.pos.xyz = v3add(game->camera.pos.xyz, v3scale(game->camera.front.xyz, dt));
+    game->camera.pos.xyz = v3add(
+      game->camera.pos.xyz,
+      v3scale(game->camera.front.xyz, cam_speed)
+    );
 
   if (input_pressed(game, IN_DOWN)) //game->input.pressed.back)
-    game->camera.pos.xyz = v3add(game->camera.pos.xyz, v3scale(game->camera.front.xyz, -dt));
+    game->camera.pos.xyz = v3add(
+      game->camera.pos.xyz,
+      v3scale(game->camera.front.xyz, -cam_speed)
+    );
 
   if (input_pressed(game, IN_RIGHT)) { //game->input.pressed.right) {
     vec3 right = v3norm(v3cross(game->camera.front.xyz, game->camera.up.xyz));
-    right = v3scale(right, dt);
+    right = v3scale(right, cam_speed);
     game->camera.pos.xyz = v3add(game->camera.pos.xyz, right);
     game->target = v3add(game->target, right);
   }
 
   if (input_pressed(game, IN_LEFT)) { //game->input.pressed.left) {
     vec3 left = v3norm(v3cross(game->camera.front.xyz, game->camera.up.xyz));
-    left = v3scale(left, -dt);
+    left = v3scale(left, -cam_speed);
     game->camera.pos.xyz = v3add(game->camera.pos.xyz, left);
     game->target = v3add(game->target, left);
   }
@@ -98,9 +112,12 @@ void render_phong(Entity* e, Game* game) {
   int loc_camera_pos = shader_uniform_loc(shader, "cameraPos");
   int loc_use_vert_color = shader_uniform_loc(shader, "useVertexColor");
   int loc_sampler_tex = shader_uniform_loc(shader, "texSamp");
-  int loc_world = shader_uniform_loc(shader, "world");
+  int loc_tvm = shader_uniform_loc(shader, "itViewMod");
 
-  glUniformMatrix4fv(loc_pvm, 1, 0, m4mul(game->camera.projview, e->transform).f);
+  mat4 pvm = m4mul(game->camera.projview, e->transform);
+  mat4 itvm = m4mul(game->camera.view, e->transform);
+
+  glUniformMatrix4fv(loc_pvm, 1, 0, pvm.f);
   glUniform4fv(loc_light_pos, 1, game->light_pos.f);
   glUniform4fv(loc_camera_pos, 1, game->camera.pos.f);
 
@@ -110,7 +127,7 @@ void render_phong(Entity* e, Game* game) {
 
   tex_apply(e->texture, 0, loc_sampler_tex);
 
-  glUniformMatrix4fv(loc_world, 1, 0, e->transform.f);
+  glUniformMatrix4fv(loc_tvm, 1, 0, itvm.f);
   model_render(e->model);
 
   glBindTexture(GL_TEXTURE_2D, 0);

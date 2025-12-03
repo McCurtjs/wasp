@@ -54,6 +54,7 @@ void export(wasm_push_mouse_motion_event) (
 void export(wasm_push_keyboard_event) (
   uint event_type, int key, uint mod, uint repeat
 ) {
+  UNUSED(mod);
   SDL_KeyboardEvent event = {
     .type = event_type,
     .down = event_type == SDL_EVENT_KEY_DOWN,

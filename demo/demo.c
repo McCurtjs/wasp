@@ -60,6 +60,7 @@ int export(canary) (int _) {
 static Model model_frame = { .type = MODEL_FRAME };// { .type = MODEL_FRAME };
 
 static keybind_t input_map[] = {
+  { .name = IN_CLOSE, .key = SDLK_ESCAPE },
   { .name = IN_JUMP, .key = 'w' },
   { .name = IN_LEFT, .key = 'a' },
   { .name = IN_DOWN, .key = 's' },

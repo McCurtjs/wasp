@@ -18,6 +18,7 @@ bool game_loaded = false;
 struct {
   SDL_Window* window;
   SDL_GLContext gl_context;
+  uint64_t previous_time;
   Game* game;
 } app = { 0 };
 
@@ -66,6 +67,8 @@ SDL_AppResult SDL_AppInit(void** app_state, int argc, char* argv[]) {
 
   glViewport(0, 0, app.game->window.x, app.game->window.y);
 
+  app.previous_time = SDL_GetTicks();
+
   return SDL_APP_CONTINUE;
 }
 
@@ -78,7 +81,9 @@ SDL_AppResult SDL_AppIterate(void* app_state) {
     return SDL_APP_SUCCESS;
   }
 
-  float dt = 0.016f;
+  uint64_t current_time = SDL_GetTicks();
+  float dt = (float)(current_time - app.previous_time) / 1000.f;
+  app.previous_time = current_time;
 
   if (!game_loaded) {
     if (wasp_load(app.game, 0, dt)) {
@@ -94,6 +99,8 @@ SDL_AppResult SDL_AppIterate(void* app_state) {
 
   SDL_GL_SwapWindow(app.window);
 
+  if (app.game->should_exit)
+    return SDL_APP_SUCCESS;
   return SDL_APP_CONTINUE;
 }
 

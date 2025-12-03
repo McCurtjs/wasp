@@ -30,6 +30,10 @@ void game_reset(Game* game) {
   game->entities = arr_entity_new();
 }
 
+void game_quit(Game* game) {
+  game->should_exit = true;
+}
+
 void game_add_entity(Game* game, const Entity* entity) {
   arr_entity_write_back(game->entities, entity);
 }
@@ -47,6 +51,7 @@ void game_update(Game* game, float dt) {
 
 void game_render(Game* game) {
   game->camera.projview = camera_projection_view(&game->camera);
+  game->camera.view = camera_view(&game->camera);
 
   Entity* arr_foreach(entity, game->entities) {
     if (entity->render && !entity->hidden) {
