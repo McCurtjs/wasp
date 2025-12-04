@@ -90,7 +90,7 @@ bool _gl_shader_build(gl_shader_t* s, int type, slice_t buffer) {
   char* log = malloc(log_length);
   glGetShaderInfoLog(s->handle, log_length, &log_length, log);
 
-  str_log("[Shader.build] Error compiling shader:\n  {}\n", s->filename, log);
+  str_log("[Shader.build] Error compiling shader:\n  {}\n\n{}", s->filename, log);
   free(log);
 
   return 0;
@@ -344,6 +344,11 @@ int shader_uniform_loc(Shader s_in, const char* name) {
 
   if (slot.is_new) {
     *(GLint*)slot.value = glGetUniformLocation(s->program_handle, name);
+    int err = glGetError();
+    if (err) {
+      str_log("[Shader.uniform_loc] Failed: {}, error: {}", name, err);
+    }
+
   }
 
   return *(int*)slot.value;

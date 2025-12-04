@@ -27,15 +27,15 @@
 #include "gl.h"
 
 static const GLenum _rt_formats_internal[] = {
-  GL_RGB8, GL_RGBA8, GL_RGBA16F, GL_RGB10_A2
+  GL_RGB8, GL_RGBA8, GL_RGBA16F, GL_RGB10_A2, GL_R32F
 };
 
 static const GLenum _rt_formats[] = {
-  GL_RGB, GL_RGBA, GL_RGBA, GL_RGBA
+  GL_RGB, GL_RGBA, GL_RGBA, GL_RGBA, GL_RED
 };
 
 static const GLenum _rt_format_type[] = {
-  GL_UNSIGNED_BYTE, GL_UNSIGNED_BYTE, GL_FLOAT, GL_FLOAT
+  GL_UNSIGNED_BYTE, GL_UNSIGNED_BYTE, GL_FLOAT, GL_FLOAT, GL_FLOAT
 };
 
 texture_t tex_from_image(Image image) {

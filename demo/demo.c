@@ -104,8 +104,8 @@ bool export(wasp_preload) (Game* game) {
   game->shaders.frame = shader_new_load(S("frame"));
   game->shaders.warhol = shader_new_load(S("warhol"));
 
-  game->textures.render_target = rt_new(2, (texture_format_t[]) {
-    TF_RGBA_8, TF_RGBA_8
+  game->textures.render_target = rt_new(3, (texture_format_t[]) {
+    TF_RGBA_8, TF_RGBA_8, TF_R_32
   });
   rt_build(game->textures.render_target, game->window);
 
@@ -221,8 +221,12 @@ void export(wasp_render) (Game* game) {
   shader_bind(game->shaders.warhol);
   int tex_sampler = shader_uniform_loc(game->shaders.warhol, "texSamp");
   int norm_sampler = shader_uniform_loc(game->shaders.warhol, "normSamp");
+  int depth_sampler = shader_uniform_loc(game->shaders.warhol, "depthSamp");
+  int loc_invproj = shader_uniform_loc(game->shaders.warhol, "invProj");
   tex_apply(game->textures.render_target->textures[0], 0, tex_sampler);
   tex_apply(game->textures.render_target->textures[1], 1, norm_sampler);
+  tex_apply(game->textures.render_target->textures[2], 2, depth_sampler);
+  glUniformMatrix4fv(loc_invproj, 1, 0, game->camera.projection.f);
   //*/
   model_render(&model_frame);
 }

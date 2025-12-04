@@ -112,12 +112,13 @@ void render_phong(Entity* e, Game* game) {
   int loc_camera_pos = shader_uniform_loc(shader, "cameraPos");
   int loc_use_vert_color = shader_uniform_loc(shader, "useVertexColor");
   int loc_sampler_tex = shader_uniform_loc(shader, "texSamp");
-  int loc_tvm = shader_uniform_loc(shader, "itViewMod");
+  int loc_vm = shader_uniform_loc(shader, "viewMod");
 
   mat4 pvm = m4mul(game->camera.projview, e->transform);
-  mat4 itvm = m4mul(game->camera.view, e->transform);
+  mat4 vm = m4mul(game->camera.view, e->transform);
 
   glUniformMatrix4fv(loc_pvm, 1, 0, pvm.f);
+  glUniformMatrix4fv(loc_vm, 1, 0, vm.f);
   glUniform4fv(loc_light_pos, 1, game->light_pos.f);
   glUniform4fv(loc_camera_pos, 1, game->camera.pos.f);
 
@@ -127,7 +128,6 @@ void render_phong(Entity* e, Game* game) {
 
   tex_apply(e->texture, 0, loc_sampler_tex);
 
-  glUniformMatrix4fv(loc_tvm, 1, 0, itvm.f);
   model_render(e->model);
 
   glBindTexture(GL_TEXTURE_2D, 0);

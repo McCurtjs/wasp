@@ -153,7 +153,7 @@ bool rt_build(RenderTarget rt_in, vec2i screen) {
     rt->ready = true;
   }
   else {
-    str_log("[Framebuffer.build] Failed with error: {}", status);
+    str_log("[Framebuffer.build] Failed with error: 0x{!x}", status);
     rt->ready = false;
   }
 
