@@ -25,7 +25,7 @@ function renderTimer(now) {
 
     let err = game.gl.getError();
     if (err != game.gl.NO_ERROR) {
-      console.log("OpenGL error: ", err);
+      console.log("[Main.WebGL] Error: 0x" + err.toString(16));
     }
   }
   requestAnimationFrame(renderTimer);

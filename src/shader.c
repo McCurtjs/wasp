@@ -346,7 +346,7 @@ int shader_uniform_loc(Shader s_in, const char* name) {
     *(GLint*)slot.value = glGetUniformLocation(s->program_handle, name);
     int err = glGetError();
     if (err) {
-      str_log("[Shader.uniform_loc] Failed: {}, error: {}", name, err);
+      str_log("[Shader.uniform_loc] Failed: {}, error: 0x{!x}", name, err);
     }
 
   }

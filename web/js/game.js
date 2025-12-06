@@ -99,6 +99,11 @@ class Game {
       alert("Unable to initialize WebGL :(");
     }
 
+    const ext = gl.getExtension("EXT_color_buffer_float");
+    if (!ext) {
+      alert("Unable to initialize WebGL: floating point textures required");
+    }
+
     gl.clearColor(0.05, 0.15, 0.25, 1);
     gl.clearDepth(1);
     gl.enable(gl.DEPTH_TEST);

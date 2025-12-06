@@ -57,6 +57,8 @@ int export(canary) (int _) {
 }
 #endif
 
+static int active_shader = 0;
+
 static Model model_frame = { .type = MODEL_FRAME };// { .type = MODEL_FRAME };
 
 static keybind_t input_map[] = {
@@ -66,13 +68,14 @@ static keybind_t input_map[] = {
   { .name = IN_DOWN, .key = 's' },
   { .name = IN_RIGHT, .key = 'd' },
   { .name = IN_KICK, .key = SDLK_LEFT },
-  { .name = IN_REWIND, .key = 'd' },
+  { .name = IN_REWIND, .key = 'r' },
   { .name = IN_CAMERA_LOCK, .key = 'c' },
   { .name = IN_CLICK, .key = SDL_BUTTON_LEFT, .mouse = true },
   { .name = IN_ROTATE_LIGHT, .key = SDL_BUTTON_RIGHT, .mouse = true },
   { .name = IN_SHIFT, .key = 16 },
   { .name = IN_RELOAD, .key = 'p' },
   { .name = IN_LEVEL_1, .key = '1' },
+  { .name = IN_TOGGLE_SHADER, .key = 'm' },
 };
 
 void wasp_init(app_defaults_t* game) {
@@ -99,7 +102,8 @@ bool export(wasp_preload) (Game* game) {
   model_build(&game->models.color_cube);
   model_build(&model_frame);
 
-  game->shaders.basic = shader_new(S("basic"));
+  game->shaders.loading = shader_new(S("basic"));
+  game->shaders.basic = shader_new_load(S("basic_deferred"));
   game->shaders.light = shader_new_load(S("light"));
   game->shaders.frame = shader_new_load(S("frame"));
   game->shaders.warhol = shader_new_load(S("warhol"));
@@ -121,8 +125,8 @@ static void cheesy_loading_animation(Game* game, float dt) {
 
   mat4 projview = camera_projection_view(&game->camera);
 
-  shader_bind(game->shaders.basic);
-  int loc_pvm = shader_uniform_loc(game->shaders.basic, "projViewMod");
+  shader_bind(game->shaders.loading);
+  int loc_pvm = shader_uniform_loc(game->shaders.loading, "projViewMod");
 
   mat4 model = m4translation(v3f(0, 0, 0));
   model = m4mul(model, m4rotation(v3norm(v3f(1.f, 1.5f, -.7f)), cubespin));
@@ -131,6 +135,11 @@ static void cheesy_loading_animation(Game* game, float dt) {
   glUniformMatrix4fv(loc_pvm, 1, 0, m4mul(projview, model).f);
   model_render(&game->models.color_cube);
   cubespin += 2 * dt;
+
+  GLenum err = glGetError();
+  if (err) {
+    str_log("[Demo.load_anim] Error: 0x{!x}", err);
+  }
 }
 
 bool export(wasp_load) (Game* game, int await_count, float dt) {
@@ -145,6 +154,7 @@ bool export(wasp_load) (Game* game, int await_count, float dt) {
   #if GAME_ON == 1
 
   shader_build(game->shaders.light);
+  shader_build(game->shaders.basic);
   shader_build(game->shaders.frame);
   shader_build(game->shaders.warhol);
 
@@ -204,8 +214,12 @@ bool export(wasp_update) (Game* game, float dt) {
   UNUSED(dt);
   //process_system_events(&game);
   level_switch_check(game);
-  game_update(game, dt);
 
+  if (input_triggered(game, IN_TOGGLE_SHADER)) {
+    active_shader = (active_shader + 1) % 2;
+  }
+
+  game_update(game, dt);
   return true;
 }
 
@@ -218,15 +232,21 @@ void export(wasp_render) (Game* game) {
   shader_program_use(&shader_frame);
   tex_apply(game.textures.render_target->textures[0], 0, 0);
   /*/
-  shader_bind(game->shaders.warhol);
-  int tex_sampler = shader_uniform_loc(game->shaders.warhol, "texSamp");
-  int norm_sampler = shader_uniform_loc(game->shaders.warhol, "normSamp");
-  int depth_sampler = shader_uniform_loc(game->shaders.warhol, "depthSamp");
-  int loc_invproj = shader_uniform_loc(game->shaders.warhol, "invProj");
+  Shader shader = game->shaders.warhol;
+  if (active_shader == 1) {
+    shader = game->shaders.frame;
+  }
+
+  shader_bind(shader);
+  int tex_sampler = shader_uniform_loc(shader, "texSamp");
+  int norm_sampler = shader_uniform_loc(shader, "normSamp");
+  int depth_sampler = shader_uniform_loc(shader, "depthSamp");
+  int loc_invproj = shader_uniform_loc(shader, "invProj");
   tex_apply(game->textures.render_target->textures[0], 0, tex_sampler);
   tex_apply(game->textures.render_target->textures[1], 1, norm_sampler);
   tex_apply(game->textures.render_target->textures[2], 2, depth_sampler);
   glUniformMatrix4fv(loc_invproj, 1, 0, game->camera.projection.f);
-  //*/
+
   model_render(&model_frame);
 }
+  

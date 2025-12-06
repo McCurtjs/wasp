@@ -46,6 +46,11 @@ void game_update(Game* game, float dt) {
     }
   }
 
+  keybind_t* span_foreach(keybind, game->input.keymap) {
+    keybind->triggered = false;
+    keybind->released = false;
+  }
+
   game->input.mouse.move = v2zero;
 }
 

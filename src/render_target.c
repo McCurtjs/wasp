@@ -153,7 +153,7 @@ bool rt_build(RenderTarget rt_in, vec2i screen) {
     rt->ready = true;
   }
   else {
-    str_log("[Framebuffer.build] Failed with error: 0x{!x}", status);
+    str_log("[RenderTarget.build] Failed with error: 0x{!x}", status);
     rt->ready = false;
   }
 
@@ -208,11 +208,9 @@ void rt_bind(RenderTarget rt_in) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void rt_bind_default(void) {
-  GLenum draw_buffer = GL_BACK;
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   glBindTexture(GL_TEXTURE_2D, 0);
   glBindRenderbuffer(GL_RENDERBUFFER, 0);
-  glDrawBuffers(1, &draw_buffer);
   glClearColor(0.2f, 0.2f, 0.2f, 1);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }

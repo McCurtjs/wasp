@@ -14,6 +14,7 @@
 #undef con_type
 
 typedef struct Game_Shaders {
+  Shader loading;
   Shader frame;
   Shader basic;
   Shader light;
