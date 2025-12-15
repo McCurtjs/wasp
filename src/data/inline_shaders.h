@@ -3,10 +3,10 @@ static const char basic_vert_text[] = "\
 #version 300 es\n\
 layout(location = 0) in vec4 position;\n\
 layout(location = 1) in vec4 color;\n\
-uniform mat4 projViewMod;\n\
+uniform mat4 in_pvm_matrix;\n\
 out lowp vec4 vColor;\n\
 void main() {\n\
-  gl_Position = projViewMod * position;\n\
+  gl_Position = in_pvm_matrix * position;\n\
   vColor = color;\n\
 }";
 

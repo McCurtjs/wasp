@@ -6,7 +6,6 @@ precision highp float;
 in vec4 vPos;
 in vec4 vNormal;
 in vec2 vUV;
-in float vDepth;
 
 uniform vec4 lightPos;
 uniform vec4 cameraPos;
@@ -15,7 +14,7 @@ float specularPower = 0.35;
 
 layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec4 fragNormal;
-layout(location = 2) out float depthValue;
+//layout(location = 2) out float depthValue;
 
 void main() {
   vec4 albedo = texture(texSamp, vUV);
@@ -40,5 +39,5 @@ void main() {
 
   //fragColor = vec4(normalize(vec3(vUV, 0)) * 0.5 + vec3(0.5, 0.5, 0.5), 1);
   fragNormal = vec4(n.x, n.y, n.z, 1.0);
-  depthValue = vDepth;
+  //depthValue = vPos.z / vPos.w;
 }

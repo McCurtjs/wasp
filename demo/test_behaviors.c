@@ -28,7 +28,7 @@ void behavior_test_camera(Entity* e, Game* game, float dt) {
   }
 
   if (input_pressed(game, IN_ROTATE_LIGHT)) { //game->input.pressed.rmb) {
-    mat4 light_rotation = m4rotation(v3y, yrot);
+    mat4 light_rotation = m4rotation(v3y, 4.f * dt);//yrot);
     game->light_pos = mv4mul(light_rotation, game->light_pos);
   }
 
@@ -90,7 +90,7 @@ void render_basic(Entity* e, Game* game) {
   Shader shader = game->shaders.basic;
   shader_bind(shader);
 
-  int loc_pvm = shader_uniform_loc(shader, "projViewMod");
+  int loc_pvm = shader_uniform_loc(shader, "in_pvm_matrix");
 
   mat4 pvm = m4mul(game->camera.projview, e->transform);
   glUniformMatrix4fv(loc_pvm, 1, GL_FALSE, pvm.f);
@@ -107,24 +107,24 @@ void render_phong(Entity* e, Game* game) {
   Shader shader = game->shaders.light;
   shader_bind(shader);
 
-  int loc_pvm = shader_uniform_loc(shader, "projViewMod");
-  int loc_light_pos = shader_uniform_loc(shader, "lightPos");
-  int loc_camera_pos = shader_uniform_loc(shader, "cameraPos");
-  int loc_use_vert_color = shader_uniform_loc(shader, "useVertexColor");
+  int loc_pvm = shader_uniform_loc(shader, "in_pvm_matrix");
+  //int loc_light_pos = shader_uniform_loc(shader, "lightPos");
+  //int loc_camera_pos = shader_uniform_loc(shader, "cameraPos");
+  //int loc_use_vert_color = shader_uniform_loc(shader, "useVertexColor");
   int loc_sampler_tex = shader_uniform_loc(shader, "texSamp");
-  int loc_vm = shader_uniform_loc(shader, "viewMod");
+  int loc_norm = shader_uniform_loc(shader, "in_normal_matrix");
 
   mat4 pvm = m4mul(game->camera.projview, e->transform);
-  mat4 vm = m4mul(game->camera.view, e->transform);
+  mat4 norm = m4transpose(m4inverse(m4mul(game->camera.view, e->transform)));
 
   glUniformMatrix4fv(loc_pvm, 1, 0, pvm.f);
-  glUniformMatrix4fv(loc_vm, 1, 0, vm.f);
-  glUniform4fv(loc_light_pos, 1, game->light_pos.f);
-  glUniform4fv(loc_camera_pos, 1, game->camera.pos.f);
+  glUniformMatrix4fv(loc_norm, 1, 0, norm.f);
+  //glUniform4fv(loc_light_pos, 1, game->light_pos.f);
+  //glUniform4fv(loc_camera_pos, 1, game->camera.pos.f);
 
-  GLint use_color = false;
-  if (e->model->type == MODEL_OBJ) use_color = e->model->mesh.use_color;
-  glUniform1i(loc_use_vert_color, use_color);
+  //GLint use_color = false;
+  //if (e->model->type == MODEL_OBJ) use_color = e->model->mesh.use_color;
+  //glUniform1i(loc_use_vert_color, use_color);
 
   tex_apply(e->texture, 0, loc_sampler_tex);
 

@@ -43,6 +43,7 @@ typedef struct RenderTarget_Internal {
   // private
   uint              handle;
   uint              depth_buffer;
+  index_t           attachment_count;
   GLenum*           color_attachments;
 
 } RenderTarget_Internal;
@@ -64,9 +65,15 @@ static const GLenum _rt_depth_attachments[] = {
 ////////////////////////////////////////////////////////////////////////////////
 
 RenderTarget rt_new(index_t size, texture_format_t formats[]) {
+  index_t depth_textures = 0;
+  for (index_t i = 0; i < size; ++i) {
+    if (formats[i] >= TF_DEPTH_32) ++depth_textures;
+  }
+
   RenderTarget_Internal* ret = malloc(
     sizeof(RenderTarget_Internal) +
-    size * (sizeof(texture_t) + sizeof(texture_format_t) + sizeof(GLenum))
+    size * (sizeof(texture_t) + sizeof(texture_format_t)) +
+    (size - depth_textures) * sizeof(GLenum)
   );
   assert(ret);
 
@@ -77,17 +84,18 @@ RenderTarget rt_new(index_t size, texture_format_t formats[]) {
     .slot_count = size,
     .textures = NULL,
     .formats = (texture_format_t*)format_loc,
-    .depth_format = F_DEPTH_32,
+    .depth_format = depth_textures ? F_DEPTH_NONE : F_DEPTH_32,
     .clear_color = v3f(0.f, 0.f, 0.8f),
     .ready = false,
     .handle = 0,
     .depth_buffer = 0,
     .color_attachments = (GLenum*)attach_loc,
+    .attachment_count = size - depth_textures,
   };
 
   memcpy(ret->formats, formats, sizeof(texture_format_t) * size);
 
-  for (GLenum i = 0; i < (GLenum)size; ++i) {
+  for (GLenum i = 0; i < (GLenum)ret->attachment_count; ++i) {
     ret->color_attachments[i] = GL_COLOR_ATTACHMENT0 + i;
   }
 
@@ -129,20 +137,34 @@ bool rt_build(RenderTarget rt_in, vec2i screen) {
   // textures
   if (!rt->textures) {
     rt->textures = (texture_t*)(rt + 1);
+    index_t depth_binds = 0;
 
     for (index_t i = 0; i < rt->slot_count; ++i) {
       rt->textures[i] = tex_generate(rt->formats[i], screen);
-      glFramebufferTexture
-      ( GL_FRAMEBUFFER
-      , GL_COLOR_ATTACHMENT0 + (GLenum)i
-      , rt->textures[i].handle
-      , 0
-      );
+
+      // handle texture-based depth attachment
+      if (rt->formats[i] >= TF_DEPTH_32) {
+        glFramebufferTexture
+        ( GL_FRAMEBUFFER
+        , GL_DEPTH_ATTACHMENT
+        , rt->textures[i].handle
+        , 0
+        );
+        ++depth_binds;
+      }
+      else {
+        glFramebufferTexture
+        ( GL_FRAMEBUFFER
+        , GL_COLOR_ATTACHMENT0 + (GLenum)(i - depth_binds)
+        , rt->textures[i].handle
+        , 0
+        );
+      }
     }
   }
 
   // color attachments
-  glDrawBuffers((GLsizei)rt->slot_count, rt->color_attachments);
+  glDrawBuffers((GLsizei)rt->attachment_count, rt->color_attachments);
 
   // viewport size
   glViewport(0, 0, screen.w, screen.h);

@@ -72,6 +72,7 @@ static keybind_t input_map[] = {
   { .name = IN_CAMERA_LOCK, .key = 'c' },
   { .name = IN_CLICK, .key = SDL_BUTTON_LEFT, .mouse = true },
   { .name = IN_ROTATE_LIGHT, .key = SDL_BUTTON_RIGHT, .mouse = true },
+  { .name = IN_ROTATE_LIGHT, .key = 'e' },
   { .name = IN_SHIFT, .key = 16 },
   { .name = IN_RELOAD, .key = 'p' },
   { .name = IN_LEVEL_1, .key = '1' },
@@ -109,7 +110,7 @@ bool export(wasp_preload) (Game* game) {
   game->shaders.warhol = shader_new_load(S("warhol"));
 
   game->textures.render_target = rt_new(3, (texture_format_t[]) {
-    TF_RGBA_8, TF_RGBA_8, TF_R_32
+    TF_RGBA_8, TF_RGBA_16, TF_DEPTH_32
   });
   rt_build(game->textures.render_target, game->window);
 
@@ -126,7 +127,7 @@ static void cheesy_loading_animation(Game* game, float dt) {
   mat4 projview = camera_projection_view(&game->camera);
 
   shader_bind(game->shaders.loading);
-  int loc_pvm = shader_uniform_loc(game->shaders.loading, "projViewMod");
+  int loc_pvm = shader_uniform_loc(game->shaders.loading, "in_pvm_matrix");
 
   mat4 model = m4translation(v3f(0, 0, 0));
   model = m4mul(model, m4rotation(v3norm(v3f(1.f, 1.5f, -.7f)), cubespin));
@@ -241,11 +242,13 @@ void export(wasp_render) (Game* game) {
   int tex_sampler = shader_uniform_loc(shader, "texSamp");
   int norm_sampler = shader_uniform_loc(shader, "normSamp");
   int depth_sampler = shader_uniform_loc(shader, "depthSamp");
-  int loc_invproj = shader_uniform_loc(shader, "invProj");
+  int loc_invproj = shader_uniform_loc(shader, "in_proj_inverse");
+  int loc_light_pos = shader_uniform_loc(shader, "lightPos");
   tex_apply(game->textures.render_target->textures[0], 0, tex_sampler);
   tex_apply(game->textures.render_target->textures[1], 1, norm_sampler);
   tex_apply(game->textures.render_target->textures[2], 2, depth_sampler);
-  glUniformMatrix4fv(loc_invproj, 1, 0, game->camera.projection.f);
+  glUniformMatrix4fv(loc_invproj, 1, 0, m4inverse(game->camera.projection).f);
+  glUniform4fv(loc_light_pos, 1, mv4mul(game->camera.view, game->light_pos).f);
 
   model_render(&model_frame);
 }
