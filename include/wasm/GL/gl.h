@@ -329,13 +329,18 @@ typedef double GLclampd;
 #define GL_RGB8                           0x8051
 #define GL_RGBA8                          0x8058
 #define GL_R32F                           0x822E
+#define GL_RG16F                          0x822F
 #define GL_RGBA16F                        0x881A
+#define GL_RGBA32F                        0x8814
 #define GL_RGB10_A2                       0x8059
 #define GL_RED                            0x1903
+#define GL_RG                             0x8227
 #define GL_DEPTH24_STENCIL8               0x88F0
 #define GL_DEPTH_COMPONENT24              0x81A6
+#define GL_DEPTH_COMPONENT32F             0x8CAC
 #define GL_DEPTH_STENCIL_ATTACHMENT       0x821A
 #define GL_DRAW_FRAMEBUFFER_BINDING       0x8CA6
+#define GL_UNSIGNED_INT_2_10_10_10_REV    0x8368
 
 #define GL_UNPACK_FLIP_Y_WEBGL            0x9240
 

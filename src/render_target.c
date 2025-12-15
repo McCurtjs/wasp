@@ -64,7 +64,7 @@ static const GLenum _rt_depth_attachments[] = {
 // Initialize a render target
 ////////////////////////////////////////////////////////////////////////////////
 
-RenderTarget rt_new(index_t size, texture_format_t formats[]) {
+RenderTarget _rt_new(index_t size, texture_format_t formats[]) {
   index_t depth_textures = 0;
   for (index_t i = 0; i < size; ++i) {
     if (formats[i] >= TF_DEPTH_32) ++depth_textures;

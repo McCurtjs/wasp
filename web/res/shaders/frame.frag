@@ -12,33 +12,87 @@ uniform sampler2D texSamp;
 uniform sampler2D normSamp;
 uniform sampler2D depthSamp;
 
+#define PI 3.141592653589
+
+float D_GGX(float NdotH, float roughness) {
+  float a = roughness * roughness;
+  float a2 = a * a;
+  float denom = (NdotH * NdotH) * (a2 - 1.0) + 1.0;
+  return a2 / (PI * denom * denom);
+}
+
+vec3 F_Schlick(vec3 F0, float VdotH) {
+  return F0 + (1.0 - F0) * pow(1.0 - VdotH, 5.0);
+}
+
+float G_SchlickGGX(float NdotV, float roughness) {
+  float r = roughness + 1.0;
+  float k = (r * r) / 8.0;
+  return NdotV / (NdotV * (1.0 - k) + k);
+}
+
+float G_Smith(float NdotV, float NdotL, float roughness) {
+  return G_SchlickGGX(NdotV, roughness) * G_SchlickGGX(NdotL, roughness);
+}
+
 void main() {
   vec2 uv = vUV;
   vec4 albedo = texture(texSamp, uv);
 
-  // reconstruct the fragment position in view space (world scale, camera at <0, 0, 0>)
+  // Reconstruct fragment position in view space (camera at <0, 0, 0>)
   vec3 ndc = vec3(uv.x, uv.y, texture(depthSamp, uv).r);
   vec4 clip = vec4(ndc * 2.0 - 1.0, 1.0);
   vec4 view = in_proj_inverse * clip;
   view /= view.w;
   vec3 pos = view.xyz;
 
-  // get view-space normals from G-buffer
-  vec3 norm = normalize(texture(normSamp, uv).xyz * 2.0 - 1.0);
+  // Unpack octahedral encoded normal
+  vec3 norm = texture(normSamp, uv).xyz;
+  if (norm.x == norm.y && norm.y == 0.0) {
+    fragColor = albedo;
+    return;
+  }
+  norm = norm * 2.0 - 1.0;
+  norm = vec3(norm.xy, 1.0 - abs(norm.x) - abs(norm.y));
+  if (norm.z < 0.0) norm.xy = (1.0 - abs(norm.yx)) * sign(norm.xy);
+  normalize(norm);
 
-  vec3 light_dir = normalize(lightPos.xyz - pos.xyz);
-  vec3 view_dir = normalize(-pos);
-  float diffuse = max(dot(norm, light_dir), 0.0);
-  
-  //*
-  float vdotn = dot(norm, light_dir);
-  fragColor = vec4(vec3(vdotn), 1.0);//vec4(diffuse, diffuse, diffuse, 1.0);
-  /*/
-  //fragColor = vec4(norm.xyz, 1.0);
-  fragColor = vec4(pos.x, pos.y, (pos.z > 0.0 ? 1.0 : 0.0), 1.0);
-  //*/
+  // Pabst Blue Ribbon?
+  vec3  metallic = vec3(0.1);
+  vec3  light_color = vec3(0.8, 0.9, 0.85);
+  float light_intensity = 14.0;
+  float roughness = 0.8;
 
-  //vec4 lightDist = vec4(distance(pos.xyz, lightPos.xyz) / 10.0, 0.0, 0.0, 1.0);
-  
-  //fragColor = vec4((lightDist.xyz), 1.0);//vec4(uv.x, uv.y, 0.0, 1.0);
+  vec3 light_value = light_color * light_intensity;
+
+  vec3 V = normalize(-pos);
+  vec3 N = norm;
+  vec3 L = normalize(lightPos.xyz - pos);
+  vec3 H = normalize(V + L);
+
+  float NdotL = max(dot(N, L), 0.0);
+  float NdotV = max(dot(N, V), 0.0);
+  float NdotH = max(dot(N, H), 0.0);
+  float VdotH = max(dot(V, H), 0.0);
+
+  vec3 F0 = mix(vec3(0.04), albedo.xyz, metallic);
+
+  float D = D_GGX(NdotH, roughness);
+  float G = G_Smith(NdotV, NdotL, roughness);
+  vec3  F = F_Schlick(F0, VdotH);
+
+  vec3 specular = (D * G * F) / (4.0 * NdotV * NdotL + 1e-5);
+
+  vec3 kS = F;
+  vec3 kD = (1.0 - kS) * 1.0 - metallic;
+
+  vec3 diffuse = kD * albedo.xyz / PI;
+
+  fragColor = vec4(vec3((diffuse + specular) * light_value * NdotL), 1.0);
+
+  // ambient color (IBL approx)
+  vec3 irradiance_map = vec3(0.2, 0.1, 0.2);
+  vec3 ambient_diffuse = irradiance_map * albedo.xyz * kD;
+  //vec3 ambient_specular = env * (F * brdf.x + brdf.y);
+  //fragColor.xyz += ambient_diffuse;// + ambient_specular;
 }

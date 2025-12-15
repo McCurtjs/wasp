@@ -45,7 +45,10 @@ typedef struct _opaque_RenderTarget {
   const bool                      ready;
 }* RenderTarget;
 
-RenderTarget rt_new(index_t size, texture_format_t formats[]);
+RenderTarget _rt_new(index_t size, texture_format_t formats[]);
+#define rt_new(...) \
+  _rt_new(_va_count(__VA_ARGS__), (texture_format_t[]) { __VA_ARGS__ })
+
 bool rt_build(RenderTarget rt, vec2i screen);
 void rt_clear(RenderTarget rt);
 void rt_bind(RenderTarget rt);

@@ -57,7 +57,7 @@ int export(canary) (int _) {
 }
 #endif
 
-static int active_shader = 0;
+static int active_shader = 1;
 
 static Model model_frame = { .type = MODEL_FRAME };// { .type = MODEL_FRAME };
 
@@ -109,9 +109,9 @@ bool export(wasp_preload) (Game* game) {
   game->shaders.frame = shader_new_load(S("frame"));
   game->shaders.warhol = shader_new_load(S("warhol"));
 
-  game->textures.render_target = rt_new(3, (texture_format_t[]) {
-    TF_RGBA_8, TF_RGBA_16, TF_DEPTH_32
-  });
+  game->textures.render_target = rt_new(
+    TF_RGBA_8, TF_RG_16, TF_DEPTH_32
+  );
   rt_build(game->textures.render_target, game->window);
 
   game->input.keymap = span_keymap(input_map, ARRAY_COUNT(input_map));

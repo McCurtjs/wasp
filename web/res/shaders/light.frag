@@ -17,27 +17,21 @@ layout(location = 1) out vec4 fragNormal;
 //layout(location = 2) out float depthValue;
 
 void main() {
+
+  // Get base texture color - discard fully transparent fragments
   vec4 albedo = texture(texSamp, vUV);
   if (albedo.w == 0.0) discard;
-
   fragColor = albedo;
 
+  // If the normal is zero, preserve that and skip (unlit/non-physical object)
+  if (vNormal.z == 0.0) {
+    fragNormal = vec4(0.0);
+    return;
+  }
+
+  // Pack normal into octahedral space
   vec4 n = normalize(vNormal);
-  n.xyz = (n.xyz + vec3(1.0)) / 2.0;
-  //vec4 viewDir = normalize(cameraPos - vPos);
-  //vec4 lightDir = normalize(lightPos - vPos);
-  //vec4 reflectDir = reflect(-lightDir, n);
-  //float diffuse = max(dot(n, lightDir), 0.0);
-  //float specular = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
-
-  //fragColor = vec4(vUV, 0.0, 1.0) * (ambient + diffuse + specular);
-  //fragColor.xyz = albedo.xyz * (ambient + diffuse + specular);
-
-  // multiply with transparency value because PDN uses transparent white :/
-  //fragColor.xyz *= albedo.w;
-  //fragColor.w = albedo.w;
-
-  //fragColor = vec4(normalize(vec3(vUV, 0)) * 0.5 + vec3(0.5, 0.5, 0.5), 1);
-  fragNormal = vec4(n.x, n.y, n.z, 1.0);
-  //depthValue = vPos.z / vPos.w;
+  n /= abs(n.x) + abs(n.y) + abs(n.z);
+  if (n.z < 0.0) n.xy = (1.0 - abs(n.yx)) * sign(n.xy);
+  fragNormal = n * 0.5 + 0.5;
 }
