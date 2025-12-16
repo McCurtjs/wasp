@@ -19,7 +19,8 @@ enum demo_key_t {
   IN_ROTATE_LIGHT,
   IN_SHIFT,
   IN_RELOAD,
-  IN_TOGGLE_SHADER
+  IN_TOGGLE_SHADER,
+  IN_TOGGLE_GRID
 };
 
 #endif

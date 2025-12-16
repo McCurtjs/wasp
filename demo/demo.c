@@ -77,6 +77,7 @@ static keybind_t input_map[] = {
   { .name = IN_RELOAD, .key = 'p' },
   { .name = IN_LEVEL_1, .key = '1' },
   { .name = IN_TOGGLE_SHADER, .key = 'm' },
+  { .name = IN_TOGGLE_GRID, .key = 'g' },
 };
 
 void wasp_init(app_defaults_t* game) {

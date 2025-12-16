@@ -94,6 +94,8 @@ SDL_AppResult SDL_AppIterate(void* app_state) {
     return SDL_APP_CONTINUE;
   }
 
+  shader_check_updates();
+
   wasp_update(app.game, dt);
   wasp_render(app.game);
 

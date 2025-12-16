@@ -59,6 +59,13 @@ void behavior_test_camera(Entity* e, Game* game, float dt) {
   }
 }
 
+void behavior_grid_toggle(Entity* e, Game* game, float dt) {
+  UNUSED(dt);
+  if (input_triggered(game, IN_TOGGLE_GRID)) {
+    e->hidden = !e->hidden;
+  }
+}
+
 void behavior_cubespin(Entity* e, Game* game, float dt) {
   UNUSED(game);
 
@@ -66,6 +73,16 @@ void behavior_cubespin(Entity* e, Game* game, float dt) {
   e->transform = m4mul(e->transform, m4rotation(v3norm(v3f(1.f, 1.5f, -.7f)), e->angle));
   e->transform = m4mul(e->transform, m4rotation(v3norm(v3f(-4.f, 1.5f, 1.f)), e->angle/3.6f));
   e->angle += 2 * dt;
+}
+
+void behavior_gear_rotate_cw(Entity* e, Game* game, float dt) {
+  UNUSED(game);
+  e->transform = m4mul(e->transform, m4rotation(v3front, dt));
+}
+
+void behavior_gear_rotate_ccw(Entity* e, Game* game, float dt) {
+  UNUSED(game);
+  e->transform = m4mul(e->transform, m4rotation(v3front, -dt));
 }
 
 void behavior_stare(Entity* e, Game* game, float dt) {

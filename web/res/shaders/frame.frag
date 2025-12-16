@@ -58,8 +58,8 @@ void main() {
   normalize(norm);
 
   // Pabst Blue Ribbon?
-  vec3  metallic = vec3(0.1);
-  vec3  light_color = vec3(0.8, 0.9, 0.85);
+  vec3  metallic = vec3(0.4);
+  vec3  light_color = vec3(0.9, 0.9, 0.75);
   float light_intensity = 14.0;
   float roughness = 0.8;
 
