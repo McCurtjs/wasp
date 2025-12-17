@@ -33,9 +33,15 @@ typedef struct Game_Models {
 } Game_Models;
 
 typedef struct Game_Textures {
+  texture_t flat;
+  texture_t flats;
   texture_t crate;
   texture_t brass;
+  texture_t brasn;
   texture_t tiles;
+  texture_t grass;
+  texture_t grasn;
+  texture_t grasr;
   texture_t level;
   texture_t player;
   RenderTarget render_target;

@@ -129,6 +129,8 @@ void render_phong(Entity* e, Game* game) {
   //int loc_camera_pos = shader_uniform_loc(shader, "cameraPos");
   //int loc_use_vert_color = shader_uniform_loc(shader, "useVertexColor");
   int loc_sampler_tex = shader_uniform_loc(shader, "texSamp");
+  int loc_sampler_norm = shader_uniform_loc(shader, "normSamp");
+  int loc_sampler_spec = shader_uniform_loc(shader, "specSamp");
   int loc_norm = shader_uniform_loc(shader, "in_normal_matrix");
 
   mat4 pvm = m4mul(game->camera.projview, e->transform);
@@ -142,6 +144,44 @@ void render_phong(Entity* e, Game* game) {
   //GLint use_color = false;
   //if (e->model->type == MODEL_OBJ) use_color = e->model->mesh.use_color;
   //glUniform1i(loc_use_vert_color, use_color);
+
+  tex_apply(e->texture, 0, loc_sampler_tex);
+
+  if (e->texture.handle == game->textures.grass.handle) {
+    tex_apply(game->textures.grasn, 1, loc_sampler_norm);
+  }
+  else if (e->texture.handle == game->textures.brass.handle) {
+    tex_apply(game->textures.brasn, 1, loc_sampler_norm);
+  }
+  else {
+    tex_apply(game->textures.flat, 1, loc_sampler_norm);
+  }
+
+  if (e->texture.handle == game->textures.grass.handle) {
+    tex_apply(game->textures.grasr, 2, loc_sampler_spec);
+  }
+  else {
+    tex_apply(game->textures.flats, 2, loc_sampler_spec);
+  }
+
+  model_render(e->model);
+
+  glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void render_normal(Entity* e, Game* game) {
+  Shader shader = game->shaders.light;
+  shader_bind(shader);
+
+  int loc_pvm = shader_uniform_loc(shader, "in_pvm_matrix");
+  int loc_sampler_tex = shader_uniform_loc(shader, "texSamp");
+  int loc_norm = shader_uniform_loc(shader, "in_normal_matrix");
+
+  mat4 pvm = m4mul(game->camera.projview, e->transform);
+  mat4 norm = m4transpose(m4inverse(m4mul(game->camera.view, e->transform)));
+
+  glUniformMatrix4fv(loc_pvm, 1, 0, pvm.f);
+  glUniformMatrix4fv(loc_norm, 1, 0, norm.f);
 
   tex_apply(e->texture, 0, loc_sampler_tex);
 

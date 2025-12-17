@@ -58,10 +58,10 @@ void main() {
   normalize(norm);
 
   // Pabst Blue Ribbon?
-  vec3  metallic = vec3(0.4);
+  vec3  metallic = vec3(0.2);
   vec3  light_color = vec3(0.9, 0.9, 0.75);
   float light_intensity = 14.0;
-  float roughness = 0.8;
+  float roughness = 1.0 - albedo.w;//0.8;
 
   vec3 light_value = light_color * light_intensity;
 
@@ -89,10 +89,11 @@ void main() {
   vec3 diffuse = kD * albedo.xyz / PI;
 
   fragColor = vec4(vec3((diffuse + specular) * light_value * NdotL), 1.0);
+  //fragColor = vec4(vec3(roughness), 1.0);
 
   // ambient color (IBL approx)
-  vec3 irradiance_map = vec3(0.2, 0.1, 0.2);
-  vec3 ambient_diffuse = irradiance_map * albedo.xyz * kD;
+  //vec3 irradiance_map = vec3(0.2, 0.1, 0.2);
+  //vec3 ambient_diffuse = irradiance_map * albedo.xyz * kD;
   //vec3 ambient_specular = env * (F * brdf.x + brdf.y);
   //fragColor.xyz += ambient_diffuse;// + ambient_specular;
 }

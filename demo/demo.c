@@ -39,8 +39,14 @@
 static File file_model_gear = NULL;
 static Image image_crate;
 //static Image image_level;
+static Image image_flat;
+static Image image_flats;
 static Image image_tiles;
 static Image image_brass;
+static Image image_brasn;
+static Image image_grass;
+static Image image_grasn;
+static Image image_grasr;
 //static Image image_anim_test;
 #endif
 
@@ -91,9 +97,15 @@ bool export(wasp_preload) (Game* game) {
   file_model_gear = file_new(S("./res/models/gear.obj"));
   //file_open_async(&file_model_level_1, "./res/models/level_1.obj");
 
+  image_flat = img_load(S("./res/textures/flat_n.jpg"));
+  image_flats = img_load(S("./res/textures/flat_s.jpg"));
   image_crate = img_load(S("./res/textures/crate.png"));
-  image_brass = img_load(S("./res/textures/brass.jpg"));
+  image_brass = img_load(S("./res/textures/brass2.jpg"));
+  image_brasn = img_load(S("./res/textures/brass2_n.jpg"));
   image_tiles = img_load(S("./res/textures/tiles.png"));
+  image_grass = img_load(S("./res/textures/grass_rocky_d.jpg"));
+  image_grasn = img_load(S("./res/textures/grass_rocky_n.jpg"));
+  image_grasr = img_load(S("./res/textures/grass_rocky_s.jpg"));
   #endif
 
   camera_build_perspective(&game->camera);
@@ -165,9 +177,15 @@ bool export(wasp_load) (Game* game, int await_count, float dt) {
   //model_load_obj(&game.models.level_1, &file_model_level_1);
 
   // Build textures from async data
+  game->textures.flat = tex_from_image(image_flat);
+  game->textures.flats = tex_from_image(image_flats);
   game->textures.crate = tex_from_image(image_crate);
   game->textures.tiles = tex_from_image(image_tiles);
   game->textures.brass = tex_from_image(image_brass);
+  game->textures.brasn = tex_from_image(image_brasn);
+  game->textures.grass = tex_from_image(image_grass);
+  game->textures.grasn = tex_from_image(image_grasn);
+  game->textures.grasr = tex_from_image(image_grasr);
   //texture_build_from_image(&game.textures.level, &image_level);
   //texture_build_from_image(&game.textures.player, &image_anim_test);
 
@@ -176,9 +194,15 @@ bool export(wasp_load) (Game* game, int await_count, float dt) {
   file_delete(&file_model_gear);
   //file_delete(&file_model_level_1);
   //image_delete(&image_level);
+  img_delete(&image_flat);
+  img_delete(&image_flats);
   img_delete(&image_brass);
+  img_delete(&image_brasn);
   img_delete(&image_crate);
   img_delete(&image_tiles);
+  img_delete(&image_grass);
+  img_delete(&image_grasn);
+  img_delete(&image_grasr);
   //image_delete(&image_anim_test);
 
   // Set up game models

@@ -54,16 +54,27 @@ static void prim_bind_cube_2() {
   } else {
     glBindBuffer(GL_ARRAY_BUFFER, cube_vertex_buffer);
   }
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, v3floats, GL_FLOAT, GL_FALSE, 8 * sizeof(float), 0);
 
+  GLsizei stride = 12 * sizeof(float);
+
+  // position
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0, v3floats, GL_FLOAT, GL_FALSE, stride, 0);
+
+  // normal
   glEnableVertexAttribArray(1);
   const void* offset = (void*)12;
-  glVertexAttribPointer(1, v3floats, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
+  glVertexAttribPointer(1, v3floats, GL_FLOAT, GL_FALSE, stride, offset);
 
+  // uv
   glEnableVertexAttribArray(2);
   offset = (void*)24;
-  glVertexAttribPointer(2, v2floats, GL_FLOAT, GL_FALSE, 8 * sizeof(float), offset);
+  glVertexAttribPointer(2, v2floats, GL_FLOAT, GL_FALSE, stride, offset);
+
+  // tangent
+  glEnableVertexAttribArray(3);
+  offset = (void*)32;
+  glVertexAttribPointer(3, v4floats, GL_FLOAT, GL_FALSE, stride, offset);
 }
 
 static GLuint frame_verts_buffer = 0;

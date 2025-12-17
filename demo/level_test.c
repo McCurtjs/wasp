@@ -58,7 +58,7 @@ void level_load_og_test(Game* game) {
   //* Gear 1
   game_add_entity(game, &(Entity) {
     .model = &game->models.gear,
-    .texture = game->textures.brass,
+    .texture = game->textures.grass,
     .transform = m4translation(v3f(0, 7, -12)),
     .render = render_phong,
     .behavior = behavior_gear_rotate_cw,
@@ -121,7 +121,7 @@ void level_load_og_test(Game* game) {
 
       game_add_entity(game, &(Entity) {
         .model = &game->models.box,
-        .texture = game->textures.tiles,
+        .texture = i == j ? game->textures.grass : game->textures.tiles,
         .transform =
           m4mul(
             m4mul(m4translation(pos), m4rotation(axis, angle)),

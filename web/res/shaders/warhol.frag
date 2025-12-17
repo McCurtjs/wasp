@@ -24,7 +24,8 @@ void main() {
   else if (uv.x <= 0.5 && uv.y > 0.5) {
     uv *= 2.0;
     uv.y -= 1.0;
-    fragColor = texture(texSamp, uv);
+    vec4 c = texture(texSamp, uv);
+    fragColor = vec4(vec3(c), 1.0);
   }
 
   // Top Right

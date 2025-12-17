@@ -1,9 +1,11 @@
-#include "obj.h"
+﻿#include "obj.h"
 #include "mat.h"
 
 #include "str.h"
 #include "array.h"
 #include "map.h"
+
+#include <math.h>
 
 typedef struct {
   vec3 pos;
@@ -145,6 +147,7 @@ void file_load_obj(Model_Mesh* model, File file) {
         .pos = vert->pos,
         .norm = *((vec3*)arr_ref(norms, f->norm - 1)),
         .uv = *((vec2*)arr_ref(uvs, f->uv - 1)),
+        .tangent = v4zero,
         .color = vert->color,
       });
     }
@@ -155,6 +158,67 @@ void file_load_obj(Model_Mesh* model, File file) {
 
   map_delete(&vmap);
 
+  // Calculate tangents for each vertex...
+  if (model->indices->size >= 3) {
+    uint* indices = model->indices->begin;
+
+    for (index_t i = 0; i < model->indices->size; i += 3) {
+      uint i0 = indices[i];
+      uint i1 = indices[i + 1];
+      uint i2 = indices[i + 2];
+
+      obj_vertex_t* vtx[3] = {
+        arr_ref(model->verts, i0),
+        arr_ref(model->verts, i1),
+        arr_ref(model->verts, i2)
+      };
+
+      vec3 n0 = vtx[0]->norm;
+      vec3 p0 = vtx[0]->pos;
+      //vec2 uv0 = vtx[0]->uv;
+
+      vec3 p1 = vtx[1]->pos;
+      vec2 uv1 = vtx[1]->uv;
+
+      vec3 p2 = vtx[2]->pos;
+      vec2 uv2 = vtx[2]->uv;
+
+      vec3 e1 = v3sub(p1, p0);
+      vec3 e2 = v3sub(p2, p0);
+
+      float uv_cross = v2cross(uv1, uv2);
+      vec3 tangent;
+      float handedness;
+
+      if (fabs(uv_cross) < 0.0001f) {
+        //tangent = v3perp(n0);
+        tangent = v3zero;
+        handedness = 1;
+      }
+      else {
+        float r = 1.0f / uv_cross;
+
+        tangent = v3sub(v3scale(e1, uv2.y), v3scale(e2, uv1.y));
+        vec3 bitangent = v3sub(v3scale(e2, uv1.x), v3scale(e1, uv2.x));
+        tangent = v3scale(tangent, r);
+        bitangent = v3scale(bitangent, r);
+
+        handedness = v3dot(v3cross(n0, tangent), bitangent) < 0 ? -1.0f : 1.0f;
+      }
+
+      for (index_t j = 0; j < 3; ++j) {
+        vtx[j]->tangent.xyz = v3add(vtx[j]->tangent.xyz, tangent);
+        if (vtx[j]->tangent.w == 0.0f) vtx[j]->tangent.w = handedness;
+      }
+    }
+
+    for (index_t i = 0; i < model->verts->size; ++i) {
+      obj_vertex_t* vtx = arr_ref(model->verts, i);
+      vtx->tangent.xyz = v3norm(vtx->tangent.xyz);
+    }
+  }
+
+  // Cleanup...
   arr_delete(&faces);
   arr_delete(&verts);
   arr_delete(&uvs);
@@ -167,3 +231,21 @@ void file_load_obj(Model_Mesh* model, File file) {
     model->verts->size, model->indices->size
   );
 }
+
+/*
+
+vec3 e1 = p1 - p0;
+vec3 e2 = p2 - p0;
+Edges in UV space
+c
+Copy code
+vec2 dUV1 = uv1 - uv0;
+vec2 dUV2 = uv2 - uv0;
+We want vectors T and B such that :
+
+text
+Copy code
+e1 ≈ T* dUV1.x + B * dUV1.y
+e2 ≈ T * dUV2.x + B * dUV2.y
+
+*/

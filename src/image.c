@@ -130,6 +130,12 @@ Image img_load(slice_t filename) {
     .blend = true,
   };
 
+  static bool first_load = true;
+  if (first_load) {
+    stbi_set_flip_vertically_on_load(true);
+    first_load = false;
+  }
+
   img.data = stbi_load(
     img.filename->begin, &img.width, &img.height, &img.channels, 0
   );
