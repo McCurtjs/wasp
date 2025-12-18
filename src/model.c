@@ -409,8 +409,13 @@ static int model_build_mesh(Model_Mesh* mesh) {
     2, v2floats, GL_FLOAT, GL_FALSE, vert_size, &((obj_vertex_t*)0)->uv
   );
 
+  glEnableVertexAttribArray(3);
+  glVertexAttribPointer(
+    3, v4floats, GL_FLOAT, GL_FALSE, vert_size, &((obj_vertex_t*)0)->tangent
+  );
+
   if (mesh->use_color) {
-    glEnableVertexAttribArray(3);
+    glEnableVertexAttribArray(4);
     glVertexAttribPointer(
       3, v3floats, GL_FLOAT, GL_FALSE, vert_size,
       &((obj_vertex_color_t*)0)->color

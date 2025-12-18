@@ -38,8 +38,12 @@ void main() {
   fragColor.w = texture(specSamp, vUV).r;
 
   // Pack normal into octahedral space
+  //*
   vec3 tangent_normal = texture(normSamp, vUV).xyz * 2.0 - 1.0;
   vec3 n = normalize(vTangentTransform * tangent_normal);
+  /*/
+  vec3 n = normalize(vNormal.xyz);
+  //*/
   n /= abs(n.x) + abs(n.y) + abs(n.z);
   if (n.z < 0.0) n.xy = (1.0 - abs(n.yx)) * sign(n.xy);
   fragNormal = n.xy * 0.5 + 0.5;

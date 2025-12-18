@@ -190,9 +190,9 @@ void file_load_obj(Model_Mesh* model, File file) {
       vec3 tangent;
       float handedness;
 
-      if (fabs(uv_cross) < 0.0001f) {
-        //tangent = v3perp(n0);
-        tangent = v3zero;
+      if (fabs(uv_cross) < 0.000001f) {
+        tangent = v3perp(n0);
+        //tangent = v3zero;
         handedness = 1;
       }
       else {

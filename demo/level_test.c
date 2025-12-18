@@ -119,9 +119,18 @@ void level_load_og_test(Game* game) {
         pos.y -= v3mag(pos) / 10.f;
       }
 
+      texture_t texture = game->textures.tiles;
+
+      if (i == j) {
+        texture = game->textures.grass;
+      }
+      else if (i == -j) {
+        texture = game->textures.brass;
+      }
+
       game_add_entity(game, &(Entity) {
         .model = &game->models.box,
-        .texture = i == j ? game->textures.grass : game->textures.tiles,
+        .texture = texture,
         .transform =
           m4mul(
             m4mul(m4translation(pos), m4rotation(axis, angle)),
