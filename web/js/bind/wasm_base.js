@@ -23,8 +23,10 @@ function wasm_import_base(imports, game) {
   imports['js_buffer_create'] = (ptr, size) => {
     return game.store({
       type: types.bytes,
-      buffer: game.memory(ptr, size),
+      buffer: { begin: ptr, size: size },
+      get_buffer: () => game.memory(ptr, size),
       size: size,
+      ready: true,
     });
   }
 

@@ -22,36 +22,36 @@
 * SOFTWARE.
 */
 
-#ifndef WASP_TEXTURE_H_
-#define WASP_TEXTURE_H_
+#ifndef WASP_MATERIAL_H_
+#define WASP_MATERIAL_H_
 
 #include "types.h"
-#include "image.h"
+
+#include "texture.h"
 #include "vec.h"
 
-typedef enum texture_format_t {
-  TF_RGB_8,
-  TF_RGBA_8,
-  TF_RGBA_16,
-  TF_RGBA_32,
-  TF_R_32,
-  TF_RG_16,
-  TF_RGB_10_A_2,
-  TF_DEPTH_32,
-  TF_SUPPORTED_MAX
-} texture_format_t;
+typedef struct _opaque_Material_t {
+  const slice_t name;
+  const texture_t diffuse;
+  const texture_t normals;
+  const texture_t specular;
+  const float roughness;
+  const float metalness;
+  const bool ready;
+}* Material;
 
-typedef struct texture_t {
-  uint handle;
-} texture_t;
+typedef struct material_t {
+  Material base;
+  color3 tint;
+  float roughness;
+  float metalness;
+} material_t;
 
-texture_t tex_from_image(Image image);
-texture_t tex_generate_blank(uint width, uint height);
-texture_t tex_generate(texture_format_t format, vec2i size);
-texture_t tex_get_default_white(void);
-texture_t tex_get_default_specular(void);
-texture_t tex_get_default_normal(void);
-void tex_apply(texture_t texture, uint slot, int sampler);
-void tex_free(texture_t* handle);
+Material  material_new(slice_t name);
+Material  material_new_load(slice_t name);
+void      material_load_async(Material material);
+void      material_build(Material material);
+void      mateiral_bind(Material material);
+void      material_delete(Material* material);
 
 #endif

@@ -26,9 +26,9 @@
 #define WASP_SHADER_H_
 
 #include "types.h"
-#include "file.h"
+#include "slice.h"
 
-typedef struct _opaque_Shader {
+typedef struct _opaque_Shader_t {
   const slice_t name;
   const index_t uniforms;
   const bool ready;

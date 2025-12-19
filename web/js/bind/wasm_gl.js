@@ -284,9 +284,16 @@ function wasm_import_gl(imports, game) {
         game.gl.texImage2D(target, level, iFmt, fmt, sType, data.image);
       break;
       case types.bytes:
-        game.gl.texImage2D(
-          target, level, iFmt, width, height, 0, fmt, sType, data.buffer
-        );
+        if (!data.buffer || data.buffer.size == 0) {
+          game.gl.texImage2D(
+            target, level, iFmt, width, height, 0, fmt, sType, null
+          );
+        }
+        else {
+          game.gl.texImage2D(
+            target, level, iFmt, width, height, 0, fmt, sType, data.get_buffer()
+          );
+        }
       break;
       default: return;
     }
@@ -340,7 +347,7 @@ function wasm_import_gl(imports, game) {
     if (texture != 0) {
       let texdata = game.data[texture];
       if (!texdata || texdata.type != types.texture) return;
-      texobj = texdata.texture; 
+      texobj = texdata.texture;
     }
     game.gl.framebufferTexture2D(target, attachment, textgt, texobj, level);
   }

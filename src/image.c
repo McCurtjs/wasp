@@ -70,6 +70,51 @@ Image_Internal img_default = {
   .type = IMG_DEFAULT,
 };
 
+Image_Internal img_default_white = {
+  .filename = (String)&slice_empty,
+  .data = (byte[]) { F, F, F },
+  .width = 1,
+  .height = 1,
+  .channels = 3,
+#ifdef __WASM__
+  .ready = false,
+#else
+  .ready = true,
+#endif
+  .blend = false,
+  .type = IMG_DEFAULT
+};
+
+Image_Internal img_default_specular = {
+  .filename = (String)&slice_empty,
+  .data = (byte[]) { 31, 31, 31 },
+  .width = 1,
+  .height = 1,
+  .channels = 3,
+#ifdef __WASM__
+  .ready = false,
+#else
+  .ready = true,
+#endif
+  .blend = false,
+  .type = IMG_DEFAULT
+};
+
+Image_Internal img_default_normal = {
+  .filename = (String)&slice_empty,
+  .data = (byte[]) { 127, 127, 255 },
+  .width = 1,
+  .height = 1,
+  .channels = 3,
+#ifdef __WASM__
+  .ready = false,
+#else
+  .ready = true,
+#endif
+  .blend = false,
+  .type = IMG_DEFAULT
+};
+
 #ifdef __WASM__
 # include <string.h>
 # include <stdlib.h> // malloc, free
@@ -154,6 +199,42 @@ Image img_load(slice_t filename) {
 #endif
 
   return (Image)ret;
+}
+
+Image img_load_default_white(void) {
+#ifdef __WASM__
+  if (!img_default_white.ready) {
+    img_default_white.ready = true;
+    img_default_white.data = js_buffer_create(
+      img_default_white.data, img_default_white.channels
+    );
+  }
+#endif
+  return (Image)&img_default_white;
+}
+
+Image img_load_default_specular(void) {
+#ifdef __WASM__
+  if (!img_default_specular.ready) {
+    img_default_specular.ready = true;
+    img_default_specular.data = js_buffer_create(
+      img_default_specular.data, img_default_specular.channels
+    );
+  }
+#endif
+  return (Image)&img_default_specular;
+}
+
+Image img_load_default_normal(void) {
+#ifdef __WASM__
+  if (!img_default_normal.ready) {
+    img_default_normal.ready = true;
+    img_default_normal.data = js_buffer_create(
+      img_default_normal.data, img_default_normal.channels
+    );
+  }
+#endif
+  return (Image)&img_default_normal;
 }
 
 Image img_from_bytes(const byte* data, int width, int height, int channels) {

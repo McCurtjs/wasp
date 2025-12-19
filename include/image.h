@@ -41,6 +41,9 @@ typedef struct _opaque_Image_base {
 
 //Image2 img_new(width/height);
 Image img_load(slice_t filename);
+Image img_load_default_white(void);
+Image img_load_default_specular(void);
+Image img_load_default_normal(void);
 void img_delete(Image* image);
 
 #endif

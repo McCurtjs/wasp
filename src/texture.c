@@ -26,6 +26,10 @@
 
 #include "gl.h"
 
+static texture_t tex_default_white = { 0 };
+static texture_t tex_default_specular = { 0 };
+static texture_t tex_default_normal = { 0 };
+
 static const GLenum _rt_formats_internal[] = {
   GL_RGB8, GL_RGBA8,
   GL_RGBA16F, GL_RGBA32F, GL_R32F, GL_RG16F,
@@ -138,6 +142,30 @@ texture_t tex_generate(texture_format_t format, vec2i size) {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
   return texture;
+}
+
+texture_t tex_get_default_white(void) {
+  if (tex_default_white.handle == 0) {
+    tex_default_white = tex_from_image(img_load_default_white());
+  }
+
+  return tex_default_white;
+}
+
+texture_t tex_get_default_specular(void) {
+  if (tex_default_specular.handle == 0) {
+    tex_default_specular = tex_from_image(img_load_default_specular());
+  }
+
+  return tex_default_specular;
+}
+
+texture_t tex_get_default_normal(void) {
+  if (tex_default_normal.handle == 0) {
+    tex_default_normal = tex_from_image(img_load_default_normal());
+  }
+
+  return tex_default_normal;
 }
 
 void tex_apply(texture_t texture, uint slot, int sampler) {

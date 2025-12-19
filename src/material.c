@@ -22,36 +22,59 @@
 * SOFTWARE.
 */
 
-#ifndef WASP_TEXTURE_H_
-#define WASP_TEXTURE_H_
+#include "material.h"
 
-#include "types.h"
-#include "image.h"
-#include "vec.h"
+#include "str.h"
+#include "map.h"
 
-typedef enum texture_format_t {
-  TF_RGB_8,
-  TF_RGBA_8,
-  TF_RGBA_16,
-  TF_RGBA_32,
-  TF_R_32,
-  TF_RG_16,
-  TF_RGB_10_A_2,
-  TF_DEPTH_32,
-  TF_SUPPORTED_MAX
-} texture_format_t;
+#include <stdlib.h>
 
-typedef struct texture_t {
-  uint handle;
-} texture_t;
+typedef struct Material_Internal {
+  slice_t name;
+  texture_t diffuse;
+  texture_t normals;
+  texture_t specular;
+  float roughness;
+  float metalness;
+  bool ready;
 
-texture_t tex_from_image(Image image);
-texture_t tex_generate_blank(uint width, uint height);
-texture_t tex_generate(texture_format_t format, vec2i size);
-texture_t tex_get_default_white(void);
-texture_t tex_get_default_specular(void);
-texture_t tex_get_default_normal(void);
-void tex_apply(texture_t texture, uint slot, int sampler);
-void tex_free(texture_t* handle);
+  // hidden values
+  String name_internal;
+} Material_Internal;
 
-#endif
+#define MATERIAL_INTERNAL \
+  Material_Internal* m = (Material_Internal*)(m_in); \
+  assert(m)
+
+HMap _all_materials = NULL;
+
+Material material_new(slice_t name) {
+  if (!_all_materials) {
+    _all_materials =
+      map_new(slice_t, Material, slice_hash_vptr, slice_compare_vptr);
+  }
+
+  res_ensure_t in_map = map_ensure(_all_materials, &name);
+
+  if (!in_map.is_new) {
+    str_log("[Material.new] Name already in use: {}", name);
+    return *(Material*)in_map.value;
+  }
+
+  Material_Internal* ret = malloc(sizeof(Material_Internal));
+  assert(ret);
+
+  String name_str = str_copy(name);
+
+  *ret = (Material_Internal) {
+    .name = name_str->slice,
+    .ready = false,
+    .roughness = 0.5f,
+    .metalness = 0.0f,
+    .name_internal = name_str
+  };
+
+  *(Material*)in_map.value = (Material)ret;
+
+  return (Material)ret;
+}
