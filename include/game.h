@@ -47,6 +47,15 @@ typedef struct Game_Textures {
   RenderTarget render_target;
 } Game_Textures;
 
+typedef struct Game_Materials {
+  Material grass;
+  Material sands;
+  Material tiles;
+  Material crate;
+  Material mudds;
+  Material renderite;
+} Game_Materials;
+
 #define game_key_count 10
 #define game_mouse_button_count 3
 #define game_button_input_count (game_key_count + game_mouse_button_count)
@@ -94,6 +103,7 @@ typedef struct Game {
   Game_Shaders shaders;
   Game_Models models;
   Game_Textures textures;
+  Game_Materials materials;
 
   Array_entity entities;
 

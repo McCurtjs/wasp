@@ -37,9 +37,16 @@ typedef struct Material_Internal {
   float roughness;
   float metalness;
   bool ready;
+  bool use_diffuse_map;
+  bool use_normal_map;
+  bool use_specular_map;
 
   // hidden values
   String name_internal;
+  slice_t ext;
+  Image img_diffuse;
+  Image img_normals;
+  Image img_specular;
 } Material_Internal;
 
 #define MATERIAL_INTERNAL \
@@ -66,15 +73,72 @@ Material material_new(slice_t name) {
 
   String name_str = str_copy(name);
 
-  *ret = (Material_Internal) {
+  *ret = (Material_Internal){
     .name = name_str->slice,
     .ready = false,
     .roughness = 0.5f,
     .metalness = 0.0f,
-    .name_internal = name_str
+    .name_internal = name_str,
+    .use_diffuse_map = true,
+    .use_normal_map = false,
+    .use_specular_map = false,
+    .ext = S("jpg"),
   };
 
   *(Material*)in_map.value = (Material)ret;
 
   return (Material)ret;
+}
+
+Material material_new_load(slice_t name) {
+  Material ret = material_new(name);
+  material_load_async(ret);
+  return ret;
+}
+
+void material_load_async(Material m_in) {
+  MATERIAL_INTERNAL;
+
+  if (m->use_diffuse_map) {
+    String filename_d = str_format("./res/textures/{}.{}", m->name, m->ext);
+    m->img_diffuse = img_load(filename_d->slice);
+    str_delete(&filename_d);
+  }
+
+  if (m->use_normal_map) {
+    String filename_n = str_format("./res/textures/{}_n.{}", m->name, m->ext);
+    m->img_normals = img_load(filename_n->slice);
+    str_delete(&filename_n);
+  }
+
+  if (m->use_specular_map) {
+    String filename_s = str_format("./res/textures/{}_s.{}", m->name, m->ext);
+    m->img_specular = img_load(filename_s->slice);
+    str_delete(&filename_s);
+  }
+}
+
+void material_build(Material m_in) {
+  MATERIAL_INTERNAL;
+
+  if (m->img_diffuse) {
+    assert(m->img_diffuse->ready);
+    m->diffuse = tex_from_image(m->img_diffuse);
+    img_delete(&m->img_diffuse);
+  }
+  else m->diffuse = tex_get_default_white();
+
+  if (m->img_normals) {
+    assert(m->img_normals->ready);
+    m->normals = tex_from_image(m->img_normals);
+    img_delete(&m->img_normals);
+  }
+  else m->normals = tex_get_default_normal();
+
+  if (m->img_specular) {
+    assert(m->img_specular->ready);
+    m->specular = tex_from_image(m->img_specular);
+    img_delete(&m->img_specular);
+  }
+  else m->specular = tex_get_default_specular();
 }

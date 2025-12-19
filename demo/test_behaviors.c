@@ -145,24 +145,9 @@ void render_phong(Entity* e, Game* game) {
   //if (e->model->type == MODEL_OBJ) use_color = e->model->mesh.use_color;
   //glUniform1i(loc_use_vert_color, use_color);
 
-  tex_apply(e->texture, 0, loc_sampler_tex);
-
-  if (e->texture.handle == game->textures.grass.handle) {
-    tex_apply(game->textures.grasn, 1, loc_sampler_norm);
-  }
-  else if (e->texture.handle == game->textures.brass.handle) {
-    tex_apply(game->textures.brasn, 1, loc_sampler_norm);
-  }
-  else {
-    tex_apply(game->textures.flat, 1, loc_sampler_norm);
-  }
-
-  if (e->texture.handle == game->textures.grass.handle) {
-    tex_apply(game->textures.grasr, 2, loc_sampler_spec);
-  }
-  else {
-    tex_apply(game->textures.flats, 2, loc_sampler_spec);
-  }
+  tex_apply(e->material->diffuse, 0, loc_sampler_tex);
+  tex_apply(e->material->normals, 1, loc_sampler_norm);
+  tex_apply(e->material->specular, 2, loc_sampler_spec);
 
   model_render(e->model);
 

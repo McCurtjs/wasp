@@ -38,6 +38,9 @@ typedef struct _opaque_Material_t {
   const float roughness;
   const float metalness;
   const bool ready;
+  bool use_diffuse_map;
+  bool use_normal_map;
+  bool use_specular_map;
 }* Material;
 
 typedef struct material_t {

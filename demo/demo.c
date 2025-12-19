@@ -37,16 +37,17 @@
 //static File file_model_test = NULL;
 //static File file_model_level_1;
 static File file_model_gear = NULL;
-static Image image_crate;
+//static Image image_crate;
 //static Image image_level;
 //static Image image_flat;
 //static Image image_flats;
-static Image image_tiles;
-static Image image_brass;
-static Image image_brasn;
-static Image image_grass;
-static Image image_grasn;
-static Image image_grasr;
+//static Image image_tiles;
+//static Image image_brass;
+//static Image image_brasn;
+//static Image image_grass;
+//static Image image_grasn;
+//static Image image_grasr;
+
 //static Image image_anim_test;
 #endif
 
@@ -99,13 +100,31 @@ bool export(wasp_preload) (Game* game) {
 
   //image_flat = img_load_default_normal();// img_load(S("./res/textures/flat_n.jpg"));
   //image_flats = img_load_default_specular();// (S("./res/textures/flat_s.jpg"));
-  image_crate = img_load(S("./res/textures/crate.png"));
-  image_brass = img_load(S("./res/textures/brass2.jpg"));
-  image_brasn = img_load(S("./res/textures/brass2_n.jpg"));
-  image_tiles = img_load(S("./res/textures/tiles.png"));
-  image_grass = img_load(S("./res/textures/grass_rocky_d.jpg"));
-  image_grasn = img_load(S("./res/textures/grass_rocky_n.jpg"));
-  image_grasr = img_load(S("./res/textures/grass_rocky_s.jpg"));
+  game->materials.grass = material_new(S("grass_rocky"));
+  game->materials.grass->use_normal_map = true;
+  game->materials.grass->use_specular_map = true;
+  game->materials.crate = material_new(S("crate"));
+  game->materials.tiles = material_new(S("tiles"));
+  game->materials.sands = material_new(S("brass2"));
+  game->materials.sands->use_normal_map = true;
+  game->materials.mudds = material_new(S("lava"));
+  game->materials.mudds->use_normal_map = true;
+  game->materials.renderite = material_new(S("renderite"));
+  game->materials.renderite->use_diffuse_map = false;
+
+  material_load_async(game->materials.grass);
+  material_load_async(game->materials.crate);
+  material_load_async(game->materials.tiles);
+  material_load_async(game->materials.sands);
+  material_load_async(game->materials.mudds);
+
+  //image_crate = img_load(S("./res/textures/crate.png"));
+  //image_brass = img_load(S("./res/textures/brass2.jpg"));
+  //image_brasn = img_load(S("./res/textures/brass2_n.jpg"));
+  //image_tiles = img_load(S("./res/textures/tiles.png"));
+  //image_grass = img_load(S("./res/textures/grass_rocky.jpg"));
+  //image_grasn = img_load(S("./res/textures/grass_rocky_n.jpg"));
+  //image_grasr = img_load(S("./res/textures/grass_rocky_s.jpg"));
   #endif
 
   camera_build_perspective(&game->camera);
@@ -176,16 +195,29 @@ bool export(wasp_load) (Game* game, int await_count, float dt) {
   model_load_obj(&game->models.gear, file_model_gear);
   //model_load_obj(&game.models.level_1, &file_model_level_1);
 
+  //material_build(mat_grass);
+
+  //game->textures.grass = mat_grass->diffuse;
+  //game->textures.grasn = mat_grass->normals;
+  //game->textures.grasr = mat_grass->specular;
+
+  material_build(game->materials.grass);
+  material_build(game->materials.crate);
+  material_build(game->materials.tiles);
+  material_build(game->materials.sands);
+  material_build(game->materials.mudds);
+  material_build(game->materials.renderite);
+
   // Build textures from async data
-  game->textures.flat = tex_get_default_normal();// tex_from_image(image_flat);
-  game->textures.flats = tex_get_default_specular();// tex_from_image(img_load_default_specular());
-  game->textures.crate = tex_from_image(image_crate);// tex_from_image(image_flat);
-  game->textures.tiles = tex_from_image(image_tiles);
-  game->textures.brass = tex_from_image(image_brass);
-  game->textures.brasn = tex_from_image(image_brasn);
-  game->textures.grass = tex_from_image(image_grass);
-  game->textures.grasn = tex_from_image(image_grasn);
-  game->textures.grasr = tex_from_image(image_grasr);
+  //game->textures.flat = tex_get_default_normal();// tex_from_image(image_flat);
+  //game->textures.flats = tex_get_default_specular();// tex_from_image(img_load_default_specular());
+  //game->textures.crate = tex_from_image(image_crate);// tex_from_image(image_flat);
+  //game->textures.tiles = tex_from_image(image_tiles);
+  //game->textures.brass = tex_from_image(image_brass);
+  //game->textures.brasn = tex_from_image(image_brasn);
+  //game->textures.grass = tex_from_image(image_grass);
+  //game->textures.grasn = tex_from_image(image_grasn);
+  //game->textures.grasr = tex_from_image(image_grasr);
   //texture_build_from_image(&game.textures.level, &image_level);
   //texture_build_from_image(&game.textures.player, &image_anim_test);
 
@@ -196,13 +228,13 @@ bool export(wasp_load) (Game* game, int await_count, float dt) {
   //image_delete(&image_level);
   //img_delete(&image_flat);
   //img_delete(&image_flats);
-  img_delete(&image_brass);
-  img_delete(&image_brasn);
-  img_delete(&image_crate);
-  img_delete(&image_tiles);
-  img_delete(&image_grass);
-  img_delete(&image_grasn);
-  img_delete(&image_grasr);
+  //img_delete(&image_brass);
+  //img_delete(&image_brasn);
+  //img_delete(&image_crate);
+  //img_delete(&image_tiles);
+  //img_delete(&image_grass);
+  //img_delete(&image_grasn);
+  //img_delete(&image_grasr);
   //image_delete(&image_anim_test);
 
   // Set up game models

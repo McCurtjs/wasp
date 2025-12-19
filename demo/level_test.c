@@ -58,7 +58,7 @@ void level_load_og_test(Game* game) {
   //* Gear 1
   game_add_entity(game, &(Entity) {
     .model = &game->models.gear,
-    .texture = game->textures.grass,
+    .material = game->materials.grass,
     .transform = m4translation(v3f(0, 7, -12)),
     .render = render_phong,
     .behavior = behavior_gear_rotate_cw,
@@ -67,16 +67,16 @@ void level_load_og_test(Game* game) {
   //* Gear 2
   game_add_entity(game, &(Entity) {
     .model = &game->models.gear,
-    .texture = game->textures.brass,
+    .material = game->materials.sands,
     .transform = m4translation(v3f(20.5f, -1.5f, -12)),
     .render = render_phong,
     .behavior = behavior_gear_rotate_ccw,
   }); //*/
 
-  //* Gear 2
+  //* Gear 3
   game_add_entity(game, &(Entity) {
     .model = &game->models.gear,
-    .texture = game->textures.brass,
+    .material = game->materials.mudds,
     .transform = m4translation(v3f(43.f, -1.5f, -12)),
     .render = render_phong,
     .behavior = behavior_gear_rotate_cw,
@@ -85,15 +85,39 @@ void level_load_og_test(Game* game) {
   //* Crate
   game_add_entity(game, &(Entity) {
     .model = &game->models.box,
-    .texture = game->textures.crate,
+    .material = game->materials.grass,
     .transform = m4translation(v3f(0, -0.5, 0)),
     .render = render_phong,
+  }); //*/
+
+  //* Crate
+  game_add_entity(game, &(Entity) {
+    .model = &game->models.box,
+      .material = game->materials.grass,
+      .transform = m4translation(v3f(1, -0.5, 0)),
+      .render = render_phong,
+  }); //*/
+
+  //* Crate
+  game_add_entity(game, &(Entity) {
+    .model = &game->models.box,
+      .material = game->materials.grass,
+      .transform = m4translation(v3f(0, -0.5, 1)),
+      .render = render_phong,
+  }); //*/
+
+  //* Crate
+  game_add_entity(game, &(Entity) {
+    .model = &game->models.box,
+      .material = game->materials.grass,
+      .transform = m4translation(v3f(1, -0.5, 1)),
+      .render = render_phong,
   }); //*/
 
   //* Bigger Crate
   game_add_entity(game, &(Entity) {
     .model = &game->models.box,
-    .texture = game->textures.crate,
+    .material = game->materials.crate,
     .transform = m4mul(m4translation(v3f(2, 0, 0)), m4uniform(2)),
     .render = render_phong,
   }); //*/
@@ -101,7 +125,7 @@ void level_load_og_test(Game* game) {
   //* Even Bigger Crate
   game_add_entity(game, &(Entity) {
     .model = &game->models.box,
-    .texture = game->textures.crate,
+    .material = game->materials.renderite,
     .transform = m4mul(m4translation(v3f(5, 0.5, 0)), m4uniform(3)),
     .render = render_phong,
   }); //*/
@@ -119,18 +143,21 @@ void level_load_og_test(Game* game) {
         pos.y -= v3mag(pos) / 10.f;
       }
 
-      texture_t texture = game->textures.tiles;
+      Material material = game->materials.tiles;
 
       if (i == j) {
-        texture = game->textures.grass;
+        material = game->materials.grass;
       }
       else if (i == -j) {
-        texture = game->textures.brass;
+        material = game->materials.sands;
+      }
+      else if (i % 2 == 0) {
+        material = j % 2 == 0 ? game->materials.renderite : game->materials.mudds;
       }
 
       game_add_entity(game, &(Entity) {
         .model = &game->models.box,
-        .texture = texture,
+        .material = material,
         .transform =
           m4mul(
             m4mul(m4translation(pos), m4rotation(axis, angle)),
