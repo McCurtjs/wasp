@@ -27,7 +27,6 @@
 #include "gl.h"
 
 static texture_t tex_default_white = { 0 };
-static texture_t tex_default_specular = { 0 };
 static texture_t tex_default_normal = { 0 };
 
 static const GLenum _rt_formats_internal[] = {
@@ -50,6 +49,10 @@ static const GLenum _rt_format_type[] = {
   GL_UNSIGNED_INT_2_10_10_10_REV,
   GL_FLOAT
 };
+
+////////////////////////////////////////////////////////////////////////////////
+// Initialize a texture from loaded image data
+////////////////////////////////////////////////////////////////////////////////
 
 texture_t tex_from_image(Image image) {
   texture_t ret = { 0 };
@@ -91,34 +94,36 @@ texture_t tex_from_image(Image image) {
   , image->data
   );
 
-  if (isPow2(image->width) && isPow2(image->height)) {
+  // Don't make mipmaps for very small textures, and set them up to use
+  //    "nearest" filtering, mostly to make sure the error texture is sharp.
+  if (image->width < 5 && image->height < 5) {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  }
+  // Generate mipmaps for any texture that's a valid power of 2 and set up
+  //    proper mipmap filtering.
+  else if (isPow2(image->width) && isPow2(image->height)) {
     glGenerateMipmap(GL_TEXTURE_2D);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-  } else {
+    glTexParameteri(
+      GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR
+    );
+  }
+  // Generic filtering for all other textures
+  else {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   }
+
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
   return ret;
 }
 
-texture_t tex_generate_blank(uint width, uint height) {
-  texture_t texture;
-  glGenTextures(1, &texture.handle);
-
-  glBindTexture(GL_TEXTURE_2D, texture.handle);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-
-  return texture;
-}
+////////////////////////////////////////////////////////////////////////////////
+// Initialize a blank texture for manual writing or render targets
+////////////////////////////////////////////////////////////////////////////////
 
 texture_t tex_generate(texture_format_t format, vec2i size) {
   texture_t texture;
@@ -147,6 +152,10 @@ texture_t tex_generate(texture_format_t format, vec2i size) {
   return texture;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Initialize/get a default plain white texture <1, 1, 1>
+////////////////////////////////////////////////////////////////////////////////
+
 texture_t tex_get_default_white(void) {
   if (tex_default_white.handle == 0) {
     tex_default_white = tex_from_image(img_load_default_white());
@@ -155,13 +164,9 @@ texture_t tex_get_default_white(void) {
   return tex_default_white;
 }
 
-texture_t tex_get_default_specular(void) {
-  if (tex_default_specular.handle == 0) {
-    tex_default_specular = tex_from_image(img_load_default_specular());
-  }
-
-  return tex_default_specular;
-}
+////////////////////////////////////////////////////////////////////////////////
+// Initialize/get a default normal map texture <0.5, 0.5, 1.0>
+////////////////////////////////////////////////////////////////////////////////
 
 texture_t tex_get_default_normal(void) {
   if (tex_default_normal.handle == 0) {
@@ -171,11 +176,19 @@ texture_t tex_get_default_normal(void) {
   return tex_default_normal;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Assign the texture to a given slot and associate it with the sampler
+////////////////////////////////////////////////////////////////////////////////
+
 void tex_apply(texture_t texture, uint slot, int sampler) {
   glActiveTexture(GL_TEXTURE0 + slot);
   glUniform1i(sampler, slot);
   glBindTexture(GL_TEXTURE_2D, texture.handle);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Frees the texture
+////////////////////////////////////////////////////////////////////////////////
 
 void tex_free(texture_t* texture) {
   glDeleteTextures(1, &texture->handle);

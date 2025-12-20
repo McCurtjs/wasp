@@ -6,9 +6,9 @@ Game game_singleton;
 
 Game* export(game_init) (int x, int y) {
   vec2i default_window = v2i(x, y);
-  game_singleton = (Game){
+  game_singleton = (Game) {
     .window = default_window,
-    .title = "Game Title",
+    .title = NULL,
     .camera = {
       .pos = v4f(0, 0, 60, 1),
       .front = v4front,
@@ -34,7 +34,12 @@ void game_quit(Game* game) {
   game->should_exit = true;
 }
 
-void game_add_entity(Game* game, const Entity* entity) {
+void game_add_entity(Game* game, Entity* entity) {
+  if (entity->tint.x == 0.0f
+  &&  entity->tint.y == 0.0f
+  &&  entity->tint.z == 0.0f) {
+    entity->tint = v3ones;
+  }
   arr_entity_write_back(game->entities, entity);
 }
 

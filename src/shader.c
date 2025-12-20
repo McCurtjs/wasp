@@ -221,7 +221,7 @@ Shader shader_new(slice_t name) {
 // Create shader and start loading
 ////////////////////////////////////////////////////////////////////////////////
 
-Shader shader_new_load(slice_t name) {
+Shader shader_new_load_async(slice_t name) {
   Shader ret = shader_new(name);
   shader_load_async(ret);
   return ret;
@@ -340,6 +340,14 @@ void shader_build(Shader s_in) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+
+void shader_build_all(void) {
+  Shader* map_foreach(shader, _all_shaders) {
+    shader_build(*shader);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Apply the shader for use
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -406,7 +414,6 @@ void _gl_shader_update_program(Shader s_in, gl_shader_t* part) {
   Shader_Internal temp = *s;
   temp.ready = false;
   temp.program_handle = 0;
-  temp.uniforms = NULL;
 
   if (!_gl_shader_link(&temp, vert, frag)) {
     str_log("[Shader.watch] Failed to re-link shader: {}", s->name);
@@ -414,12 +421,11 @@ void _gl_shader_update_program(Shader s_in, gl_shader_t* part) {
   }
 
   glDeleteProgram(s->program_handle);
-  map_delete(&s->uniforms);
 
   str_log("[Shader.watch] Re-linked: {}", s->name);
 
   *s = temp;
-  s->uniforms = map_new(slice_t, GLint, slice_hash_vptr, slice_compare_vptr);
+  map_clear(s->uniforms);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

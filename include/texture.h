@@ -45,13 +45,14 @@ typedef struct texture_t {
   uint handle;
 } texture_t;
 
+//Texture texture_new(texture_format_t format, vec2i size);
+//Texture texture_new_from_image(Image image);
+
 texture_t tex_from_image(Image image);
-texture_t tex_generate_blank(uint width, uint height);
 texture_t tex_generate(texture_format_t format, vec2i size);
 texture_t tex_get_default_white(void);
-texture_t tex_get_default_specular(void);
 texture_t tex_get_default_normal(void);
-void tex_apply(texture_t texture, uint slot, int sampler);
-void tex_free(texture_t* handle);
+void      tex_apply(texture_t texture, uint slot, int sampler);
+void      tex_free(texture_t* handle);
 
 #endif

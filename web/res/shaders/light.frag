@@ -11,13 +11,17 @@ in mat3 vTangentTransform;
 
 uniform vec4 lightPos;
 uniform vec4 cameraPos;
+
 uniform sampler2D texSamp;
 uniform sampler2D normSamp;
 uniform sampler2D specSamp;
-float specularPower = 0.35;
 
-layout(location = 0) out vec4 fragColor;
+uniform vec2 in_props;
+uniform vec3 in_tint;
+
+layout(location = 0) out vec3 fragColor;
 layout(location = 1) out vec2 fragNormal;
+layout(location = 2) out vec4 fragProps;
 
 //layout(location = 2) out float depthValue;
 
@@ -26,7 +30,7 @@ void main() {
   // Get base texture color - discard fully transparent fragments
   vec4 albedo = texture(texSamp, vUV);
   if (albedo.w == 0.0) discard;
-  fragColor = albedo;
+  fragColor = albedo.xyz * in_tint;
 
   // If the normal is zero, preserve that and skip (unlit/non-physical object)
   if (vNormal.z == 0.0) {
@@ -34,8 +38,9 @@ void main() {
     return;
   }
 
-  // Hide the specular map in the albedo w component for now
-  fragColor.w = texture(specSamp, vUV).r;
+  // props.r = roughness component
+  // props.g = metalness component
+  fragProps.rg = texture(specSamp, vUV).rg * in_props.rg;
 
   // Pack normal into octahedral space
   //*

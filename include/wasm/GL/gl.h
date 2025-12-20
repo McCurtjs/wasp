@@ -373,6 +373,8 @@ void    glDeleteProgram(GLuint program);
 
 GLint   glGetUniformLocation(GLuint program, const GLchar* name);
 void    glUniform1i(GLint loc, GLint v0);
+void    glUniform2fv(GLint loc, GLsizei count, const GLfloat* value);
+void    glUniform3fv(GLint loc, GLsizei count, const GLfloat* value);
 void    glUniform4fv(GLint loc, GLsizei count, const GLfloat* value);
 void    glUniformMatrix4fv(
           GLint loc, GLsizei count, GLboolean transpose, const GLfloat* value);

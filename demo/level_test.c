@@ -60,7 +60,7 @@ void level_load_og_test(Game* game) {
     .model = &game->models.gear,
     .material = game->materials.grass,
     .transform = m4translation(v3f(0, 7, -12)),
-    .render = render_phong,
+    .render = render_pbr,
     .behavior = behavior_gear_rotate_cw,
   }); //*/
 
@@ -69,7 +69,7 @@ void level_load_og_test(Game* game) {
     .model = &game->models.gear,
     .material = game->materials.sands,
     .transform = m4translation(v3f(20.5f, -1.5f, -12)),
-    .render = render_phong,
+    .render = render_pbr,
     .behavior = behavior_gear_rotate_ccw,
   }); //*/
 
@@ -78,7 +78,7 @@ void level_load_og_test(Game* game) {
     .model = &game->models.gear,
     .material = game->materials.mudds,
     .transform = m4translation(v3f(43.f, -1.5f, -12)),
-    .render = render_phong,
+    .render = render_pbr,
     .behavior = behavior_gear_rotate_cw,
   }); //*/
 
@@ -87,7 +87,7 @@ void level_load_og_test(Game* game) {
     .model = &game->models.box,
     .material = game->materials.grass,
     .transform = m4translation(v3f(0, -0.5, 0)),
-    .render = render_phong,
+    .render = render_pbr,
   }); //*/
 
   //* Crate
@@ -95,7 +95,7 @@ void level_load_og_test(Game* game) {
     .model = &game->models.box,
       .material = game->materials.grass,
       .transform = m4translation(v3f(1, -0.5, 0)),
-      .render = render_phong,
+      .render = render_pbr,
   }); //*/
 
   //* Crate
@@ -103,7 +103,7 @@ void level_load_og_test(Game* game) {
     .model = &game->models.box,
       .material = game->materials.grass,
       .transform = m4translation(v3f(0, -0.5, 1)),
-      .render = render_phong,
+      .render = render_pbr,
   }); //*/
 
   //* Crate
@@ -111,7 +111,7 @@ void level_load_og_test(Game* game) {
     .model = &game->models.box,
       .material = game->materials.grass,
       .transform = m4translation(v3f(1, -0.5, 1)),
-      .render = render_phong,
+      .render = render_pbr,
   }); //*/
 
   //* Bigger Crate
@@ -119,15 +119,16 @@ void level_load_og_test(Game* game) {
     .model = &game->models.box,
     .material = game->materials.crate,
     .transform = m4mul(m4translation(v3f(2, 0, 0)), m4uniform(2)),
-    .render = render_phong,
+    .render = render_pbr,
   }); //*/
 
   //* Even Bigger Crate
   game_add_entity(game, &(Entity) {
     .model = &game->models.box,
     .material = game->materials.renderite,
+    .tint = v3f(0.8f, 0.3f, 0.6f),
     .transform = m4mul(m4translation(v3f(5, 0.5, 0)), m4uniform(3)),
-    .render = render_phong,
+    .render = render_pbr,
   }); //*/
 
   //* LORGE Cube(s)
@@ -163,7 +164,7 @@ void level_load_og_test(Game* game) {
             m4mul(m4translation(pos), m4rotation(axis, angle)),
             m4uniform(19)
           ),
-        .render = render_phong,
+        .render = render_pbr,
       }); //*/
 
     }

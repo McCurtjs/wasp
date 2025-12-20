@@ -87,12 +87,12 @@ typedef struct input_t {
 
 typedef struct app_defaults_t {
   vec2i window;
-  const char* title;
+  String title;
 } app_defaults_t;
 
 typedef struct Game {
   vec2i window;
-  const char* title;
+  String title;
   Camera camera;
 
   vec3 target;
@@ -117,7 +117,7 @@ Game* game_init(int window_width, int window_height);
 void game_reset(Game* game);
 void game_quit(Game* game);
 
-void game_add_entity(Game* game, const Entity* entity);
+void game_add_entity(Game* game, Entity* entity);
 
 void game_update(Game* game, float dt);
 void game_render(Game* game);

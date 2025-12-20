@@ -33,22 +33,7 @@
 #define GAME_ON 1
 
 #if GAME_ON == 1
-// Async loaders
-//static File file_model_test = NULL;
-//static File file_model_level_1;
 static File file_model_gear = NULL;
-//static Image image_crate;
-//static Image image_level;
-//static Image image_flat;
-//static Image image_flats;
-//static Image image_tiles;
-//static Image image_brass;
-//static Image image_brasn;
-//static Image image_grass;
-//static Image image_grasn;
-//static Image image_grasr;
-
-//static Image image_anim_test;
 #endif
 
 #ifdef __clang__
@@ -89,42 +74,39 @@ static keybind_t input_map[] = {
 
 void wasp_init(app_defaults_t* game) {
   game->window = v2i(1024, 768);
-  game->title = "WASP Demo";
+  game->title = str_copy("WASP Demo");
 }
 
 bool export(wasp_preload) (Game* game) {
   #if GAME_ON == 1
-  //file_model_test = file_new(S("./res/models/test.obj"));
-  file_model_gear = file_new(S("./res/models/gear.obj"));
-  //file_open_async(&file_model_level_1, "./res/models/level_1.obj");
 
-  //image_flat = img_load_default_normal();// img_load(S("./res/textures/flat_n.jpg"));
-  //image_flats = img_load_default_specular();// (S("./res/textures/flat_s.jpg"));
+  file_model_gear = file_new(S("./res/models/gear.obj"));
+
   game->materials.grass = material_new(S("grass_rocky"));
   game->materials.grass->use_normal_map = true;
   game->materials.grass->use_specular_map = true;
+  game->materials.grass->roughness = 1.0f;
+
   game->materials.crate = material_new(S("crate"));
+  game->materials.crate->roughness = 0.2f;
+
   game->materials.tiles = material_new(S("tiles"));
+
   game->materials.sands = material_new(S("brass2"));
+  game->materials.sands->roughness = 1.0f;
   game->materials.sands->use_normal_map = true;
+
   game->materials.mudds = material_new(S("lava"));
   game->materials.mudds->use_normal_map = true;
+  game->materials.mudds->roughness = 1.0f;
+
   game->materials.renderite = material_new(S("renderite"));
   game->materials.renderite->use_diffuse_map = false;
+  game->materials.renderite->roughness = 0.0f;
+  game->materials.renderite->metalness = 0.4f;
 
-  material_load_async(game->materials.grass);
-  material_load_async(game->materials.crate);
-  material_load_async(game->materials.tiles);
-  material_load_async(game->materials.sands);
-  material_load_async(game->materials.mudds);
+  material_load_all_async();
 
-  //image_crate = img_load(S("./res/textures/crate.png"));
-  //image_brass = img_load(S("./res/textures/brass2.jpg"));
-  //image_brasn = img_load(S("./res/textures/brass2_n.jpg"));
-  //image_tiles = img_load(S("./res/textures/tiles.png"));
-  //image_grass = img_load(S("./res/textures/grass_rocky.jpg"));
-  //image_grasn = img_load(S("./res/textures/grass_rocky_n.jpg"));
-  //image_grasr = img_load(S("./res/textures/grass_rocky_s.jpg"));
   #endif
 
   camera_build_perspective(&game->camera);
@@ -136,13 +118,13 @@ bool export(wasp_preload) (Game* game) {
   model_build(&model_frame);
 
   game->shaders.loading = shader_new(S("basic"));
-  game->shaders.basic = shader_new_load(S("basic_deferred"));
-  game->shaders.light = shader_new_load(S("light"));
-  game->shaders.frame = shader_new_load(S("frame"));
-  game->shaders.warhol = shader_new_load(S("warhol"));
+  game->shaders.basic = shader_new_load_async(S("basic_deferred"));
+  game->shaders.light = shader_new_load_async(S("light"));
+  game->shaders.frame = shader_new_load_async(S("frame"));
+  game->shaders.warhol = shader_new_load_async(S("warhol"));
 
   game->textures.render_target = rt_new(
-    TF_RGBA_8, TF_RG_16, TF_DEPTH_32
+    TF_RGB_8, TF_RG_16, TF_RGB_10_A_2, TF_DEPTH_32
   );
   rt_build(game->textures.render_target, game->window);
 
@@ -186,56 +168,12 @@ bool export(wasp_load) (Game* game, int await_count, float dt) {
 
   #if GAME_ON == 1
 
-  shader_build(game->shaders.light);
-  shader_build(game->shaders.basic);
-  shader_build(game->shaders.frame);
-  shader_build(game->shaders.warhol);
-
-  //model_load_obj(&game.models.level_test, file_model_test);
+  shader_build_all();
+  material_build_all();
   model_load_obj(&game->models.gear, file_model_gear);
-  //model_load_obj(&game.models.level_1, &file_model_level_1);
-
-  //material_build(mat_grass);
-
-  //game->textures.grass = mat_grass->diffuse;
-  //game->textures.grasn = mat_grass->normals;
-  //game->textures.grasr = mat_grass->specular;
-
-  material_build(game->materials.grass);
-  material_build(game->materials.crate);
-  material_build(game->materials.tiles);
-  material_build(game->materials.sands);
-  material_build(game->materials.mudds);
-  material_build(game->materials.renderite);
-
-  // Build textures from async data
-  //game->textures.flat = tex_get_default_normal();// tex_from_image(image_flat);
-  //game->textures.flats = tex_get_default_specular();// tex_from_image(img_load_default_specular());
-  //game->textures.crate = tex_from_image(image_crate);// tex_from_image(image_flat);
-  //game->textures.tiles = tex_from_image(image_tiles);
-  //game->textures.brass = tex_from_image(image_brass);
-  //game->textures.brasn = tex_from_image(image_brasn);
-  //game->textures.grass = tex_from_image(image_grass);
-  //game->textures.grasn = tex_from_image(image_grasn);
-  //game->textures.grasr = tex_from_image(image_grasr);
-  //texture_build_from_image(&game.textures.level, &image_level);
-  //texture_build_from_image(&game.textures.player, &image_anim_test);
 
   // Delete async loaded resources
-  //file_delete(&file_model_test);
   file_delete(&file_model_gear);
-  //file_delete(&file_model_level_1);
-  //image_delete(&image_level);
-  //img_delete(&image_flat);
-  //img_delete(&image_flats);
-  //img_delete(&image_brass);
-  //img_delete(&image_brasn);
-  //img_delete(&image_crate);
-  //img_delete(&image_tiles);
-  //img_delete(&image_grass);
-  //img_delete(&image_grasn);
-  //img_delete(&image_grasr);
-  //image_delete(&image_anim_test);
 
   // Set up game models
   game->models.grid.grid = (Model_Grid) {
@@ -298,12 +236,14 @@ void export(wasp_render) (Game* game) {
   shader_bind(shader);
   int tex_sampler = shader_uniform_loc(shader, "texSamp");
   int norm_sampler = shader_uniform_loc(shader, "normSamp");
+  int prop_sampler = shader_uniform_loc(shader, "propSamp");
   int depth_sampler = shader_uniform_loc(shader, "depthSamp");
   int loc_invproj = shader_uniform_loc(shader, "in_proj_inverse");
   int loc_light_pos = shader_uniform_loc(shader, "lightPos");
   tex_apply(game->textures.render_target->textures[0], 0, tex_sampler);
   tex_apply(game->textures.render_target->textures[1], 1, norm_sampler);
-  tex_apply(game->textures.render_target->textures[2], 2, depth_sampler);
+  tex_apply(game->textures.render_target->textures[2], 2, prop_sampler);
+  tex_apply(game->textures.render_target->textures[3], 3, depth_sampler);
   glUniformMatrix4fv(loc_invproj, 1, 0, m4inverse(game->camera.projection).f);
   glUniform4fv(loc_light_pos, 1, mv4mul(game->camera.view, game->light_pos).f);
 

@@ -158,6 +158,20 @@ function wasm_import_gl(imports, game) {
     game.gl.uniform1i(data.location, v0);
   }
 
+  imports["glUniform2fv"] = (loc_id, count, ptr) => {
+    let data = game.data[loc_id];
+    if (!data || data.type != types.uniform) return 0;
+    let bytes = game.memory_f(ptr, count * 2);
+    game.gl.uniform2fv(data.location, bytes, 0);
+  }
+
+  imports["glUniform3fv"] = (loc_id, count, ptr) => {
+    let data = game.data[loc_id];
+    if (!data || data.type != types.uniform) return 0;
+    let bytes = game.memory_f(ptr, count * 3);
+    game.gl.uniform3fv(data.location, bytes, 0);
+  }
+
   imports["glUniform4fv"] = (loc_id, count, ptr) => {
     let data = game.data[loc_id];
     if (!data || data.type != types.uniform) return 0;

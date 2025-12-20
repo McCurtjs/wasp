@@ -49,26 +49,28 @@ typedef struct Image_Internal {
   Image_Internal* img = (Image_Internal*)(img_in); \
   assert(img)
 
+////////////////////////////////////////////////////////////////////////////////
+// Data section for default built-in image values
+////////////////////////////////////////////////////////////////////////////////
+
 #define F 255
 Image_Internal img_default = {
   .filename = (String)&slice_empty,
   .data = (byte[]) {
-    0,0,0, 0,0,0, F,0,F, F,0,F, 0,0,0, 0,0,0, F,0,F, F,0,F,
-    0,0,0, 0,0,0, F,0,F, F,0,F, 0,0,0, 0,0,0, F,0,F, F,0,F,
-    F,0,F, F,0,F, 0,0,0, 0,0,0, F,0,F, F,0,F, 0,0,0, 0,0,0,
-    F,0,F, F,0,F, 0,0,0, 0,0,0, F,0,F, F,0,F, 0,0,0, 0,0,0,
-    0,0,0, 0,0,0, F,0,F, F,0,F, 0,0,0, 0,0,0, F,0,F, F,0,F,
-    0,0,0, 0,0,0, F,0,F, F,0,F, 0,0,0, 0,0,0, F,0,F, F,0,F,
-    F,0,F, F,0,F, 0,0,0, 0,0,0, F,0,F, F,0,F, 0,0,0, 0,0,0,
-    F,0,F, F,0,F, 0,0,0, 0,0,0, F,0,F, F,0,F, 0,0,0, 0,0,0,
+    0,0,0, F,0,F, 0,0,0, F,0,F,
+    F,0,F, 0,0,0, F,0,F, 0,0,0,
+    0,0,0, F,0,F, 0,0,0, F,0,F,
+    F,0,F, 0,0,0, F,0,F, 0,0,0
   },
-  .width = 8,
-  .height = 8,
+  .width = 4,
+  .height = 4,
   .channels = 3,
   .ready = true,
   .blend = false,
   .type = IMG_DEFAULT,
 };
+
+////////////////////////////////////////////////////////////////////////////////
 
 Image_Internal img_default_white = {
   .filename = (String)&slice_empty,
@@ -85,20 +87,7 @@ Image_Internal img_default_white = {
   .type = IMG_DEFAULT
 };
 
-Image_Internal img_default_specular = {
-  .filename = (String)&slice_empty,
-  .data = (byte[]) { 31, 31, 31 },
-  .width = 1,
-  .height = 1,
-  .channels = 3,
-#ifdef __WASM__
-  .ready = false,
-#else
-  .ready = true,
-#endif
-  .blend = false,
-  .type = IMG_DEFAULT
-};
+////////////////////////////////////////////////////////////////////////////////
 
 Image_Internal img_default_normal = {
   .filename = (String)&slice_empty,
@@ -126,6 +115,10 @@ extern void  js_image_delete(void* data_id);
 extern void* js_buffer_create(const byte* bytes, uint size);
 extern void  js_buffer_delete(void* data_id);
 
+////////////////////////////////////////////////////////////////////////////////
+// Callback to finalize asynchronous loading in WASM
+////////////////////////////////////////////////////////////////////////////////
+
 void export(img_open_async_done) (
   Image img_in, int width, int height, bool success
 ) {
@@ -151,7 +144,11 @@ void export(img_open_async_done) (
 # include "stb_image.h"
 #endif
 
-Image img_load(slice_t filename) {
+////////////////////////////////////////////////////////////////////////////////
+// Loads an image from a filename, asynchronously in WASM mode
+////////////////////////////////////////////////////////////////////////////////
+
+Image img_load_async(slice_t filename) {
   str_log("[Image.load] Loading: {}", filename);
   Image_Internal* ret;
 
@@ -201,6 +198,10 @@ Image img_load(slice_t filename) {
   return (Image)ret;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Gets a default one-pixel white image
+////////////////////////////////////////////////////////////////////////////////
+
 Image img_load_default_white(void) {
 #ifdef __WASM__
   if (!img_default_white.ready) {
@@ -213,17 +214,9 @@ Image img_load_default_white(void) {
   return (Image)&img_default_white;
 }
 
-Image img_load_default_specular(void) {
-#ifdef __WASM__
-  if (!img_default_specular.ready) {
-    img_default_specular.ready = true;
-    img_default_specular.data = js_buffer_create(
-      img_default_specular.data, img_default_specular.channels
-    );
-  }
-#endif
-  return (Image)&img_default_specular;
-}
+////////////////////////////////////////////////////////////////////////////////
+// Gets a default one-pixel image representing a flat normal map
+////////////////////////////////////////////////////////////////////////////////
 
 Image img_load_default_normal(void) {
 #ifdef __WASM__
@@ -236,6 +229,10 @@ Image img_load_default_normal(void) {
 #endif
   return (Image)&img_default_normal;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Initialize an image from an array of bytes
+////////////////////////////////////////////////////////////////////////////////
 
 Image img_from_bytes(const byte* data, int width, int height, int channels) {
   assert(data);
@@ -264,11 +261,14 @@ Image img_from_bytes(const byte* data, int width, int height, int channels) {
   return (Image)ret;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Deletes an images memory
+////////////////////////////////////////////////////////////////////////////////
+
 void img_delete(Image* pimg) {
   if (!pimg || !*pimg) return;
   Image_Internal* img = (Image_Internal*)*pimg;
   str_delete(&img->filename);
-
 
 #ifdef __WASM__
   switch (img->type) {

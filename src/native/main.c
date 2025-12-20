@@ -1,3 +1,27 @@
+/*******************************************************************************
+* MIT License
+*
+* Copyright (c) 2025 Curtis McCoy
+*
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
+*
+* The above copyright notice and this permission notice shall be included in all
+* copies or substantial portions of the Software.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*/
+
 #include "types.h"
 #include "game.h"
 #include "wasp.h"
@@ -33,16 +57,16 @@ SDL_AppResult SDL_AppInit(void** app_state, int argc, char* argv[]) {
 
   app_defaults_t defaults = (app_defaults_t){
     .window = v2i(640, 480),
-    .title = "Game Title",
+    .title = NULL,
   };
   wasp_init(&defaults);
 
   app.game = game_init(defaults.window.w, defaults.window.h);
-  app.game->title = defaults.title;
+  app.game->title = defaults.title ? defaults.title : str_copy("Game Title");
 
   SDL_WindowFlags flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
   app.window = SDL_CreateWindow(
-    app.game->title,
+    app.game->title->begin,
     app.game->window.x,
     app.game->window.y,
     flags
@@ -63,7 +87,7 @@ SDL_AppResult SDL_AppInit(void** app_state, int argc, char* argv[]) {
   wasp_preload(app.game);
 
   SDL_SetWindowSize(app.window, app.game->window.w, app.game->window.h);
-  SDL_SetWindowTitle(app.window, app.game->title);
+  SDL_SetWindowTitle(app.window, app.game->title->begin);
 
   glViewport(0, 0, app.game->window.x, app.game->window.y);
 

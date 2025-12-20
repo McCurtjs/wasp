@@ -15,7 +15,7 @@ void behavior_attach_to_camera_target(Entity* entity, Game* game, float dt);
 
 void render_basic(Entity* entity, Game* game);
 void render_debug(Entity* entity, Game* game);
-void render_phong(Entity* entity, Game* game);
+void render_pbr(Entity* entity, Game* game);
 void render_normal(Entity* entity, Game* game);
 
 #endif

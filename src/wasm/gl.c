@@ -85,6 +85,10 @@ GLint glGetUniformLocation(GLuint program, const GLchar* name) {
 
 extern void glUniform1i(GLint loc, GLint v0);
 
+extern void glUniform2fv(GLint loc, GLsizei count, const GLfloat* value);
+
+extern void glUniform3fv(GLint loc, GLsizei count, const GLfloat* value);
+
 extern void glUniform4fv(GLint loc, GLsizei count, const GLfloat* value);
 
 extern void glUniformMatrix4fv(

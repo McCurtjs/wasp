@@ -10,6 +10,7 @@ uniform vec4 lightPos;
 
 uniform sampler2D texSamp;
 uniform sampler2D normSamp;
+uniform sampler2D propSamp;
 uniform sampler2D depthSamp;
 
 #define PI 3.141592653589
@@ -38,6 +39,7 @@ float G_Smith(float NdotV, float NdotL, float roughness) {
 void main() {
   vec2 uv = vUV;
   vec4 albedo = texture(texSamp, uv);
+  vec4 props = texture(propSamp, uv);
 
   // Reconstruct fragment position in view space (camera at <0, 0, 0>)
   vec3 ndc = vec3(uv.x, uv.y, texture(depthSamp, uv).r);
@@ -58,10 +60,11 @@ void main() {
   normalize(norm);
 
   // Pabst Blue Ribbon?
-  vec3  metallic = vec3(0.0);
   vec3  light_color = vec3(0.9, 0.9, 0.75);
   float light_intensity = 14.0;
-  float roughness = 1.0 - albedo.w;//0.8;
+
+  vec3  metallic = vec3(0.0);//albedo.xyz * props.g;
+  float roughness = 1.0 - props.r;//0.8;
 
   vec3 light_value = light_color * light_intensity;
 

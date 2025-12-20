@@ -31,30 +31,27 @@
 #include "vec.h"
 
 typedef struct _opaque_Material_t {
-  const slice_t name;
-  const texture_t diffuse;
-  const texture_t normals;
-  const texture_t specular;
-  const float roughness;
-  const float metalness;
-  const bool ready;
-  bool use_diffuse_map;
-  bool use_normal_map;
-  bool use_specular_map;
+  slice_t   const name;
+  texture_t const diffuse;
+  texture_t const normals;
+  texture_t const specular;
+  float           roughness;
+  float           metalness;
+  bool      const ready;
+  bool            use_diffuse_map;
+  bool            use_normal_map;
+  bool            use_specular_map;
 }* Material;
-
-typedef struct material_t {
-  Material base;
-  color3 tint;
-  float roughness;
-  float metalness;
-} material_t;
 
 Material  material_new(slice_t name);
 Material  material_new_load(slice_t name);
+Material  material_get(slice_t name);
 void      material_load_async(Material material);
 void      material_build(Material material);
-void      mateiral_bind(Material material);
+void      material_load_all_async(void);
+void      material_build_all(void);
 void      material_delete(Material* material);
+
+void      mateiral_bind(Material material);
 
 #endif

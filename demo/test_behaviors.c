@@ -120,24 +120,28 @@ void render_debug(Entity* e, Game* game) {
   draw_render();
 }
 
-void render_phong(Entity* e, Game* game) {
+void render_pbr(Entity* e, Game* game) {
   Shader shader = game->shaders.light;
   shader_bind(shader);
 
   int loc_pvm = shader_uniform_loc(shader, "in_pvm_matrix");
-  //int loc_light_pos = shader_uniform_loc(shader, "lightPos");
-  //int loc_camera_pos = shader_uniform_loc(shader, "cameraPos");
-  //int loc_use_vert_color = shader_uniform_loc(shader, "useVertexColor");
   int loc_sampler_tex = shader_uniform_loc(shader, "texSamp");
   int loc_sampler_norm = shader_uniform_loc(shader, "normSamp");
   int loc_sampler_spec = shader_uniform_loc(shader, "specSamp");
   int loc_norm = shader_uniform_loc(shader, "in_normal_matrix");
+  int loc_props = shader_uniform_loc(shader, "in_props");
+  int loc_tint = shader_uniform_loc(shader, "in_tint");
 
   mat4 pvm = m4mul(game->camera.projview, e->transform);
   mat4 norm = m4transpose(m4inverse(m4mul(game->camera.view, e->transform)));
 
   glUniformMatrix4fv(loc_pvm, 1, 0, pvm.f);
   glUniformMatrix4fv(loc_norm, 1, 0, norm.f);
+
+  vec2 props = v2f(e->material->roughness, e->material->metalness);
+  glUniform2fv(loc_props, 1, props.f);
+  glUniform3fv(loc_tint, 1, e->tint.f);
+
   //glUniform4fv(loc_light_pos, 1, game->light_pos.f);
   //glUniform4fv(loc_camera_pos, 1, game->camera.pos.f);
 
@@ -148,27 +152,6 @@ void render_phong(Entity* e, Game* game) {
   tex_apply(e->material->diffuse, 0, loc_sampler_tex);
   tex_apply(e->material->normals, 1, loc_sampler_norm);
   tex_apply(e->material->specular, 2, loc_sampler_spec);
-
-  model_render(e->model);
-
-  glBindTexture(GL_TEXTURE_2D, 0);
-}
-
-void render_normal(Entity* e, Game* game) {
-  Shader shader = game->shaders.light;
-  shader_bind(shader);
-
-  int loc_pvm = shader_uniform_loc(shader, "in_pvm_matrix");
-  int loc_sampler_tex = shader_uniform_loc(shader, "texSamp");
-  int loc_norm = shader_uniform_loc(shader, "in_normal_matrix");
-
-  mat4 pvm = m4mul(game->camera.projview, e->transform);
-  mat4 norm = m4transpose(m4inverse(m4mul(game->camera.view, e->transform)));
-
-  glUniformMatrix4fv(loc_pvm, 1, 0, pvm.f);
-  glUniformMatrix4fv(loc_norm, 1, 0, norm.f);
-
-  tex_apply(e->texture, 0, loc_sampler_tex);
 
   model_render(e->model);
 

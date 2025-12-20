@@ -35,9 +35,10 @@ typedef struct _opaque_Shader_t {
 }* Shader;
 
 Shader  shader_new(slice_t name);
-Shader  shader_new_load(slice_t name);
+Shader  shader_new_load_async(slice_t name);
 void    shader_load_async(Shader shader);
 void    shader_build(Shader shader);
+void    shader_build_all(void);
 void    shader_bind(Shader shader);
 void    shader_delete(Shader* shader);
 

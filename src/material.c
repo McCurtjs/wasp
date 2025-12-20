@@ -55,6 +55,10 @@ typedef struct Material_Internal {
 
 HMap _all_materials = NULL;
 
+////////////////////////////////////////////////////////////////////////////////
+// Initializes a new material
+////////////////////////////////////////////////////////////////////////////////
+
 Material material_new(slice_t name) {
   if (!_all_materials) {
     _all_materials =
@@ -90,36 +94,66 @@ Material material_new(slice_t name) {
   return (Material)ret;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
 Material material_new_load(slice_t name) {
   Material ret = material_new(name);
   material_load_async(ret);
   return ret;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Gets an existing material from the map
+////////////////////////////////////////////////////////////////////////////////
+
+Material material_get(slice_t name) {
+  if (!_all_materials) return NULL;
+  Material* material = map_ref(_all_materials, &name);
+  assert(material);
+  return *material;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Loads the material texture images, asynchronously in WASM mode
+////////////////////////////////////////////////////////////////////////////////
+
 void material_load_async(Material m_in) {
   MATERIAL_INTERNAL;
 
   if (m->use_diffuse_map) {
     String filename_d = str_format("./res/textures/{}.{}", m->name, m->ext);
-    m->img_diffuse = img_load(filename_d->slice);
+    m->img_diffuse = img_load_async(filename_d->slice);
     str_delete(&filename_d);
   }
 
   if (m->use_normal_map) {
     String filename_n = str_format("./res/textures/{}_n.{}", m->name, m->ext);
-    m->img_normals = img_load(filename_n->slice);
+    m->img_normals = img_load_async(filename_n->slice);
     str_delete(&filename_n);
   }
 
   if (m->use_specular_map) {
     String filename_s = str_format("./res/textures/{}_s.{}", m->name, m->ext);
-    m->img_specular = img_load(filename_s->slice);
+    m->img_specular = img_load_async(filename_s->slice);
     str_delete(&filename_s);
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
+void material_load_all_async(void) {
+  Material* map_foreach(material, _all_materials) {
+    material_load_async(*material);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Builds the material textures from the loaded images
+////////////////////////////////////////////////////////////////////////////////
+
 void material_build(Material m_in) {
   MATERIAL_INTERNAL;
+  if (m->ready) return;
 
   if (m->img_diffuse) {
     assert(m->img_diffuse->ready);
@@ -140,5 +174,15 @@ void material_build(Material m_in) {
     m->specular = tex_from_image(m->img_specular);
     img_delete(&m->img_specular);
   }
-  else m->specular = tex_get_default_specular();
+  else m->specular = tex_get_default_white();
+
+  m->ready = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void material_build_all(void) {
+  Material* map_foreach(material, _all_materials) {
+    material_build(*material);
+  }
 }

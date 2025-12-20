@@ -46,7 +46,6 @@ typedef struct Entity {
   uint type;
 
   vec3 pos;
-  vec3 tint;
 
   union {
     quat rotation;
@@ -57,6 +56,7 @@ typedef struct Entity {
   const Model* model;
   texture_t texture;
   Material material;
+  vec3 tint;
 
   bool hidden;
 
