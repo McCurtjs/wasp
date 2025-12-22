@@ -27,42 +27,52 @@
 
 #include "mat.h"
 
-typedef struct Camera_PerspectiveParams {
+enum camera_type_t {
+  CAMERA_PERSPECTIVE,
+  CAMERA_ORTHOGRAPHIC
+};
+
+typedef struct Camera_Perspective {
   float fov, aspect, near, far;
-} Camera_PerspectiveParams;
+} Camera_Perspective;
 
-typedef struct Camera_OrthographicParams {
+typedef struct Camera_Orthographic {
   float left, right, top, bottom, near, far;
-} Camera_OrthographicParams;
+} Camera_Orthographic;
 
-typedef struct Camera {
+#define CAMERA_DEFAULT_FOV  d2r(60)
+#define CAMERA_DEFAULT_NEAR 0.1f
+#define CAMERA_DEFAULT_FAR  500.f
+
+typedef struct camera_t {
+  uint type;
+
   vec4 pos;
   vec4 front;
   vec4 up;
 
   union {
-    float params[6];
-    Camera_PerspectiveParams persp;
-    Camera_OrthographicParams ortho;
+    Camera_Perspective  perspective;
+    Camera_Orthographic orthographic;
   };
 
   mat4 projection;
   mat4 projview;
   mat4 view;
 
-} Camera;
+} camera_t;
 
-void camera_build_perspective(Camera* camera);
-void camera_build_orthographic(Camera* camera);
-void camera_rotate(Camera* camera, vec2 euler);
-void camera_rotate_local(Camera* camera, vec3 euler);
-void camera_orbit(Camera* camera, vec3 center, vec2 euler);
-void camera_orbit_local(Camera* camera, vec3 center, vec3 euler);
-void camera_look_at(Camera* camera, vec3 target);
-mat4 camera_view(const Camera* camera);
-mat4 camera_projection_view(const Camera* camera);
+void camera_build(camera_t* camera);
+void camera_rotate(camera_t* camera, vec2 euler);
+void camera_rotate_local(camera_t* camera, vec3 euler);
+void camera_orbit(camera_t* camera, vec3 center, vec2 euler);
+void camera_orbit_local(camera_t* camera, vec3 center, vec3 euler);
+void camera_look_at(camera_t* camera, vec3 target);
+
+mat4 camera_view(const camera_t* camera);
+mat4 camera_projection_view(const camera_t* camera);
 vec2 camera_screen_to_ndc(vec2i screen, vec2 screen_pos);
-vec3 camera_screen_to_ray(const Camera* camera, vec2i scr, vec2 screen_pos);
-vec3 camera_ray(const Camera* camera, vec2i scr_wh, vec2 ndc_pos);
+vec3 camera_screen_to_ray(const camera_t* camera, vec2i scr, vec2 screen_pos);
+vec3 camera_ray(const camera_t* camera, vec2i scr_wh, vec2 ndc_pos);
 
 #endif

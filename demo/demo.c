@@ -168,9 +168,6 @@ bool export(wasp_preload) (Game game) {
 
   material_load_all_async();
 
-  camera_build_perspective(&game->camera);
-  //camera_build_orthographic(&game.camera);
-
   // load this first since it's the loading screen spinner
   demo.models.color_cube.type = MODEL_CUBE_COLOR;
   model_build(&demo.models.color_cube);

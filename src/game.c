@@ -41,7 +41,7 @@ typedef struct Game_Internal {
 
 
   // reactive properties
-  Camera camera;
+  camera_t camera;
   index_t next_scene;
   bool should_exit;
 
@@ -65,15 +65,23 @@ Game export(game_init) (int x, int y) {
   return game_new(str_copy("Game"), v2i(x, y));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
 Game game_new(String title, vec2i window_size) {
   _game_singleton = (Game_Internal) {
     .window = window_size,
     .title = title,
     .camera = {
-      .pos = v4f(0, 0, 60, 1),
+      .type = CAMERA_PERSPECTIVE,
+      .pos = p4origin,//v4f(0, 0, 60, 1),
       .front = v4front,
       .up = v4y,
-      .persp = {d2r(60), i2aspect(window_size), 0.1f, 500}
+      .perspective =
+      { CAMERA_DEFAULT_FOV
+      , i2aspect(window_size)
+      , CAMERA_DEFAULT_NEAR
+      , CAMERA_DEFAULT_FAR
+      }
       //.ortho = {-6 * i2aspect(windim), 6 * i2aspect(windim), 6, -6, 0.1, 500}
     },
     .entities = arr_entity_new(),
@@ -119,6 +127,7 @@ static void _game_scene_switch(Game _game) {
 void game_reset(Game game) {
   input_set(&game->input);
   arr_entity_clear(game->entities);
+  camera_build(&game->camera);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

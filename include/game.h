@@ -69,7 +69,7 @@ typedef struct _opaque_Game_t {
   span_scene_t  scenes;
 
   // reactive properties
-  Camera  camera;
+  camera_t  camera;
   index_t next_scene;
   bool    should_exit;
 

@@ -30,6 +30,8 @@
 #include "wasm.h"
 #include "render_target.h"
 
+////////////////////////////////////////////////////////////////////////////////
+
 static uint _process_window_resize(Game game, SDL_WindowEvent* window) {
   vec2i new_size = v2i(window->data1, window->data2);
   *(vec2i*)(&game->window) = new_size;
@@ -37,18 +39,24 @@ static uint _process_window_resize(Game game, SDL_WindowEvent* window) {
   str_log("Event: resizing window - {}", game->window);
   rt_resize(NULL, game->window);
   float aspect = i2aspect(game->window);
-  game->camera.persp.aspect = aspect;
-  camera_build_perspective(&game->camera);
-  //game->camera.ortho.left = -game->camera.ortho.top * aspect;
-  //game->camera.ortho.right = -game->camera.ortho.bottom * aspect;
-  //camera_build_orthographic(&game->camera);
+
+  if (game->camera.type == CAMERA_ORTHOGRAPHIC) {
+    float top = game->camera.orthographic.top;
+    float bottom = game->camera.orthographic.bottom;
+    game->camera.orthographic.left = -top * aspect;
+    game->camera.orthographic.right = -bottom * aspect;
+  }
+
+  game->camera.perspective.aspect = aspect;
+  camera_build(&game->camera);
+
   if (game->on_window_resize) game->on_window_resize(game);
   return SDL_APP_CONTINUE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint _process_mouse_button_down(Game game, SDL_MouseButtonEvent* button) {
+static uint _process_mouse_btn_down(Game game, SDL_MouseButtonEvent* button) {
   keybind_t* span_foreach(keybind, game->input.keymap) {
     if (keybind->mouse && keybind->key == button->button && !keybind->pressed) {
       keybind->triggered = true;
@@ -61,7 +69,7 @@ static uint _process_mouse_button_down(Game game, SDL_MouseButtonEvent* button) 
 
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint _process_mouse_button_up(Game game, SDL_MouseButtonEvent* button) {
+static uint _process_mouse_btn_up(Game game, SDL_MouseButtonEvent* button) {
   keybind_t* span_foreach(keybind, game->input.keymap) {
     if (keybind->mouse && keybind->key == button->button) {
       keybind->pressed = false;
@@ -135,10 +143,10 @@ uint event_process_system(Game game, void* system_event) {
       return _process_window_resize(game, &event->window);
 
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
-      return _process_mouse_button_down(game, &event->button);
+      return _process_mouse_btn_down(game, &event->button);
 
     case SDL_EVENT_MOUSE_BUTTON_UP:
-      return _process_mouse_button_up(game, &event->button);
+      return _process_mouse_btn_up(game, &event->button);
 
     case SDL_EVENT_MOUSE_MOTION:
       return _process_mouse_motion(game, &event->motion);
