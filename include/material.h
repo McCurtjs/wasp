@@ -37,6 +37,7 @@ typedef struct _opaque_Material_t {
   texture_t const specular;
   float           roughness;
   float           metalness;
+  float           normal_weight;
   bool      const ready;
   bool            use_diffuse_map;
   bool            use_normal_map;

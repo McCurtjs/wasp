@@ -205,8 +205,12 @@ void render_pbr(Entity* e, game_t* game) {
   glUniformMatrix4fv(loc_pvm, 1, 0, pvm.f);
   glUniformMatrix4fv(loc_norm, 1, 0, norm.f);
 
-  vec2 props = v2f(e->material->roughness, e->material->metalness);
-  glUniform2fv(loc_props, 1, props.f);
+  vec3 props = v3f
+  ( e->material->roughness
+  , e->material->metalness
+  , e->material->normal_weight
+  );
+  glUniform3fv(loc_props, 1, props.f);
   glUniform3fv(loc_tint, 1, e->tint.f);
 
   //glUniform4fv(loc_light_pos, 1, demo->light_pos.f);

@@ -36,6 +36,7 @@ typedef struct Material_Internal {
   texture_t specular;
   float roughness;
   float metalness;
+  float normal_weight;
   bool ready;
   bool use_diffuse_map;
   bool use_normal_map;
@@ -77,11 +78,12 @@ Material material_new(slice_t name) {
 
   String name_str = str_copy(name);
 
-  *ret = (Material_Internal){
+  *ret = (Material_Internal) {
     .name = name_str->slice,
     .ready = false,
     .roughness = 0.5f,
     .metalness = 0.0f,
+    .normal_weight = 1.0f,
     .name_internal = name_str,
     .use_diffuse_map = true,
     .use_normal_map = false,

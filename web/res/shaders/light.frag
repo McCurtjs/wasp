@@ -14,7 +14,7 @@ uniform sampler2D texSamp;
 uniform sampler2D normSamp;
 uniform sampler2D specSamp;
 
-uniform vec2 in_props;
+uniform vec3 in_props;
 uniform vec3 in_tint;
 
 layout(location = 0) out vec3 fragColor;
@@ -45,6 +45,7 @@ void main() {
   //  normalize(vTangentTransform[2])
   //);
   vec3 tangent_normal = texture(normSamp, vUV).xyz * 2.0 - 1.0;
+  tangent_normal = mix(vec3(0.0, 0.0, 1.0), tangent_normal, in_props.b);
   vec3 n = normalize(vTangentTransform * tangent_normal);
   n /= abs(n.x) + abs(n.y) + abs(n.z);
   if (n.z < 0.0) n.xy = (1.0 - abs(n.yx)) * sign(n.xy);
