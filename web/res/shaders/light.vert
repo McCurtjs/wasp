@@ -12,7 +12,6 @@ uniform mat4 in_normal_matrix;
 out vec4 vPos;
 out vec4 vNormal;
 out vec2 vUV;
-out vec4 vTangent;
 
 out mat3 vTangentTransform;
 
@@ -20,11 +19,8 @@ void main() {
   vPos = in_pvm_matrix * position;
   gl_Position = vPos;
   vUV = uv;
-  vNormal = in_normal_matrix * vec4(normal.xyz, 0);
 
   // Calculate tangent space transform
-  vTangent = tangent;
-
   vec3 tbn_normal = normalize(mat3(in_normal_matrix) * normal.xyz);
   vec3 tbn_tangent = normalize(mat3(in_normal_matrix) * tangent.xyz);
   vec3 tbn_bitangent = cross(tbn_normal, tbn_tangent) * tangent.w;

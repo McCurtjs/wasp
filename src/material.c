@@ -122,20 +122,17 @@ void material_load_async(Material m_in) {
 
   if (m->use_diffuse_map) {
     String filename_d = str_format("./res/textures/{}.{}", m->name, m->ext);
-    m->img_diffuse = img_load_async(filename_d->slice);
-    str_delete(&filename_d);
+    m->img_diffuse = img_load_async_str(filename_d);
   }
 
   if (m->use_normal_map) {
     String filename_n = str_format("./res/textures/{}_n.{}", m->name, m->ext);
-    m->img_normals = img_load_async(filename_n->slice);
-    str_delete(&filename_n);
+    m->img_normals = img_load_async_str(filename_n);
   }
 
   if (m->use_specular_map) {
     String filename_s = str_format("./res/textures/{}_s.{}", m->name, m->ext);
-    m->img_specular = img_load_async(filename_s->slice);
-    str_delete(&filename_s);
+    m->img_specular = img_load_async_str(filename_s);
   }
 }
 

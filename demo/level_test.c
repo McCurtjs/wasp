@@ -1,19 +1,43 @@
-#include "levels.h"
-#include "game.h"
-#include "test_behaviors.h"
+/*******************************************************************************
+* MIT License
+*
+* Copyright (c) 2025 Curtis McCoy
+*
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
+*
+* The above copyright notice and this permission notice shall be included in all
+* copies or substantial portions of the Software.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*/
+
+#include "demo.h"
 
 #include <math.h>
 
-void level_load_og_test(Game* game) {
+void level_load_og_test(game_t* game) {
+
+  demo_t* demo = game->demo;
 
   game->camera.pos = v4f(3, 2, 45, 1);
   game->camera.front = v4front;
 
-  camera_look_at(&game->camera, game->target);
+  camera_look_at(&game->camera, game->demo->target);
 
   // Debug Renderer
   game_add_entity(game, &(Entity) {
-    .model = &game->models.grid,
+    .model = &demo->models.grid,
     .transform = m4identity,
     .render = render_debug,
     .behavior = behavior_grid_toggle,
@@ -26,7 +50,7 @@ void level_load_og_test(Game* game) {
 
   //* Spinny Cube
   game_add_entity(game, &(Entity) {
-    .model = &game->models.color_cube,
+    .model = &demo->models.color_cube,
     .pos = v3f(-2, 0, 0),
     .angle = 0,
     .transform = m4identity,
@@ -36,7 +60,7 @@ void level_load_og_test(Game* game) {
 
   //* Staring Cube
   game_add_entity(game, &(Entity) {
-    .model = &game->models.color_cube,
+    .model = &demo->models.color_cube,
     .pos = v3f(0, 0, 2),
     .render = render_basic,
     .behavior = behavior_stare,
@@ -44,21 +68,21 @@ void level_load_og_test(Game* game) {
 
   //* Gizmos
   game_add_entity(game, &(Entity) {
-    .model = &game->models.gizmo,
+    .model = &demo->models.gizmo,
     .render = render_basic,
     .behavior = behavior_attach_to_camera_target,
   }); //*/
 
   game_add_entity(game, &(Entity) {
-    .model = &game->models.gizmo,
+    .model = &demo->models.gizmo,
     .render = render_basic,
     .behavior = behavior_attach_to_light,
   }); //*/
 
   //* Gear 1
   game_add_entity(game, &(Entity) {
-    .model = &game->models.gear,
-    .material = game->materials.grass,
+    .model = &demo->models.gear,
+    .material = demo->materials.grass,
     .transform = m4translation(v3f(0, 7, -12)),
     .render = render_pbr,
     .behavior = behavior_gear_rotate_cw,
@@ -66,8 +90,8 @@ void level_load_og_test(Game* game) {
 
   //* Gear 2
   game_add_entity(game, &(Entity) {
-    .model = &game->models.gear,
-    .material = game->materials.sands,
+    .model = &demo->models.gear,
+    .material = demo->materials.sands,
     .transform = m4translation(v3f(20.5f, -1.5f, -12)),
     .render = render_pbr,
     .behavior = behavior_gear_rotate_ccw,
@@ -75,8 +99,8 @@ void level_load_og_test(Game* game) {
 
   //* Gear 3
   game_add_entity(game, &(Entity) {
-    .model = &game->models.gear,
-    .material = game->materials.mudds,
+    .model = &demo->models.gear,
+    .material = demo->materials.mudds,
     .transform = m4translation(v3f(43.f, -1.5f, -12)),
     .render = render_pbr,
     .behavior = behavior_gear_rotate_cw,
@@ -84,48 +108,48 @@ void level_load_og_test(Game* game) {
 
   //* Crate
   game_add_entity(game, &(Entity) {
-    .model = &game->models.box,
-    .material = game->materials.grass,
+    .model = &demo->models.box,
+    .material = demo->materials.grass,
     .transform = m4translation(v3f(0, -0.5, 0)),
     .render = render_pbr,
   }); //*/
 
   //* Crate
   game_add_entity(game, &(Entity) {
-    .model = &game->models.box,
-      .material = game->materials.grass,
+    .model = &demo->models.box,
+      .material = demo->materials.grass,
       .transform = m4translation(v3f(1, -0.5, 0)),
       .render = render_pbr,
   }); //*/
 
   //* Crate
   game_add_entity(game, &(Entity) {
-    .model = &game->models.box,
-      .material = game->materials.grass,
+    .model = &demo->models.box,
+      .material = demo->materials.grass,
       .transform = m4translation(v3f(0, -0.5, 1)),
       .render = render_pbr,
   }); //*/
 
   //* Crate
   game_add_entity(game, &(Entity) {
-    .model = &game->models.box,
-      .material = game->materials.grass,
+    .model = &demo->models.box,
+      .material = demo->materials.grass,
       .transform = m4translation(v3f(1, -0.5, 1)),
       .render = render_pbr,
   }); //*/
 
   //* Bigger Crate
   game_add_entity(game, &(Entity) {
-    .model = &game->models.box,
-    .material = game->materials.crate,
+    .model = &demo->models.box,
+    .material = demo->materials.crate,
     .transform = m4mul(m4translation(v3f(2, 0, 0)), m4uniform(2)),
     .render = render_pbr,
   }); //*/
 
   //* Even Bigger Crate
   game_add_entity(game, &(Entity) {
-    .model = &game->models.box,
-    .material = game->materials.renderite,
+    .model = &demo->models.box,
+    .material = demo->materials.renderite,
     .tint = v3f(0.8f, 0.3f, 0.6f),
     .transform = m4mul(m4translation(v3f(5, 0.5, 0)), m4uniform(3)),
     .render = render_pbr,
@@ -144,20 +168,25 @@ void level_load_og_test(Game* game) {
         pos.y -= v3mag(pos) / 10.f;
       }
 
-      Material material = game->materials.tiles;
+      Material material = demo->materials.tiles;
 
-      if (i == j) {
-        material = game->materials.grass;
+      if (i == 2 && j == 1) {
+        axis = v3up;
+        angle = 3.14159f;// / 4.0f;
+        material = demo->materials.mudds;
+      }
+      else if (i == j) {
+        material = demo->materials.grass;
       }
       else if (i == -j) {
-        material = game->materials.sands;
+        material = demo->materials.sands;
       }
       else if (i % 2 == 0) {
-        material = j % 2 == 0 ? game->materials.renderite : game->materials.mudds;
+        material = j % 2 == 0 ? demo->materials.renderite : demo->materials.mudds;
       }
 
       game_add_entity(game, &(Entity) {
-        .model = &game->models.box,
+        .model = &demo->models.box,
         .material = material,
         .transform =
           m4mul(

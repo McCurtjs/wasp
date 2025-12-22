@@ -1,16 +1,37 @@
-#include "levels.h"
+/*******************************************************************************
+* MIT License
+*
+* Copyright (c) 2025 Curtis McCoy
+*
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
+*
+* The above copyright notice and this permission notice shall be included in all
+* copies or substantial portions of the Software.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*/
 
-#include "game.h"
-#include "input_map.h"
+#include "demo.h"
 
-void level_switch_check(Game* game) {
-  if (input_triggered(game, IN_RELOAD)) {
+void level_switch_check(game_t* game) {
+  if (input_triggered(IN_RELOAD)) {
     level_switch(game, game->level);
     return;
   }
 
   for (uint i = 0; i < LEVEL_COUNT; ++i) {
-    if (input_triggered(game, IN_LEVEL_1)) {
+    if (input_triggered(IN_LEVEL_1)) {
       game->level = i;
       level_switch(game, i);
       return;
@@ -18,7 +39,7 @@ void level_switch_check(Game* game) {
   }
 }
 
-void level_switch(Game* game, uint level) {
+void level_switch(game_t* game, uint level) {
   if (level >= LEVEL_COUNT) return;
   if (!game_levels[level]) return;
   game_cleanup(game);

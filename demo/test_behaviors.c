@@ -1,72 +1,110 @@
-#include "test_behaviors.h"
+/*******************************************************************************
+* MIT License
+*
+* Copyright (c) 2025 Curtis McCoy
+*
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
+*
+* The above copyright notice and this permission notice shall be included in all
+* copies or substantial portions of the Software.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*/
 
-#include "input_map.h"
-
-#include "gl.h"
-
-#include "types.h"
+#include "demo.h"
 #include "draw.h"
+#include "gl.h"
 
 #define CAMERA_SPEED 9.0f
 
-void behavior_test_camera(Entity* e, Game* game, float dt) {
+////////////////////////////////////////////////////////////////////////////////
+// Behavior for controlling camera rotation and movement
+////////////////////////////////////////////////////////////////////////////////
+
+void behavior_test_camera(Entity* e, game_t* game, float dt) {
   UNUSED(e);
+
+  demo_t* demo = game->demo;
 
   float xrot = d2r(-game->input.mouse.move.y * 180 / (float)game->window.h);
   float yrot = d2r(-game->input.mouse.move.x * 180 / (float)game->window.x);
 
   //if (game->input.pressed.lmb) {
-  if (input_pressed(game, IN_CLICK)) {
+  if (input_pressed(IN_CLICK)) {
     vec3 angles = v3f(xrot, yrot, 0);
-    camera_orbit(&game->camera, game->target, angles.xy);
+    camera_orbit(&game->camera, demo->target, angles.xy);
   }
 
   float cam_speed = CAMERA_SPEED * dt;
 
-  if (input_pressed(game, IN_CLOSE)) {
+  if (input_pressed(IN_CLOSE)) {
     game_quit(game);
   }
 
-  if (input_pressed(game, IN_ROTATE_LIGHT)) { //game->input.pressed.rmb) {
+  if (input_pressed(IN_ROTATE_LIGHT)) { //game->input.pressed.rmb) {
     mat4 light_rotation = m4rotation(v3y, 4.f * dt);//yrot);
-    game->light_pos = mv4mul(light_rotation, game->light_pos);
+    demo->light_pos = mv4mul(light_rotation, demo->light_pos);
   }
 
-  if (input_pressed(game, IN_JUMP)) //game->input.pressed.forward)
+  if (input_pressed(IN_JUMP)) //game->input.pressed.forward)
     game->camera.pos.xyz = v3add(
       game->camera.pos.xyz,
       v3scale(game->camera.front.xyz, cam_speed)
     );
 
-  if (input_pressed(game, IN_DOWN)) //game->input.pressed.back)
+  if (input_pressed(IN_DOWN)) //game->input.pressed.back)
     game->camera.pos.xyz = v3add(
       game->camera.pos.xyz,
       v3scale(game->camera.front.xyz, -cam_speed)
     );
 
-  if (input_pressed(game, IN_RIGHT)) { //game->input.pressed.right) {
+  if (input_pressed(IN_RIGHT)) { //game->input.pressed.right) {
     vec3 right = v3norm(v3cross(game->camera.front.xyz, game->camera.up.xyz));
     right = v3scale(right, cam_speed);
     game->camera.pos.xyz = v3add(game->camera.pos.xyz, right);
-    game->target = v3add(game->target, right);
+    demo->target = v3add(demo->target, right);
   }
 
-  if (input_pressed(game, IN_LEFT)) { //game->input.pressed.left) {
+  if (input_pressed(IN_LEFT)) { //game->input.pressed.left) {
     vec3 left = v3norm(v3cross(game->camera.front.xyz, game->camera.up.xyz));
     left = v3scale(left, -cam_speed);
     game->camera.pos.xyz = v3add(game->camera.pos.xyz, left);
-    game->target = v3add(game->target, left);
+    demo->target = v3add(demo->target, left);
+  }
+
+  if (input_pressed(IN_REWIND)) {
+    demo->light_pos = game->camera.pos;
   }
 }
 
-void behavior_grid_toggle(Entity* e, Game* game, float dt) {
+////////////////////////////////////////////////////////////////////////////////
+// Toggles the visibility of the grid
+////////////////////////////////////////////////////////////////////////////////
+
+void behavior_grid_toggle(Entity* e, game_t* game, float dt) {
   UNUSED(dt);
-  if (input_triggered(game, IN_TOGGLE_GRID)) {
+  UNUSED(game);
+  if (input_triggered(IN_TOGGLE_GRID)) {
     e->hidden = !e->hidden;
   }
 }
 
-void behavior_cubespin(Entity* e, Game* game, float dt) {
+////////////////////////////////////////////////////////////////////////////////
+// Cube spinning behavior
+////////////////////////////////////////////////////////////////////////////////
+
+void behavior_cubespin(Entity* e, game_t* game, float dt) {
   UNUSED(game);
 
   e->transform = m4translation(e->pos);
@@ -75,36 +113,57 @@ void behavior_cubespin(Entity* e, Game* game, float dt) {
   e->angle += 2 * dt;
 }
 
-void behavior_gear_rotate_cw(Entity* e, Game* game, float dt) {
+////////////////////////////////////////////////////////////////////////////////
+// Clockwise spin around the Z axis
+////////////////////////////////////////////////////////////////////////////////
+
+void behavior_gear_rotate_cw(Entity* e, game_t* game, float dt) {
   UNUSED(game);
   e->transform = m4mul(e->transform, m4rotation(v3front, dt));
 }
 
-void behavior_gear_rotate_ccw(Entity* e, Game* game, float dt) {
+////////////////////////////////////////////////////////////////////////////////
+// Counter-clockwise spin around the Z axis
+////////////////////////////////////////////////////////////////////////////////
+
+void behavior_gear_rotate_ccw(Entity* e, game_t* game, float dt) {
   UNUSED(game);
   e->transform = m4mul(e->transform, m4rotation(v3front, -dt));
 }
 
-void behavior_stare(Entity* e, Game* game, float dt) {
-  UNUSED(dt);
+////////////////////////////////////////////////////////////////////////////////
+// Orients the entity to face the camera along its local +Z axis
+////////////////////////////////////////////////////////////////////////////////
 
+void behavior_stare(Entity* e, game_t* game, float dt) {
+  UNUSED(dt);
   e->transform = m4look(e->pos, game->camera.pos.xyz, v3y);
 }
 
-void behavior_attach_to_light(Entity* e, Game* game, float dt) {
-  UNUSED(dt);
+////////////////////////////////////////////////////////////////////////////////
+// Sets the location of the entity to the light position
+////////////////////////////////////////////////////////////////////////////////
 
-  e->transform = m4translation(game->light_pos.xyz);
+void behavior_attach_to_light(Entity* e, game_t* game, float dt) {
+  UNUSED(dt);
+  e->transform = m4translation(game->demo->light_pos.xyz);
 }
 
-void behavior_attach_to_camera_target(Entity* e, Game* game, float dt) {
-  UNUSED(dt);
+////////////////////////////////////////////////////////////////////////////////
+// Sets the location of the entity to the camera target position
+////////////////////////////////////////////////////////////////////////////////
 
-  e->transform = m4translation(game->target);
+void behavior_attach_to_camera_target(Entity* e, game_t* game, float dt) {
+  UNUSED(dt);
+  e->transform = m4translation(game->demo->target);
 }
 
-void render_basic(Entity* e, Game* game) {
-  Shader shader = game->shaders.basic;
+////////////////////////////////////////////////////////////////////////////////
+// Render function for un-shaded objects with vertex color
+////////////////////////////////////////////////////////////////////////////////
+
+void render_basic(Entity* e, game_t* game) {
+  Shader shader = game->demo->shaders.basic;
   shader_bind(shader);
 
   int loc_pvm = shader_uniform_loc(shader, "in_pvm_matrix");
@@ -115,13 +174,21 @@ void render_basic(Entity* e, Game* game) {
   model_render(e->model);
 }
 
-void render_debug(Entity* e, Game* game) {
+////////////////////////////////////////////////////////////////////////////////
+// Renders the debug objects
+////////////////////////////////////////////////////////////////////////////////
+
+void render_debug(Entity* e, game_t* game) {
   render_basic(e, game);
   draw_render();
 }
 
-void render_pbr(Entity* e, Game* game) {
-  Shader shader = game->shaders.light;
+////////////////////////////////////////////////////////////////////////////////
+// Render function for physically-based lighting
+////////////////////////////////////////////////////////////////////////////////
+
+void render_pbr(Entity* e, game_t* game) {
+  Shader shader = game->demo->shaders.light;
   shader_bind(shader);
 
   int loc_pvm = shader_uniform_loc(shader, "in_pvm_matrix");
@@ -142,7 +209,7 @@ void render_pbr(Entity* e, Game* game) {
   glUniform2fv(loc_props, 1, props.f);
   glUniform3fv(loc_tint, 1, e->tint.f);
 
-  //glUniform4fv(loc_light_pos, 1, game->light_pos.f);
+  //glUniform4fv(loc_light_pos, 1, demo->light_pos.f);
   //glUniform4fv(loc_camera_pos, 1, game->camera.pos.f);
 
   //GLint use_color = false;

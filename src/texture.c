@@ -66,6 +66,10 @@ texture_t tex_from_image(Image image) {
     fmt = GL_RGB;
     fmt_internal = GL_RGB8;
   }
+  else if (image->channels == 1) {
+    fmt = GL_RED;
+    fmt_internal = GL_R8;
+  }
   else if
   (   image->channels != 4
 #ifdef __WASM__

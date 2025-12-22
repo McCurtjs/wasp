@@ -22,28 +22,43 @@
 * SOFTWARE.
 */
 
-#ifndef WASP_IMAGE_H_
-#define WASP_IMAGE_H_
+#ifndef WASP_INPUT_H_
+#define WASP_INPUT_H_
 
 #include "types.h"
-#include "slice.h"
+#include "vec.h"
+
+typedef struct keybind_t {
+  int name;
+  int key;
+  bool mouse;
+  bool pressed;
+  bool triggered;
+  bool released;
+} keybind_t;
+
+#define con_type keybind_t
+#define con_prefix keymap
 #include "span.h"
+#undef con_type
+#undef con_prefix
 
-typedef struct _opaque_Image_base {
-  const String filename;
-  const void* data;
-  const int width;
-  const int height;
-  const int channels;
-  const bool ready;
-  bool blend;
-}* Image;
+typedef struct input_mouse_t {
+  vec2 pos;
+  vec2 move;
+} input_mouse_t;
 
-//Image2 img_new(width/height);
-Image img_load_async_str(String filename);
-Image img_load_async(slice_t filename);
-Image img_load_default_white(void);
-Image img_load_default_normal(void);
-void  img_delete(Image* image);
+typedef struct input_t {
+  span_keymap_t keymap;
+  input_mouse_t mouse;
+} input_t;
+
+void input_set(input_t* input);
+void input_unset(const input_t* input);
+void input_update(input_t* input);
+
+bool input_triggered(int input_name);
+bool input_pressed(int input_name);
+bool input_released(int input_name);
 
 #endif

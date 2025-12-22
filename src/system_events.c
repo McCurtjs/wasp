@@ -1,3 +1,27 @@
+/*******************************************************************************
+* MIT License
+*
+* Copyright (c) 2025 Curtis McCoy
+*
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
+*
+* The above copyright notice and this permission notice shall be included in all
+* copies or substantial portions of the Software.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*/
+
 #include "system_events.h"
 
 #include <SDL3/SDL.h>
@@ -8,21 +32,22 @@
 
 extern bool game_continue;
 
-static uint _process_window_resize(Game* game, SDL_WindowEvent* window) {
+static uint _process_window_resize(game_t* game, SDL_WindowEvent* window) {
   game->window.w = window->data1;
   game->window.h = window->data2;
   str_log("Event: resizing window - {}", game->window);
-  rt_resize(game->textures.render_target, game->window);
+  rt_resize(NULL, game->window);
   float aspect = i2aspect(game->window);
   game->camera.persp.aspect = aspect;
   camera_build_perspective(&game->camera);
   //game->camera.ortho.left = -game->camera.ortho.top * aspect;
   //game->camera.ortho.right = -game->camera.ortho.bottom * aspect;
   //camera_build_orthographic(&game->camera);
+  if (game->on_window_resize) game->on_window_resize(game);
   return SDL_APP_CONTINUE;
 }
 
-static uint _process_mouse_button_down(Game* game, SDL_MouseButtonEvent* button) {
+static uint _process_mouse_button_down(game_t* game, SDL_MouseButtonEvent* button) {
   keybind_t* span_foreach(keybind, game->input.keymap) {
     if (keybind->mouse && keybind->key == button->button && !keybind->pressed) {
       keybind->triggered = true;
@@ -33,7 +58,7 @@ static uint _process_mouse_button_down(Game* game, SDL_MouseButtonEvent* button)
   return SDL_APP_CONTINUE;
 }
 
-static uint _process_mouse_button_up(Game* game, SDL_MouseButtonEvent* button) {
+static uint _process_mouse_button_up(game_t* game, SDL_MouseButtonEvent* button) {
   keybind_t* span_foreach(keybind, game->input.keymap) {
     if (keybind->mouse && keybind->key == button->button) {
       keybind->pressed = false;
@@ -44,7 +69,7 @@ static uint _process_mouse_button_up(Game* game, SDL_MouseButtonEvent* button) {
   return SDL_APP_CONTINUE;
 }
 
-static uint _process_mouse_motion(Game* game, SDL_MouseMotionEvent* motion) {
+static uint _process_mouse_motion(game_t* game, SDL_MouseMotionEvent* motion) {
   game->input.mouse.pos = v2f(motion->x, motion->y);
 
   // you can get many mouse move inputs per frame, so accumulate motion
@@ -54,7 +79,7 @@ static uint _process_mouse_motion(Game* game, SDL_MouseMotionEvent* motion) {
   return SDL_APP_CONTINUE;
 }
 
-static uint _process_key_down(Game* game, SDL_KeyboardEvent* key) {
+static uint _process_key_down(game_t* game, SDL_KeyboardEvent* key) {
   if (key->repeat) return SDL_APP_CONTINUE;
 
   keybind_t* span_foreach(keybind, game->input.keymap) {
@@ -74,7 +99,7 @@ static uint _process_key_down(Game* game, SDL_KeyboardEvent* key) {
   return SDL_APP_CONTINUE;
 }
 
-static uint _process_key_up(Game* game, SDL_KeyboardEvent* key) {
+static uint _process_key_up(game_t* game, SDL_KeyboardEvent* key) {
   keybind_t* span_foreach(keybind, game->input.keymap) {
     if (key->key == (uint)keybind->key && !keybind->mouse) {
       keybind->pressed = false;
@@ -85,7 +110,7 @@ static uint _process_key_up(Game* game, SDL_KeyboardEvent* key) {
   return SDL_APP_CONTINUE;
 }
 
-uint process_system_event(Game* game, void* system_event) {
+uint event_process_system(game_t* game, void* system_event) {
   SDL_Event* event = system_event;
   
   switch(event->type) {

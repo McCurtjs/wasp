@@ -1,34 +1,32 @@
-#include "SDL3/SDL.h"
+/*******************************************************************************
+* MIT License
+*
+* Copyright (c) 2025 Curtis McCoy
+*
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
+*
+* The above copyright notice and this permission notice shall be included in all
+* copies or substantial portions of the Software.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*/
 
-#include "wasm.h"
-#include "shader.h"
-#include "mat.h"
-#include "model.h"
-#include "camera.h"
-#include "texture.h"
-#include "draw.h"
-#include "str.h"
-#include "utility.h"
-
-#include <stdio.h>
-#include <string.h>
-#include <math.h>
-#include <stdlib.h>
-
-#include "gl.h"
-
-#include "game.h"
-#include "system_events.h"
-#include "test_behaviors.h"
-#include "render_target.h"
-
-#include "levels.h"
-#include "input_map.h"
-
+#include "demo.h"
 #include "wasp.h"
 
-//#define SDL_MAIN_USE_CALLBACKS
-//#include "SDL3/SDL_main.h"
+#include "SDL3/SDL.h"
+#include "gl.h"
 
 #define GAME_ON 1
 
@@ -48,6 +46,8 @@ int export(canary) (int _) {
   return 0;
 }
 #endif
+
+static demo_t demo;
 
 static int active_shader = 1;
 
@@ -77,33 +77,47 @@ void wasp_init(app_defaults_t* game) {
   game->title = str_copy("WASP Demo");
 }
 
-bool export(wasp_preload) (Game* game) {
+void demo_callback_window_resize(game_t* game) {
+  rt_resize(game->demo->render_target, game->window);
+}
+
+bool export(wasp_preload) (game_t* game) {
   #if GAME_ON == 1
+
+  demo = (demo_t) {
+    .target = v3origin,
+    .light_pos = { 4, 3, 5, 1 },
+  };
+
+  game->demo = &demo;
+  game->on_window_resize = demo_callback_window_resize;
 
   file_model_gear = file_new(S("./res/models/gear.obj"));
 
-  game->materials.grass = material_new(S("grass_rocky"));
-  game->materials.grass->use_normal_map = true;
-  game->materials.grass->use_specular_map = true;
-  game->materials.grass->roughness = 1.0f;
+  demo.materials.grass = material_new(S("grass_rocky"));
+  demo.materials.grass->use_normal_map = true;
+  demo.materials.grass->use_specular_map = true;
+  demo.materials.grass->roughness = 1.0f;
 
-  game->materials.crate = material_new(S("crate"));
-  game->materials.crate->roughness = 0.2f;
+  demo.materials.crate = material_new(S("crate"));
+  demo.materials.crate->roughness = 0.2f;
 
-  game->materials.tiles = material_new(S("tiles"));
+  demo.materials.tiles = material_new(S("tiles"));
 
-  game->materials.sands = material_new(S("brass2"));
-  game->materials.sands->roughness = 1.0f;
-  game->materials.sands->use_normal_map = true;
+  demo.materials.sands = material_new(S("brass2"));
+  demo.materials.sands->roughness = 1.0f;
+  demo.materials.sands->use_normal_map = true;
 
-  game->materials.mudds = material_new(S("lava"));
-  game->materials.mudds->use_normal_map = true;
-  game->materials.mudds->roughness = 1.0f;
+  demo.materials.mudds = material_new(S("rusty"));
+  demo.materials.mudds->use_normal_map = true;
+  demo.materials.mudds->use_specular_map = true;
+  demo.materials.mudds->roughness = 0.2f;
+  demo.materials.mudds->metalness = 0.8f;
 
-  game->materials.renderite = material_new(S("renderite"));
-  game->materials.renderite->use_diffuse_map = false;
-  game->materials.renderite->roughness = 0.0f;
-  game->materials.renderite->metalness = 0.4f;
+  demo.materials.renderite = material_new(S("renderite"));
+  demo.materials.renderite->use_diffuse_map = false;
+  demo.materials.renderite->roughness = 0.0f;
+  demo.materials.renderite->metalness = 0.4f;
 
   material_load_all_async();
 
@@ -113,42 +127,42 @@ bool export(wasp_preload) (Game* game) {
   //camera_build_orthographic(&game.camera);
 
   // load this first since it's the loading screen spinner
-  game->models.color_cube.type = MODEL_CUBE_COLOR;
-  model_build(&game->models.color_cube);
+  demo.models.color_cube.type = MODEL_CUBE_COLOR;
+  model_build(&demo.models.color_cube);
   model_build(&model_frame);
 
-  game->shaders.loading = shader_new(S("basic"));
-  game->shaders.basic = shader_new_load_async(S("basic_deferred"));
-  game->shaders.light = shader_new_load_async(S("light"));
-  game->shaders.frame = shader_new_load_async(S("frame"));
-  game->shaders.warhol = shader_new_load_async(S("warhol"));
+  demo.shaders.loading = shader_new(S("basic"));
+  demo.shaders.basic = shader_new_load_async(S("basic_deferred"));
+  demo.shaders.light = shader_new_load_async(S("light"));
+  demo.shaders.frame = shader_new_load_async(S("frame"));
+  demo.shaders.warhol = shader_new_load_async(S("warhol"));
 
-  game->textures.render_target = rt_new(
+  game->demo->render_target = rt_new(
     TF_RGB_8, TF_RG_16, TF_RGB_10_A_2, TF_DEPTH_32
   );
-  rt_build(game->textures.render_target, game->window);
+  rt_build(game->demo->render_target, game->window);
 
   game->input.keymap = span_keymap(input_map, ARRAY_COUNT(input_map));
 
   return true;
 }
 
-static void cheesy_loading_animation(Game* game, float dt) {
+static void cheesy_loading_animation(game_t* game, float dt) {
   static float cubespin = 0;
 
   rt_bind_default();
 
   mat4 projview = camera_projection_view(&game->camera);
 
-  shader_bind(game->shaders.loading);
-  int loc_pvm = shader_uniform_loc(game->shaders.loading, "in_pvm_matrix");
+  shader_bind(demo.shaders.loading);
+  int loc_pvm = shader_uniform_loc(demo.shaders.loading, "in_pvm_matrix");
 
   mat4 model = m4translation(v3f(0, 0, 0));
   model = m4mul(model, m4rotation(v3norm(v3f(1.f, 1.5f, -.7f)), cubespin));
   model = m4mul(model, m4rotation(v3norm(v3f(-4.f, 1.5f, 1.f)), cubespin/3.6f));
 
   glUniformMatrix4fv(loc_pvm, 1, 0, m4mul(projview, model).f);
-  model_render(&game->models.color_cube);
+  model_render(&demo.models.color_cube);
   cubespin += 2 * dt;
 
   GLenum err = glGetError();
@@ -157,7 +171,7 @@ static void cheesy_loading_animation(Game* game, float dt) {
   }
 }
 
-bool export(wasp_load) (Game* game, int await_count, float dt) {
+bool export(wasp_load) (game_t* game, int await_count, float dt) {
 
   if (await_count || !GAME_ON) {
     cheesy_loading_animation(game, dt);
@@ -170,33 +184,33 @@ bool export(wasp_load) (Game* game, int await_count, float dt) {
 
   shader_build_all();
   material_build_all();
-  model_load_obj(&game->models.gear, file_model_gear);
+  model_load_obj(&demo.models.gear, file_model_gear);
 
   // Delete async loaded resources
   file_delete(&file_model_gear);
 
   // Set up game models
-  game->models.grid.grid = (Model_Grid) {
+  demo.models.grid.grid = (Model_Grid) {
     .type = MODEL_GRID,
     .basis = {v3x, v3y, v3z},
     .primary = {0, 2},
     .extent = 100
   };
 
-  game->models.player.sprites = (Model_Sprites) {
+  demo.models.player.sprites = (Model_Sprites) {
     .type = MODEL_SPRITES,
     .grid = {.w = 16, .h = 16},
   };
 
-  model_build(&game->models.player);
-  model_build(&game->models.level_test);
+  model_build(&demo.models.player);
+  model_build(&demo.models.level_test);
   //model_build(&game.models.level_1);
-  model_build(&game->models.gear);
-  model_grid_set_default(&game->models.gizmo, -2);
-  game->models.box.type = MODEL_CUBE;
-  model_build(&game->models.box);
-  model_build(&game->models.grid);
-  model_build(&game->models.gizmo);
+  model_build(&demo.models.gear);
+  model_grid_set_default(&demo.models.gizmo, -2);
+  demo.models.box.type = MODEL_CUBE;
+  model_build(&demo.models.box);
+  model_build(&demo.models.grid);
+  model_build(&demo.models.gizmo);
 
   // Load the first game level
   level_switch(game, game->level);
@@ -206,12 +220,11 @@ bool export(wasp_load) (Game* game, int await_count, float dt) {
   return 1;
 }
 
-bool export(wasp_update) (Game* game, float dt) {
+bool export(wasp_update) (game_t* game, float dt) {
   UNUSED(dt);
-  //process_system_events(&game);
   level_switch_check(game);
 
-  if (input_triggered(game, IN_TOGGLE_SHADER)) {
+  if (input_triggered(IN_TOGGLE_SHADER)) {
     active_shader = (active_shader + 1) % 2;
   }
 
@@ -219,8 +232,8 @@ bool export(wasp_update) (Game* game, float dt) {
   return true;
 }
 
-void export(wasp_render) (Game* game) {
-  rt_bind(game->textures.render_target);
+void export(wasp_render) (game_t* game) {
+  rt_bind(game->demo->render_target);
   game_render(game);
 
   rt_bind_default();
@@ -228,9 +241,9 @@ void export(wasp_render) (Game* game) {
   shader_program_use(&shader_frame);
   tex_apply(game.textures.render_target->textures[0], 0, 0);
   /*/
-  Shader shader = game->shaders.warhol;
+  Shader shader = demo.shaders.warhol;
   if (active_shader == 1) {
-    shader = game->shaders.frame;
+    shader = demo.shaders.frame;
   }
 
   shader_bind(shader);
@@ -240,12 +253,12 @@ void export(wasp_render) (Game* game) {
   int depth_sampler = shader_uniform_loc(shader, "depthSamp");
   int loc_invproj = shader_uniform_loc(shader, "in_proj_inverse");
   int loc_light_pos = shader_uniform_loc(shader, "lightPos");
-  tex_apply(game->textures.render_target->textures[0], 0, tex_sampler);
-  tex_apply(game->textures.render_target->textures[1], 1, norm_sampler);
-  tex_apply(game->textures.render_target->textures[2], 2, prop_sampler);
-  tex_apply(game->textures.render_target->textures[3], 3, depth_sampler);
+  tex_apply(game->demo->render_target->textures[0], 0, tex_sampler);
+  tex_apply(game->demo->render_target->textures[1], 1, norm_sampler);
+  tex_apply(game->demo->render_target->textures[2], 2, prop_sampler);
+  tex_apply(game->demo->render_target->textures[3], 3, depth_sampler);
   glUniformMatrix4fv(loc_invproj, 1, 0, m4inverse(game->camera.projection).f);
-  glUniform4fv(loc_light_pos, 1, mv4mul(game->camera.view, game->light_pos).f);
+  glUniform4fv(loc_light_pos, 1, mv4mul(game->camera.view, demo.light_pos).f);
 
   model_render(&model_frame);
 }

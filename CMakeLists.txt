@@ -49,6 +49,7 @@ target_sources(Wasp PRIVATE
   src/file.c
   src/game.c
   src/image.c
+  src/input.c
   src/material.c
   src/model.c
   src/render_target.c
@@ -63,6 +64,7 @@ target_sources(Wasp PRIVATE
   include/game.h
   include/gl.h
   include/image.h
+  include/input.h
   include/material.h
   include/model.h
   include/render_target.h
@@ -130,9 +132,7 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
       demo/level_test.c
       demo/levels.c
       demo/test_behaviors.c
-      demo/input_map.h
-      demo/levels.h
-      demo/test_behaviors.h
+      demo/demo.h
     )
 
     target_link_libraries(Wasp_demo PRIVATE Wasp Galogen)

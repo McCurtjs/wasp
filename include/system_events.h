@@ -3,6 +3,6 @@
 
 #include "game.h"
 
-uint process_system_event(Game* game, void* system_event);
+uint event_process_system(game_t* game, void* system_event);
 
 #endif

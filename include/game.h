@@ -1,130 +1,79 @@
-#ifndef _GAME_H_
-#define _GAME_H_
+/*******************************************************************************
+* MIT License
+*
+* Copyright (c) 2025 Curtis McCoy
+*
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
+*
+* The above copyright notice and this permission notice shall be included in all
+* copies or substantial portions of the Software.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*/
+
+#ifndef WASP_GAME_H_
+#define WASP_GAME_H_
+
+#ifndef CUSTOM_GAME_TYPE
+#define CUSTOM_GAME_TYPE void
+#endif
+
+#ifndef CUSTOM_GAME_VAR
+#define CUSTOM_GAME_VAR game
+#endif
 
 #include "vec.h"
 #include "camera.h"
 #include "entity.h"
-#include "shader.h"
-#include "texture.h"
-#include "render_target.h"
+#include "input.h"
 
-#define con_type int
-#include "span.h"
-#include "array.h"
-#undef con_type
+typedef struct game_t game_t;
 
-typedef struct Game_Shaders {
-  Shader loading;
-  Shader frame;
-  Shader basic;
-  Shader light;
-  Shader warhol;
-} Game_Shaders;
-
-typedef struct Game_Models {
-  Model color_cube;
-  Model gizmo;
-  Model grid;
-  Model box;
-  Model gear;
-  Model player;
-  Model level_test;
-  Model level_1;
-} Game_Models;
-
-typedef struct Game_Textures {
-  texture_t flat;
-  texture_t flats;
-  texture_t crate;
-  texture_t brass;
-  texture_t brasn;
-  texture_t tiles;
-  texture_t grass;
-  texture_t grasn;
-  texture_t grasr;
-  texture_t level;
-  texture_t player;
-  RenderTarget render_target;
-} Game_Textures;
-
-typedef struct Game_Materials {
-  Material grass;
-  Material sands;
-  Material tiles;
-  Material crate;
-  Material mudds;
-  Material renderite;
-} Game_Materials;
-
-#define game_key_count 10
-#define game_mouse_button_count 3
-#define game_button_input_count (game_key_count + game_mouse_button_count)
-
-typedef struct keybind_t {
-  int name; // pair with an enum value for the key name
-  int key;
-  bool mouse;
-  bool pressed;
-  bool triggered;
-  bool released;
-} keybind_t;
-
-#define con_type keybind_t
-#define con_prefix keymap
-#include "span.h"
-#undef con_type
-#undef con_prefix
-
-typedef struct input_mouse_t {
-  vec2 pos;
-  vec2 move;
-} input_mouse_t;
-
-typedef struct input_t {
-  span_keymap_t keymap;
-  input_mouse_t mouse;
-} input_t;
+typedef void (*event_resize_window_t)(game_t* game);
 
 typedef struct app_defaults_t {
   vec2i window;
   String title;
 } app_defaults_t;
 
-typedef struct Game {
+typedef struct game_t {
+  CUSTOM_GAME_TYPE* CUSTOM_GAME_VAR;
+
   vec2i window;
   String title;
   Camera camera;
 
-  vec3 target;
-  vec4 light_pos;
-
   input_t input;
-
-  Game_Shaders shaders;
-  Game_Models models;
-  Game_Textures textures;
-  Game_Materials materials;
 
   Array_entity entities;
 
   uint level;
   bool should_exit;
 
-} Game;
+  event_resize_window_t on_window_resize;
 
-Game* game_init(int window_width, int window_height);
+} game_t;
 
-void game_reset(Game* game);
-void game_quit(Game* game);
+game_t* game_init(int window_width, int window_height);
 
-void game_add_entity(Game* game, Entity* entity);
+void game_reset(game_t* game);
+void game_quit(game_t* game);
 
-void game_update(Game* game, float dt);
-void game_render(Game* game);
-void game_cleanup(Game* game);
+void game_add_entity(game_t* game, Entity* entity);
 
-bool input_triggered(Game* game, int input_name);
-bool input_pressed(Game* game, int input_name);
-bool input_released(Game* game, int input_name);
+void game_update(game_t* game, float dt);
+void game_render(game_t* game);
+void game_cleanup(game_t* game);
 
 #endif

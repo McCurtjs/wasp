@@ -1,12 +1,40 @@
+/*******************************************************************************
+* MIT License
+*
+* Copyright (c) 2025 Curtis McCoy
+*
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
+*
+* The above copyright notice and this permission notice shall be included in all
+* copies or substantial portions of the Software.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*/
+
 #include "game.h"
 
 #include "wasm.h"
 
-Game game_singleton;
+game_t game_singleton;
 
-Game* export(game_init) (int x, int y) {
+////////////////////////////////////////////////////////////////////////////////
+// Game initialization function
+////////////////////////////////////////////////////////////////////////////////
+
+game_t* export(game_init) (int x, int y) {
   vec2i default_window = v2i(x, y);
-  game_singleton = (Game) {
+  game_singleton = (game_t) {
     .window = default_window,
     .title = NULL,
     .camera = {
@@ -16,8 +44,6 @@ Game* export(game_init) (int x, int y) {
       .persp = {d2r(60), i2aspect(default_window), 0.1f, 500}
       //.ortho = {-6 * i2aspect(windim), 6 * i2aspect(windim), 6, -6, 0.1, 500}
     },
-    .target = v3origin,
-    .light_pos = v4f(4, 3, 5, 1),
     .level = 0,
   };
 
@@ -26,15 +52,29 @@ Game* export(game_init) (int x, int y) {
   return &game_singleton;
 }
 
-void game_reset(Game* game) {
+////////////////////////////////////////////////////////////////////////////////
+// TODO: actually reset the game instead of leaking memory?
+////////////////////////////////////////////////////////////////////////////////
+
+void game_reset(game_t* game) {
+  input_set(&game->input);
   game->entities = arr_entity_new();
 }
 
-void game_quit(Game* game) {
+////////////////////////////////////////////////////////////////////////////////
+// Close the game successfully at end of current frame
+////////////////////////////////////////////////////////////////////////////////
+
+void game_quit(game_t* game) {
+  input_unset(&game->input);
   game->should_exit = true;
 }
 
-void game_add_entity(Game* game, Entity* entity) {
+////////////////////////////////////////////////////////////////////////////////
+// Adds a game entity
+////////////////////////////////////////////////////////////////////////////////
+
+void game_add_entity(game_t* game, Entity* entity) {
   if (entity->tint.x == 0.0f
   &&  entity->tint.y == 0.0f
   &&  entity->tint.z == 0.0f) {
@@ -43,7 +83,11 @@ void game_add_entity(Game* game, Entity* entity) {
   arr_entity_write_back(game->entities, entity);
 }
 
-void game_update(Game* game, float dt) {
+////////////////////////////////////////////////////////////////////////////////
+// Per-frame call to update entity behaviors and clear input changes
+////////////////////////////////////////////////////////////////////////////////
+
+void game_update(game_t* game, float dt) {
   // Reset button triggers (only one frame on trigger/release)
   Entity* arr_foreach(entity, game->entities) {
     if (entity->behavior) {
@@ -51,15 +95,14 @@ void game_update(Game* game, float dt) {
     }
   }
 
-  keybind_t* span_foreach(keybind, game->input.keymap) {
-    keybind->triggered = false;
-    keybind->released = false;
-  }
-
-  game->input.mouse.move = v2zero;
+  input_update(&game->input);
 }
 
-void game_render(Game* game) {
+////////////////////////////////////////////////////////////////////////////////
+// Renders visisble game objects
+////////////////////////////////////////////////////////////////////////////////
+
+void game_render(game_t* game) {
   game->camera.projview = camera_projection_view(&game->camera);
   game->camera.view = camera_view(&game->camera);
 
@@ -70,7 +113,11 @@ void game_render(Game* game) {
   }
 }
 
-void game_cleanup(Game* game) {
+////////////////////////////////////////////////////////////////////////////////
+// Clears game entity pool
+////////////////////////////////////////////////////////////////////////////////
+
+void game_cleanup(game_t* game) {
   Entity* arr_foreach(entity, game->entities) {
     if (entity->delete) {
       entity->delete(entity);
@@ -78,31 +125,4 @@ void game_cleanup(Game* game) {
   }
 
   arr_entity_delete(&game->entities);
-}
-
-bool input_triggered(Game* game, int input_name) {
-  keybind_t* span_foreach(keybind, game->input.keymap) {
-    if (keybind->name == input_name && keybind->triggered) {
-      return true;
-    }
-  }
-  return false;
-}
-
-bool input_pressed(Game* game, int input_name) {
-  keybind_t* span_foreach(keybind, game->input.keymap) {
-    if (keybind->name == input_name && keybind->pressed) {
-      return true;
-    }
-  }
-  return false;
-}
-
-bool input_released(Game* game, int input_name) {
-  keybind_t* span_foreach(keybind, game->input.keymap) {
-    if (keybind->name == input_name && keybind->released) {
-      return true;
-    }
-  }
-  return false;
 }

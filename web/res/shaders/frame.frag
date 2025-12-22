@@ -22,7 +22,7 @@ float D_GGX(float NdotH, float roughness) {
   return a2 / (PI * denom * denom);
 }
 
-vec3 F_Schlick(vec3 F0, float VdotH) {
+vec3 F_Schlick(float VdotH, vec3 F0) {
   return F0 + (1.0 - F0) * pow(1.0 - VdotH, 5.0);
 }
 
@@ -37,9 +37,19 @@ float G_Smith(float NdotV, float NdotL, float roughness) {
 }
 
 void main() {
+  // Get UV coordinates and basic color values from textures
   vec2 uv = vUV;
   vec4 albedo = texture(texSamp, uv);
   vec4 props = texture(propSamp, uv);
+
+  // Light properties
+  vec3  light_color = vec3(0.9, 0.9, 0.75);
+  float light_intensity = 6.0;
+  vec3  light_value = light_color * light_intensity;
+
+  // Material properties
+  vec3  metallic = albedo.xyz * props.g;
+  float roughness = 1.0 - props.r;
 
   // Reconstruct fragment position in view space (camera at <0, 0, 0>)
   vec3 ndc = vec3(uv.x, uv.y, texture(depthSamp, uv).r);
@@ -57,23 +67,14 @@ void main() {
   norm = norm * 2.0 - 1.0;
   norm = vec3(norm.xy, 1.0 - abs(norm.x) - abs(norm.y));
   if (norm.z < 0.0) norm.xy = (1.0 - abs(norm.yx)) * sign(norm.xy);
-  normalize(norm);
 
   // Pabst Blue Ribbon?
-  vec3  light_color = vec3(0.9, 0.9, 0.75);
-  float light_intensity = 14.0;
-
-  vec3  metallic = vec3(0.0);//albedo.xyz * props.g;
-  float roughness = 1.0 - props.r;//0.8;
-
-  vec3 light_value = light_color * light_intensity;
-
+  vec3 N = normalize(norm);
   vec3 V = normalize(-pos);
-  vec3 N = norm;
   vec3 L = normalize(lightPos.xyz - pos);
   vec3 H = normalize(V + L);
 
-  float NdotL = max(dot(N, L), 0.0);
+  float NdotL = max(dot(N, L), 0.0); // cosTheta
   float NdotV = max(dot(N, V), 0.0);
   float NdotH = max(dot(N, H), 0.0);
   float VdotH = max(dot(V, H), 0.0);
@@ -82,16 +83,19 @@ void main() {
 
   float D = D_GGX(NdotH, roughness);
   float G = G_Smith(NdotV, NdotL, roughness);
-  vec3  F = F_Schlick(F0, VdotH);
+  vec3  F = F_Schlick(VdotH, F0);
 
   vec3 specular = (D * G * F) / (4.0 * NdotV * NdotL + 1e-5);
 
   vec3 kS = F;
-  vec3 kD = (1.0 - kS) * 1.0 - metallic;
+  vec3 kD = (1.0 - kS) * (1.0 - metallic);
 
   vec3 diffuse = kD * albedo.xyz / PI;
 
   fragColor = vec4(vec3((diffuse + specular) * light_value * NdotL), 1.0);
+  //fragColor = vec4(vec3(NdotV), 1.0);
+  //fragColor = vec4(normalize(pos - lightPos.xyz), 1.0);
+  //fragColor = vec4(vec3(norm), 1.0);
   //fragColor = vec4(vec3(roughness), 1.0);
 
   // ambient color (IBL approx)

@@ -148,7 +148,7 @@ void export(img_open_async_done) (
 // Loads an image from a filename, asynchronously in WASM mode
 ////////////////////////////////////////////////////////////////////////////////
 
-Image img_load_async(slice_t filename) {
+Image img_load_async_str(String filename) {
   str_log("[Image.load] Loading: {}", filename);
   Image_Internal* ret;
 
@@ -166,7 +166,7 @@ Image img_load_async(slice_t filename) {
   str_log("  Async ID: {}", (size_t)ret->data);
 #else
   Image_Internal img = {
-    .filename = istr_copy(filename),
+    .filename = filename,
     .type = IMG_FROM_FILE,
     .ready = true,
     .blend = true,
@@ -196,6 +196,12 @@ Image img_load_async(slice_t filename) {
 #endif
 
   return (Image)ret;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+Image img_load_async(slice_t filename) {
+  return img_load_async_str(istr_copy(filename));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

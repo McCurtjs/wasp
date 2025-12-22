@@ -43,7 +43,7 @@ struct {
   SDL_Window* window;
   SDL_GLContext gl_context;
   uint64_t previous_time;
-  Game* game;
+  game_t* game;
 } app = { 0 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -134,7 +134,7 @@ SDL_AppResult SDL_AppIterate(void* app_state) {
 
 SDL_AppResult SDL_AppEvent(void* app_state, SDL_Event* event) {
   UNUSED(app_state);
-  return process_system_event(app.game, event);
+  return event_process_system(app.game, event);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

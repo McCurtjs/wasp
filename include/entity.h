@@ -32,10 +32,10 @@
 #include "array.h"
 #include "material.h"
 
-typedef struct Game Game;
+typedef struct game_t game_t;
 typedef struct Entity Entity;
-typedef void (*UpdateFn)(Entity* e, Game* game, float dt);
-typedef void (*RenderFn)(Entity* e, Game* game);
+typedef void (*UpdateFn)(Entity* e, game_t* game, float dt);
+typedef void (*RenderFn)(Entity* e, game_t* game);
 typedef void (*DeleteFn)(Entity* e);
 
 // todo: if "Entity" is not partially opaque, should it be "entity" instead?
@@ -54,7 +54,6 @@ typedef struct Entity {
 
   mat4 transform;
   const Model* model;
-  texture_t texture;
   Material material;
   vec3 tint;
 
@@ -65,6 +64,41 @@ typedef struct Entity {
   DeleteFn delete;
 
 } Entity;
+
+/*
+typedef struct Entity2 {
+  vec3 pos;
+  quat dir;
+
+  mat4 transform;
+
+  Model model;
+  Material material;
+  vec3 tint;
+
+  // Renderer renderer;
+  // {
+  //    type: fn | managed;
+  //    union {
+  //      RenderFn render;
+  //      RenderManager manager;
+  //    };
+  // }
+  //
+  // Controller controller;
+  // {
+  //    type: fn | controller;
+  //    union {
+  //      UpdateFn behavior;
+  //      Controller controller;
+  //    }
+  // }
+  UpdateFn behavior;
+  DeleteFn delete;
+
+  bool hidden;
+  bool frozen;
+};//*/
 
 
 #define con_type Entity
