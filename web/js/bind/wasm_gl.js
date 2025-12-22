@@ -303,10 +303,20 @@ function wasm_import_gl(imports, game) {
             target, level, iFmt, width, height, 0, fmt, sType, null
           );
         }
-        else {
+        else if (sType == game.gl.BYTE || sType == game.gl.UNSIGNED_BYTE) {
+          let buffer = data.get_buffer();
           game.gl.texImage2D(
-            target, level, iFmt, width, height, 0, fmt, sType, data.get_buffer()
+            target, level, iFmt, width, height, 0, fmt, sType, buffer
           );
+        }
+        else if (sType == game.gl.FLOAT) {
+          let buffer = game.memory_f(data.buffer.begin, data.buffer.size / 4);
+          game.gl.texImage2D(
+            target, level, iFmt, width, height, 0, fmt, sType, buffer
+          )
+        }
+        else {
+          console.log("Unknown buffer vs data type match");
         }
       break;
       default: return;

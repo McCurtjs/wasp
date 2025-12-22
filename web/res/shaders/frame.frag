@@ -12,6 +12,7 @@ uniform sampler2D texSamp;
 uniform sampler2D normSamp;
 uniform sampler2D propSamp;
 uniform sampler2D depthSamp;
+uniform sampler2D lightSamp;
 
 #define PI 3.141592653589
 
@@ -45,7 +46,15 @@ void main() {
   // Light properties
   vec3  light_color = vec3(0.9, 0.9, 0.75);
   float light_intensity = 6.0;
-  vec3  light_value = light_color * light_intensity;
+
+  vec2 light_index = vec2(3.0 / 3.0, 0);
+  light_intensity = texelFetch(lightSamp, ivec2(3, 0), 0).z;
+  vec3 light_pos = texelFetch(lightSamp, ivec2(1, 0), 0).xyz;//texture(lightSamp, light_index).xyz;
+  light_color = texelFetch(lightSamp, ivec2(3, 0), 0).xyz;//texture(lightSamp, light_index).xyz;
+  fragColor = vec4(vec3(light_color), 1.0);
+  //return;
+
+  vec3 light_value = light_color * light_intensity;
 
   // Material properties
   vec3  metallic = albedo.xyz * props.g;
@@ -71,30 +80,44 @@ void main() {
   // Pabst Blue Ribbon?
   vec3 N = normalize(norm);
   vec3 V = normalize(-pos);
-  vec3 L = normalize(lightPos.xyz - pos);
-  vec3 H = normalize(V + L);
+  vec3 result = vec3(0.0);
 
-  float NdotL = max(dot(N, L), 0.0); // cosTheta
-  float NdotV = max(dot(N, V), 0.0);
-  float NdotH = max(dot(N, H), 0.0);
-  float VdotH = max(dot(V, H), 0.0);
+  ivec2 light_buffer_size = textureSize(lightSamp, 0);
 
-  vec3 F0 = mix(vec3(0.04), albedo.xyz, metallic);
+  for (int i = 0; i < light_buffer_size.x; i += 3) {
+    light_intensity = texelFetch(lightSamp, ivec2(i, 0), 0).z;
+    light_pos = texelFetch(lightSamp, ivec2(i+1, 0), 0).xyz;
+    light_color = texelFetch(lightSamp, ivec2(i+2, 0), 0).xyz;
+    light_value = light_color * light_intensity;
 
-  float D = D_GGX(NdotH, roughness);
-  float G = G_Smith(NdotV, NdotL, roughness);
-  vec3  F = F_Schlick(VdotH, F0);
+    vec3 L = normalize(light_pos - pos);
+    vec3 H = normalize(V + L);
 
-  vec3 specular = (D * G * F) / (4.0 * NdotV * NdotL + 1e-5);
+    float NdotL = max(dot(N, L), 0.0);
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotH = max(dot(N, H), 0.0);
+    float VdotH = max(dot(V, H), 0.0);
 
-  vec3 kS = F;
-  vec3 kD = (1.0 - kS) * (1.0 - metallic);
+    vec3 F0 = mix(vec3(0.04), albedo.xyz, metallic);
 
-  vec3 diffuse = kD * albedo.xyz / PI;
+    float D = D_GGX(NdotH, roughness);
+    float G = G_Smith(NdotV, NdotL, roughness);
+    vec3  F = F_Schlick(VdotH, F0);
 
-  fragColor = vec4(vec3((diffuse + specular) * light_value * NdotL), 1.0);
+    vec3 specular = (D * G * F) / (4.0 * NdotV * NdotL + 1e-5);
+
+    vec3 kS = F;
+    vec3 kD = (1.0 - kS) * (1.0 - metallic);
+
+    vec3 diffuse = kD * albedo.xyz / PI;
+
+    result += vec3((diffuse + specular) * light_value * NdotL);
+  }
+
+  //fragColor = vec4(vec3((diffuse + specular) * light_value * NdotL), 1.0);
+  fragColor = vec4(result, 1.0);
   //fragColor = vec4(vec3(NdotV), 1.0);
-  //fragColor = vec4(normalize(pos - lightPos.xyz), 1.0);
+  //fragColor = vec4(normalize(pos - light_pos.xyz), 1.0);
   //fragColor = vec4(vec3(norm), 1.0);
   //fragColor = vec4(vec3(roughness), 1.0);
 

@@ -26,6 +26,8 @@
 
 #include <math.h>
 
+#include "light.h"
+
 void level_load_og_test(Game game) {
 
   demo_t* demo = game->demo;
@@ -194,8 +196,34 @@ void level_load_og_test(Game game) {
             m4uniform(19)
           ),
         .render = render_pbr,
-      }); //*/
+      });
 
     }
-  }
+  } //*/
+
+  //* Some lights
+  light_add((light_t) {
+    .intensity = 6.0f,
+    .pos = v3f(4, 3, 5),
+    .color = v3f(0.9f, 0.9f, 0.75f),
+  });
+
+  light_add((light_t) {
+    .intensity = 5.0f,
+      .pos = v3f(4, 3, 5),
+      .color = v3f(0.8f, 0.8f, 0.95f),
+  });
+
+  light_add((light_t) {
+    .intensity = 7.0f,
+    .pos = v3f(20, 20, 7),
+    .color = v3f(1.0f, 0.2f, 0.2f),
+  });
+
+  light_add((light_t) {
+    .intensity = 4.0f,
+    .pos = v3f(-20, -20, 7),
+    .color = v3f(0.0f, 0.9f, 0.4f),
+  });
+  //*/
 }

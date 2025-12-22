@@ -50,6 +50,7 @@ target_sources(Wasp PRIVATE
   src/game.c
   src/image.c
   src/input.c
+  src/light.c
   src/material.c
   src/model.c
   src/render_target.c
@@ -65,6 +66,7 @@ target_sources(Wasp PRIVATE
   include/gl.h
   include/image.h
   include/input.h
+  include/light.h
   include/material.h
   include/model.h
   include/render_target.h

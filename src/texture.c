@@ -31,21 +31,21 @@ static texture_t tex_default_normal = { 0 };
 
 static const GLenum _rt_formats_internal[] = {
   GL_RGB8, GL_RGBA8,
-  GL_RGBA16F, GL_RGBA32F, GL_R32F, GL_RG16F,
+  GL_RGBA16F, GL_RGB32F, GL_RGBA32F, GL_R32F, GL_RG16F,
   GL_RGB10_A2,
   GL_DEPTH_COMPONENT32F
 };
 
 static const GLenum _rt_formats[] = {
   GL_RGB, GL_RGBA,
-  GL_RGBA, GL_RGBA, GL_RED, GL_RG,
+  GL_RGBA, GL_RGB, GL_RGBA, GL_RED, GL_RG,
   GL_RGBA,
   GL_DEPTH_COMPONENT
 };
 
 static const GLenum _rt_format_type[] = {
   GL_UNSIGNED_BYTE, GL_UNSIGNED_BYTE,
-  GL_FLOAT, GL_FLOAT, GL_FLOAT, GL_FLOAT,
+  GL_FLOAT, GL_FLOAT, GL_FLOAT, GL_FLOAT, GL_FLOAT,
   GL_UNSIGNED_INT_2_10_10_10_REV,
   GL_FLOAT
 };
@@ -100,7 +100,7 @@ texture_t tex_from_image(Image image) {
 
   // Don't make mipmaps for very small textures, and set them up to use
   //    "nearest" filtering, mostly to make sure the error texture is sharp.
-  if (image->width < 5 && image->height < 5) {
+  if (image->width < 5 || image->height < 5) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   }
@@ -123,6 +123,55 @@ texture_t tex_from_image(Image image) {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
   return ret;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Initialize a texture from data
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef __WASM__
+extern void* js_buffer_create(const byte* bytes, uint size);
+extern void  js_buffer_delete(void* data_id);
+#endif
+
+texture_t tex_from_data(
+  texture_format_t format, vec2i size, const void* data
+) {
+  texture_t texture;
+  assert(format >= 0 && format < TF_SUPPORTED_MAX);
+
+  glGenTextures(1, &texture.handle);
+
+#ifdef __WASM__
+  void* data_buffer = js_buffer_create(
+    data, size.w * size.h * sizeof(float) * 3 * 3
+  );
+  data = data_buffer;
+#endif
+
+  glBindTexture(GL_TEXTURE_2D, texture.handle);
+  glTexImage2D
+  ( GL_TEXTURE_2D
+  , 0
+  , _rt_formats_internal[format]
+  , size.w
+  , size.h
+  , 0
+  , _rt_formats[format]
+  , _rt_format_type[format]
+  , data
+  );
+
+#ifdef __WASM__
+  js_buffer_delete(data_buffer);
+#endif
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+  return texture;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

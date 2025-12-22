@@ -25,6 +25,7 @@
 #include "demo.h"
 #include "draw.h"
 #include "gl.h"
+#include "light.h"
 
 #define CAMERA_SPEED 9.0f
 
@@ -162,6 +163,10 @@ void behavior_stare(Game game, Entity* e, float dt) {
 void behavior_attach_to_light(Game game, Entity* e, float dt) {
   UNUSED(dt);
   e->transform = m4translation(game->demo->light_pos.xyz);
+  light_t* light = light_ref(1);
+  light->pos = game->demo->light_pos.xyz;
+  light = light_ref(2);
+  light->pos = game->demo->target;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

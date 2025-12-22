@@ -250,9 +250,25 @@ bool export(wasp_update) (Game game, float dt) {
 // Game rendering after update
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "light.h"
+
+#include <stdlib.h>
+#include <string.h>
+
 void export(wasp_render) (Game game) {
   rt_bind(game->demo->render_target);
   game_render(game);
+
+  light_t* buffer = malloc(light_count() * sizeof(light_t));
+  if (!buffer) return;
+  memcpy(buffer, light_buffer(), light_count() * sizeof(light_t));
+  for (index_t i = 0; i < light_count(); ++i) {
+    buffer[i].pos = mv4mul(game->camera.view, p34(buffer[i].pos)).xyz;
+  }
+  texture_t lights = tex_from_data(
+    TF_RGB_32, v2i((int)light_count() * 3, 1), buffer
+  );
+  free(buffer);
 
   rt_bind_default();
   /*
@@ -269,14 +285,18 @@ void export(wasp_render) (Game game) {
   int norm_sampler = shader_uniform_loc(shader, "normSamp");
   int prop_sampler = shader_uniform_loc(shader, "propSamp");
   int depth_sampler = shader_uniform_loc(shader, "depthSamp");
+  int light_sampler = shader_uniform_loc(shader, "lightSamp");
   int loc_invproj = shader_uniform_loc(shader, "in_proj_inverse");
   int loc_light_pos = shader_uniform_loc(shader, "lightPos");
   tex_apply(game->demo->render_target->textures[0], 0, tex_sampler);
   tex_apply(game->demo->render_target->textures[1], 1, norm_sampler);
   tex_apply(game->demo->render_target->textures[2], 2, prop_sampler);
   tex_apply(game->demo->render_target->textures[3], 3, depth_sampler);
+  tex_apply(lights, 4, light_sampler);
   glUniformMatrix4fv(loc_invproj, 1, 0, m4inverse(game->camera.projection).f);
   glUniform4fv(loc_light_pos, 1, mv4mul(game->camera.view, demo.light_pos).f);
 
   model_render(&model_frame);
+
+  tex_free(&lights);
 }

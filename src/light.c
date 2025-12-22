@@ -22,39 +22,51 @@
 * SOFTWARE.
 */
 
-#ifndef WASP_TEXTURE_H_
-#define WASP_TEXTURE_H_
+#include "light.h"
 
-#include "types.h"
-#include "image.h"
-#include "vec.h"
+#define con_type light_t
+#define con_prefix light
+#include "span.h"
+#include "array.h"
+#undef con_type
+#undef con_prefix
 
-typedef enum texture_format_t {
-  TF_RGB_8,
-  TF_RGBA_8,
-  TF_RGBA_16,
-  TF_RGB_32,
-  TF_RGBA_32,
-  TF_R_32,
-  TF_RG_16,
-  TF_RGB_10_A_2,
-  TF_DEPTH_32,
-  TF_SUPPORTED_MAX
-} texture_format_t;
+array_light_t _all_lights = {
+  .element_size = sizeof(light_t)
+};
+index_t _light_index = 0;
 
-typedef struct texture_t {
-  uint handle;
-} texture_t;
+index_t light_add(light_t light) {
+  light.id = (uint)++_light_index;
+  arr_light_push_back(&_all_lights, light);
+  return light.id;
+}
 
-//Texture texture_new(texture_format_t format, vec2i size);
-//Texture texture_new_from_image(Image image);
+light_t* light_ref(index_t id) {
+  light_t* arr_foreach(light, &_all_lights) {
+    if (light->id == (uint)id) {
+      return light;
+    }
+  }
+  return NULL;
+}
 
-texture_t tex_from_image(Image image);
-texture_t tex_from_data(texture_format_t format, vec2i size, const void* data);
-texture_t tex_generate(texture_format_t format, vec2i size);
-texture_t tex_get_default_white(void);
-texture_t tex_get_default_normal(void);
-void      tex_apply(texture_t texture, uint slot, int sampler);
-void      tex_free(texture_t* handle);
+void light_remove(index_t id) {
+  light_t* arr_foreach_index(light, index, &_all_lights) {
+    if (light->id == (uint)id) {
+      arr_light_remove_unstable(&_all_lights, index);
+    }
+  }
+}
 
-#endif
+void light_clear(void) {
+  arr_light_clear(&_all_lights);
+}
+
+index_t light_count(void) {
+  return _all_lights.size;
+}
+
+light_t* light_buffer(void) {
+  return _all_lights.begin;
+}

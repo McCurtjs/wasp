@@ -332,6 +332,7 @@ typedef double GLclampd;
 #define GL_R32F                           0x822E
 #define GL_RG16F                          0x822F
 #define GL_RGBA16F                        0x881A
+#define GL_RGB32F                         0x8815
 #define GL_RGBA32F                        0x8814
 #define GL_RGB10_A2                       0x8059
 #define GL_RED                            0x1903
