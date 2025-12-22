@@ -36,14 +36,13 @@
 #include "gl.h"
 #include "stdio.h" // fflush
 
-bool game_continue = true;
 bool game_loaded = false;
 
 struct {
   SDL_Window* window;
   SDL_GLContext gl_context;
   uint64_t previous_time;
-  game_t* game;
+  Game game;
 } app = { 0 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -61,8 +60,10 @@ SDL_AppResult SDL_AppInit(void** app_state, int argc, char* argv[]) {
   };
   wasp_init(&defaults);
 
-  app.game = game_init(defaults.window.w, defaults.window.h);
-  app.game->title = defaults.title ? defaults.title : str_copy("Game Title");
+  app.game = game_new
+  ( defaults.title ? defaults.title : str_copy("Game Title")
+  , defaults.window
+  );
 
   SDL_WindowFlags flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
   app.window = SDL_CreateWindow(
@@ -101,10 +102,6 @@ SDL_AppResult SDL_AppInit(void** app_state, int argc, char* argv[]) {
 SDL_AppResult SDL_AppIterate(void* app_state) {
   UNUSED(app_state);
 
-  if (!game_continue) {
-    return SDL_APP_SUCCESS;
-  }
-
   uint64_t current_time = SDL_GetTicks();
   float dt = (float)(current_time - app.previous_time) / 1000.f;
   app.previous_time = current_time;
@@ -121,6 +118,11 @@ SDL_AppResult SDL_AppIterate(void* app_state) {
   shader_check_updates();
 
   wasp_update(app.game, dt);
+
+  if (app.game->should_exit) {
+    return SDL_APP_SUCCESS;
+  }
+
   wasp_render(app.game);
 
   SDL_GL_SwapWindow(app.window);

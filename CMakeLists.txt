@@ -130,7 +130,6 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
       src/native/main.c
       demo/demo.c
       demo/level_test.c
-      demo/levels.c
       demo/test_behaviors.c
       demo/demo.h
     )

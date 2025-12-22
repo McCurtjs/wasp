@@ -31,7 +31,7 @@
 
 #include "system_events.h"
 
-extern game_t game_singleton;
+extern Game game_singleton;
 
 void export(wasm_push_window_event) (uint event_type, int x, int y) {
   SDL_WindowEvent event = {
@@ -41,7 +41,7 @@ void export(wasm_push_window_event) (uint event_type, int x, int y) {
     .data2 = y,
   };
 
-  event_process_system(&game_singleton, &event);
+  event_process_system(game_singleton, &event);
 }
 
 void export(wasm_push_mouse_button_event) (
@@ -57,7 +57,7 @@ void export(wasm_push_mouse_button_event) (
     .x = x, .y = y
   };
 
-  event_process_system(&game_singleton, &event);
+  event_process_system(game_singleton, &event);
 }
 
 void export(wasm_push_mouse_motion_event) (
@@ -72,7 +72,7 @@ void export(wasm_push_mouse_motion_event) (
     .yrel = yrel
   };
 
-  event_process_system(&game_singleton, &event);
+  event_process_system(game_singleton, &event);
 }
 
 void export(wasm_push_keyboard_event) (
@@ -86,5 +86,5 @@ void export(wasm_push_keyboard_event) (
     .key = tolower(key),
   };
 
-  event_process_system(&game_singleton, &event);
+  event_process_system(game_singleton, &event);
 }

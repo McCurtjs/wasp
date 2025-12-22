@@ -26,7 +26,7 @@
 
 #include <math.h>
 
-void level_load_og_test(game_t* game) {
+void level_load_og_test(Game game) {
 
   demo_t* demo = game->demo;
 
@@ -117,25 +117,25 @@ void level_load_og_test(game_t* game) {
   //* Crate
   game_add_entity(game, &(Entity) {
     .model = &demo->models.box,
-      .material = demo->materials.grass,
-      .transform = m4translation(v3f(1, -0.5, 0)),
-      .render = render_pbr,
+    .material = demo->materials.grass,
+    .transform = m4translation(v3f(1, -0.5, 0)),
+    .render = render_pbr,
   }); //*/
 
   //* Crate
   game_add_entity(game, &(Entity) {
     .model = &demo->models.box,
-      .material = demo->materials.grass,
-      .transform = m4translation(v3f(0, -0.5, 1)),
-      .render = render_pbr,
+    .material = demo->materials.grass,
+    .transform = m4translation(v3f(0, -0.5, 1)),
+    .render = render_pbr,
   }); //*/
 
   //* Crate
   game_add_entity(game, &(Entity) {
     .model = &demo->models.box,
-      .material = demo->materials.grass,
-      .transform = m4translation(v3f(1, -0.5, 1)),
-      .render = render_pbr,
+    .material = demo->materials.grass,
+    .transform = m4translation(v3f(1, -0.5, 1)),
+    .render = render_pbr,
   }); //*/
 
   //* Bigger Crate

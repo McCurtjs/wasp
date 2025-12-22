@@ -30,11 +30,10 @@
 #include "wasm.h"
 #include "render_target.h"
 
-extern bool game_continue;
+static uint _process_window_resize(Game game, SDL_WindowEvent* window) {
+  vec2i new_size = v2i(window->data1, window->data2);
+  *(vec2i*)(&game->window) = new_size;
 
-static uint _process_window_resize(game_t* game, SDL_WindowEvent* window) {
-  game->window.w = window->data1;
-  game->window.h = window->data2;
   str_log("Event: resizing window - {}", game->window);
   rt_resize(NULL, game->window);
   float aspect = i2aspect(game->window);
@@ -47,7 +46,9 @@ static uint _process_window_resize(game_t* game, SDL_WindowEvent* window) {
   return SDL_APP_CONTINUE;
 }
 
-static uint _process_mouse_button_down(game_t* game, SDL_MouseButtonEvent* button) {
+////////////////////////////////////////////////////////////////////////////////
+
+static uint _process_mouse_button_down(Game game, SDL_MouseButtonEvent* button) {
   keybind_t* span_foreach(keybind, game->input.keymap) {
     if (keybind->mouse && keybind->key == button->button && !keybind->pressed) {
       keybind->triggered = true;
@@ -58,7 +59,9 @@ static uint _process_mouse_button_down(game_t* game, SDL_MouseButtonEvent* butto
   return SDL_APP_CONTINUE;
 }
 
-static uint _process_mouse_button_up(game_t* game, SDL_MouseButtonEvent* button) {
+////////////////////////////////////////////////////////////////////////////////
+
+static uint _process_mouse_button_up(Game game, SDL_MouseButtonEvent* button) {
   keybind_t* span_foreach(keybind, game->input.keymap) {
     if (keybind->mouse && keybind->key == button->button) {
       keybind->pressed = false;
@@ -69,7 +72,9 @@ static uint _process_mouse_button_up(game_t* game, SDL_MouseButtonEvent* button)
   return SDL_APP_CONTINUE;
 }
 
-static uint _process_mouse_motion(game_t* game, SDL_MouseMotionEvent* motion) {
+////////////////////////////////////////////////////////////////////////////////
+
+static uint _process_mouse_motion(Game game, SDL_MouseMotionEvent* motion) {
   game->input.mouse.pos = v2f(motion->x, motion->y);
 
   // you can get many mouse move inputs per frame, so accumulate motion
@@ -79,7 +84,9 @@ static uint _process_mouse_motion(game_t* game, SDL_MouseMotionEvent* motion) {
   return SDL_APP_CONTINUE;
 }
 
-static uint _process_key_down(game_t* game, SDL_KeyboardEvent* key) {
+////////////////////////////////////////////////////////////////////////////////
+
+static uint _process_key_down(Game game, SDL_KeyboardEvent* key) {
   if (key->repeat) return SDL_APP_CONTINUE;
 
   keybind_t* span_foreach(keybind, game->input.keymap) {
@@ -99,7 +106,9 @@ static uint _process_key_down(game_t* game, SDL_KeyboardEvent* key) {
   return SDL_APP_CONTINUE;
 }
 
-static uint _process_key_up(game_t* game, SDL_KeyboardEvent* key) {
+////////////////////////////////////////////////////////////////////////////////
+
+static uint _process_key_up(Game game, SDL_KeyboardEvent* key) {
   keybind_t* span_foreach(keybind, game->input.keymap) {
     if (key->key == (uint)keybind->key && !keybind->mouse) {
       keybind->pressed = false;
@@ -110,7 +119,9 @@ static uint _process_key_up(game_t* game, SDL_KeyboardEvent* key) {
   return SDL_APP_CONTINUE;
 }
 
-uint event_process_system(game_t* game, void* system_event) {
+////////////////////////////////////////////////////////////////////////////////
+
+uint event_process_system(Game game, void* system_event) {
   SDL_Event* event = system_event;
   
   switch(event->type) {

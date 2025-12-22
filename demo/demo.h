@@ -85,22 +85,22 @@ typedef struct demo_t {
 // Entity behavior functions
 ////////////////////////////////////////////////////////////////////////////////
 
-void behavior_test_camera(Entity* entity, game_t* game, float dt);
-void behavior_grid_toggle(Entity* entity, game_t* game, float dt);
-void behavior_cubespin(Entity* entity, game_t* game, float dt);
-void behavior_gear_rotate_cw(Entity* entity, game_t* game, float dt);
-void behavior_gear_rotate_ccw(Entity* entity, game_t* game, float dt);
-void behavior_stare(Entity* entity, game_t* game, float dt);
-void behavior_attach_to_light(Entity* entity, game_t* game, float dt);
-void behavior_attach_to_camera_target(Entity* entity, game_t* game, float dt);
+void behavior_test_camera(Game game, Entity* entity, float dt);
+void behavior_grid_toggle(Game game, Entity* entity, float dt);
+void behavior_cubespin(Game game, Entity* entity, float dt);
+void behavior_gear_rotate_cw(Game game, Entity* entity, float dt);
+void behavior_gear_rotate_ccw(Game game, Entity* entity, float dt);
+void behavior_stare(Game game, Entity* entity, float dt);
+void behavior_attach_to_light(Game game, Entity* entity, float dt);
+void behavior_attach_to_camera_target(Game game, Entity* entity, float dt);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Entity rendering functions
 ////////////////////////////////////////////////////////////////////////////////
 
-void render_basic(Entity* entity, game_t* game);
-void render_debug(Entity* entity, game_t* game);
-void render_pbr(Entity* entity, game_t* game);
+void render_basic(Game game, Entity* entity);
+void render_debug(Game game, Entity* entity);
+void render_pbr(Game game, Entity* entity);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Input keymap names
@@ -133,19 +133,15 @@ enum demo_key_t {
 // Level loading functions
 ////////////////////////////////////////////////////////////////////////////////
 
-void level_switch_check(game_t* game);
-void level_switch(game_t* game, uint level);
+void level_switch_check(Game game);
+void level_switch(Game game, index_t scene);
 
-typedef void (*LoadLevelFn)(game_t* game);
-
-void level_load_og_test(game_t* game);
-
-extern LoadLevelFn game_levels[LEVEL_COUNT];
+void level_load_og_test(Game game);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Specialized event handlers
 ////////////////////////////////////////////////////////////////////////////////
 
-void demo_callback_window_resize(game_t* game);
+void demo_callback_window_resize(Game game);
 
 #endif

@@ -32,7 +32,7 @@
 // Behavior for controlling camera rotation and movement
 ////////////////////////////////////////////////////////////////////////////////
 
-void behavior_test_camera(Entity* e, game_t* game, float dt) {
+void behavior_test_camera(Game game, Entity* e, float dt) {
   UNUSED(e);
 
   demo_t* demo = game->demo;
@@ -47,15 +47,6 @@ void behavior_test_camera(Entity* e, game_t* game, float dt) {
   }
 
   float cam_speed = CAMERA_SPEED * dt;
-
-  if (input_pressed(IN_CLOSE)) {
-    game_quit(game);
-  }
-
-  if (input_pressed(IN_ROTATE_LIGHT)) { //game->input.pressed.rmb) {
-    mat4 light_rotation = m4rotation(v3y, 4.f * dt);//yrot);
-    demo->light_pos = mv4mul(light_rotation, demo->light_pos);
-  }
 
   if (input_pressed(IN_JUMP)) //game->input.pressed.forward)
     game->camera.pos.xyz = v3add(
@@ -83,8 +74,23 @@ void behavior_test_camera(Entity* e, game_t* game, float dt) {
     demo->target = v3add(demo->target, left);
   }
 
+  // Other random inputs that aren't actaully related to camera motion
+
+  if (input_pressed(IN_CLOSE)) {
+    game->should_exit = true;
+  }
+
   if (input_pressed(IN_REWIND)) {
     demo->light_pos = game->camera.pos;
+  }
+
+  if (input_pressed(IN_ROTATE_LIGHT)) { //game->input.pressed.rmb) {
+    mat4 light_rotation = m4rotation(v3y, 4.f * dt);//yrot);
+    demo->light_pos = mv4mul(light_rotation, demo->light_pos);
+  }
+
+  if (input_triggered(IN_RELOAD)) {
+    game->next_scene = 0;
   }
 }
 
@@ -92,7 +98,7 @@ void behavior_test_camera(Entity* e, game_t* game, float dt) {
 // Toggles the visibility of the grid
 ////////////////////////////////////////////////////////////////////////////////
 
-void behavior_grid_toggle(Entity* e, game_t* game, float dt) {
+void behavior_grid_toggle(Game game, Entity* e, float dt) {
   UNUSED(dt);
   UNUSED(game);
   if (input_triggered(IN_TOGGLE_GRID)) {
@@ -104,12 +110,21 @@ void behavior_grid_toggle(Entity* e, game_t* game, float dt) {
 // Cube spinning behavior
 ////////////////////////////////////////////////////////////////////////////////
 
-void behavior_cubespin(Entity* e, game_t* game, float dt) {
+void behavior_cubespin(Game game, Entity* e, float dt) {
   UNUSED(game);
 
   e->transform = m4translation(e->pos);
-  e->transform = m4mul(e->transform, m4rotation(v3norm(v3f(1.f, 1.5f, -.7f)), e->angle));
-  e->transform = m4mul(e->transform, m4rotation(v3norm(v3f(-4.f, 1.5f, 1.f)), e->angle/3.6f));
+
+  e->transform = m4mul
+  ( e->transform
+  , m4rotation(v3norm(v3f(1.f, 1.5f, -.7f)), e->angle)
+  );
+
+  e->transform = m4mul
+  ( e->transform
+  , m4rotation(v3norm(v3f(-4.f, 1.5f, 1.f)), e->angle/3.6f)
+  );
+
   e->angle += 2 * dt;
 }
 
@@ -117,7 +132,7 @@ void behavior_cubespin(Entity* e, game_t* game, float dt) {
 // Clockwise spin around the Z axis
 ////////////////////////////////////////////////////////////////////////////////
 
-void behavior_gear_rotate_cw(Entity* e, game_t* game, float dt) {
+void behavior_gear_rotate_cw(Game game, Entity* e, float dt) {
   UNUSED(game);
   e->transform = m4mul(e->transform, m4rotation(v3front, dt));
 }
@@ -126,7 +141,7 @@ void behavior_gear_rotate_cw(Entity* e, game_t* game, float dt) {
 // Counter-clockwise spin around the Z axis
 ////////////////////////////////////////////////////////////////////////////////
 
-void behavior_gear_rotate_ccw(Entity* e, game_t* game, float dt) {
+void behavior_gear_rotate_ccw(Game game, Entity* e, float dt) {
   UNUSED(game);
   e->transform = m4mul(e->transform, m4rotation(v3front, -dt));
 }
@@ -135,7 +150,7 @@ void behavior_gear_rotate_ccw(Entity* e, game_t* game, float dt) {
 // Orients the entity to face the camera along its local +Z axis
 ////////////////////////////////////////////////////////////////////////////////
 
-void behavior_stare(Entity* e, game_t* game, float dt) {
+void behavior_stare(Game game, Entity* e, float dt) {
   UNUSED(dt);
   e->transform = m4look(e->pos, game->camera.pos.xyz, v3y);
 }
@@ -144,7 +159,7 @@ void behavior_stare(Entity* e, game_t* game, float dt) {
 // Sets the location of the entity to the light position
 ////////////////////////////////////////////////////////////////////////////////
 
-void behavior_attach_to_light(Entity* e, game_t* game, float dt) {
+void behavior_attach_to_light(Game game, Entity* e, float dt) {
   UNUSED(dt);
   e->transform = m4translation(game->demo->light_pos.xyz);
 }
@@ -153,7 +168,7 @@ void behavior_attach_to_light(Entity* e, game_t* game, float dt) {
 // Sets the location of the entity to the camera target position
 ////////////////////////////////////////////////////////////////////////////////
 
-void behavior_attach_to_camera_target(Entity* e, game_t* game, float dt) {
+void behavior_attach_to_camera_target(Game game, Entity* e, float dt) {
   UNUSED(dt);
   e->transform = m4translation(game->demo->target);
 }
@@ -162,7 +177,7 @@ void behavior_attach_to_camera_target(Entity* e, game_t* game, float dt) {
 // Render function for un-shaded objects with vertex color
 ////////////////////////////////////////////////////////////////////////////////
 
-void render_basic(Entity* e, game_t* game) {
+void render_basic(Game game, Entity* e) {
   Shader shader = game->demo->shaders.basic;
   shader_bind(shader);
 
@@ -178,8 +193,8 @@ void render_basic(Entity* e, game_t* game) {
 // Renders the debug objects
 ////////////////////////////////////////////////////////////////////////////////
 
-void render_debug(Entity* e, game_t* game) {
-  render_basic(e, game);
+void render_debug(Game game, Entity* e) {
+  render_basic(game, e);
   draw_render();
 }
 
@@ -187,7 +202,7 @@ void render_debug(Entity* e, game_t* game) {
 // Render function for physically-based lighting
 ////////////////////////////////////////////////////////////////////////////////
 
-void render_pbr(Entity* e, game_t* game) {
+void render_pbr(Game game, Entity* e) {
   Shader shader = game->demo->shaders.light;
   shader_bind(shader);
 

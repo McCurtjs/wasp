@@ -29,11 +29,7 @@
 #include "SDL3/SDL.h"
 #include "gl.h"
 
-#define GAME_ON 1
-
-#if GAME_ON == 1
 static File file_model_gear = NULL;
-#endif
 
 #ifdef __clang__
 # pragma clang diagnostic ignored "-Wconstant-logical-operand"
@@ -77,6 +73,10 @@ static keybind_t input_map[] = {
   { .name = IN_TOGGLE_GRID, .key = 'g' },
 };
 
+static scene_load_fn_t demo_scenes[] = {
+  level_load_og_test
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 // Pre-initializer to set window size and title
 ////////////////////////////////////////////////////////////////////////////////
@@ -90,7 +90,7 @@ void wasp_init(app_defaults_t* game) {
 // Callback to update demo-specific render target size when window size changes
 ////////////////////////////////////////////////////////////////////////////////
 
-void demo_callback_window_resize(game_t* game) {
+void demo_callback_window_resize(Game game) {
   rt_resize(game->demo->render_target, game->window);
 }
 
@@ -98,7 +98,7 @@ void demo_callback_window_resize(game_t* game) {
 // Spinny cube to show while loading
 ////////////////////////////////////////////////////////////////////////////////
 
-static void cheesy_loading_animation(game_t* game, float dt) {
+static void cheesy_loading_animation(Game game, float dt) {
   static float cubespin = 0;
 
   rt_bind_default();
@@ -126,8 +126,7 @@ static void cheesy_loading_animation(game_t* game, float dt) {
 // Game preloader - starts asynchronous loading
 ////////////////////////////////////////////////////////////////////////////////
 
-bool export(wasp_preload) (game_t* game) {
-  #if GAME_ON == 1
+bool export(wasp_preload) (Game game) {
 
   demo = (demo_t) {
     .target = v3origin,
@@ -136,6 +135,9 @@ bool export(wasp_preload) (game_t* game) {
 
   game->demo = &demo;
   game->on_window_resize = demo_callback_window_resize;
+
+  game->input.keymap = span_keymap(input_map, ARRAY_COUNT(input_map));
+  game->scenes = span_scene(demo_scenes, ARRAY_COUNT(demo_scenes));
 
   file_model_gear = file_new(S("./res/models/gear.obj"));
 
@@ -166,8 +168,6 @@ bool export(wasp_preload) (game_t* game) {
 
   material_load_all_async();
 
-  #endif
-
   camera_build_perspective(&game->camera);
   //camera_build_orthographic(&game.camera);
 
@@ -187,8 +187,6 @@ bool export(wasp_preload) (game_t* game) {
   );
   rt_build(game->demo->render_target, game->window);
 
-  game->input.keymap = span_keymap(input_map, ARRAY_COUNT(input_map));
-
   return true;
 }
 
@@ -196,16 +194,14 @@ bool export(wasp_preload) (game_t* game) {
 // Game loader - after async loading, process loaded objects for the game
 ////////////////////////////////////////////////////////////////////////////////
 
-bool export(wasp_load) (game_t* game, int await_count, float dt) {
+bool export(wasp_load) (Game game, int await_count, float dt) {
 
-  if (await_count || !GAME_ON) {
+  if (await_count) {
     cheesy_loading_animation(game, dt);
     return 0;
   };
 
   str_write("Async load finished");
-
-  #if GAME_ON == 1
 
   shader_build_all();
   material_build_all();
@@ -237,11 +233,6 @@ bool export(wasp_load) (game_t* game, int await_count, float dt) {
   model_build(&demo.models.grid);
   model_build(&demo.models.gizmo);
 
-  // Load the first game level
-  level_switch(game, game->level);
-
-  #endif
-
   return 1;
 }
 
@@ -249,10 +240,7 @@ bool export(wasp_load) (game_t* game, int await_count, float dt) {
 // Game per-frame update
 ////////////////////////////////////////////////////////////////////////////////
 
-bool export(wasp_update) (game_t* game, float dt) {
-  UNUSED(dt);
-  level_switch_check(game);
-
+bool export(wasp_update) (Game game, float dt) {
   if (input_triggered(IN_TOGGLE_SHADER)) {
     active_shader = (active_shader + 1) % 2;
   }
@@ -265,7 +253,7 @@ bool export(wasp_update) (game_t* game, float dt) {
 // Game rendering after update
 ////////////////////////////////////////////////////////////////////////////////
 
-void export(wasp_render) (game_t* game) {
+void export(wasp_render) (Game game) {
   rt_bind(game->demo->render_target);
   game_render(game);
 

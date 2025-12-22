@@ -32,11 +32,12 @@
 #include "array.h"
 #include "material.h"
 
-typedef struct game_t game_t;
+typedef struct _opaque_Game_t* Game;
 typedef struct Entity Entity;
-typedef void (*UpdateFn)(Entity* e, game_t* game, float dt);
-typedef void (*RenderFn)(Entity* e, game_t* game);
-typedef void (*DeleteFn)(Entity* e);
+
+typedef void (*entity_update_fn_t)(Game game, Entity* e, float dt);
+typedef void (*entity_render_fn_t)(Game game, Entity* e);
+typedef void (*entity_delete_fn_t)(Game game, Entity* e);
 
 // todo: if "Entity" is not partially opaque, should it be "entity" instead?
 //          should it just be opaque? Should entities be created via a prefab
@@ -59,9 +60,9 @@ typedef struct Entity {
 
   bool hidden;
 
-  RenderFn render;
-  UpdateFn behavior;
-  DeleteFn delete;
+  entity_update_fn_t behavior;
+  entity_render_fn_t render;
+  entity_delete_fn_t delete;
 
 } Entity;
 
