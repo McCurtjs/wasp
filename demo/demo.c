@@ -24,6 +24,7 @@
 
 #include "demo.h"
 #include "wasp.h"
+#include "wasm.h"
 
 #include "SDL3/SDL.h"
 #include "gl.h"
@@ -53,6 +54,10 @@ static int active_shader = 1;
 
 static Model model_frame = { .type = MODEL_FRAME };// { .type = MODEL_FRAME };
 
+////////////////////////////////////////////////////////////////////////////////
+// Mapping of keys to actions
+////////////////////////////////////////////////////////////////////////////////
+
 static keybind_t input_map[] = {
   { .name = IN_CLOSE, .key = SDLK_ESCAPE },
   { .name = IN_JUMP, .key = 'w' },
@@ -72,21 +77,61 @@ static keybind_t input_map[] = {
   { .name = IN_TOGGLE_GRID, .key = 'g' },
 };
 
+////////////////////////////////////////////////////////////////////////////////
+// Pre-initializer to set window size and title
+////////////////////////////////////////////////////////////////////////////////
+
 void wasp_init(app_defaults_t* game) {
   game->window = v2i(1024, 768);
   game->title = str_copy("WASP Demo");
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Callback to update demo-specific render target size when window size changes
+////////////////////////////////////////////////////////////////////////////////
+
 void demo_callback_window_resize(game_t* game) {
   rt_resize(game->demo->render_target, game->window);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Spinny cube to show while loading
+////////////////////////////////////////////////////////////////////////////////
+
+static void cheesy_loading_animation(game_t* game, float dt) {
+  static float cubespin = 0;
+
+  rt_bind_default();
+
+  mat4 projview = camera_projection_view(&game->camera);
+
+  shader_bind(demo.shaders.loading);
+  int loc_pvm = shader_uniform_loc(demo.shaders.loading, "in_pvm_matrix");
+
+  mat4 model = m4translation(v3f(0, 0, 0));
+  model = m4mul(model, m4rotation(v3norm(v3f(1.f, 1.5f, -.7f)), cubespin));
+  model = m4mul(model, m4rotation(v3norm(v3f(-4.f, 1.5f, 1.f)), cubespin / 3.6f));
+
+  glUniformMatrix4fv(loc_pvm, 1, 0, m4mul(projview, model).f);
+  model_render(&demo.models.color_cube);
+  cubespin += 2 * dt;
+
+  GLenum err = glGetError();
+  if (err) {
+    str_log("[Demo.load_anim] Error: 0x{!x}", err);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Game preloader - starts asynchronous loading
+////////////////////////////////////////////////////////////////////////////////
 
 bool export(wasp_preload) (game_t* game) {
   #if GAME_ON == 1
 
   demo = (demo_t) {
     .target = v3origin,
-    .light_pos = { 4, 3, 5, 1 },
+    .light_pos = v4f( 4, 3, 5, 1 ),
   };
 
   game->demo = &demo;
@@ -147,29 +192,9 @@ bool export(wasp_preload) (game_t* game) {
   return true;
 }
 
-static void cheesy_loading_animation(game_t* game, float dt) {
-  static float cubespin = 0;
-
-  rt_bind_default();
-
-  mat4 projview = camera_projection_view(&game->camera);
-
-  shader_bind(demo.shaders.loading);
-  int loc_pvm = shader_uniform_loc(demo.shaders.loading, "in_pvm_matrix");
-
-  mat4 model = m4translation(v3f(0, 0, 0));
-  model = m4mul(model, m4rotation(v3norm(v3f(1.f, 1.5f, -.7f)), cubespin));
-  model = m4mul(model, m4rotation(v3norm(v3f(-4.f, 1.5f, 1.f)), cubespin/3.6f));
-
-  glUniformMatrix4fv(loc_pvm, 1, 0, m4mul(projview, model).f);
-  model_render(&demo.models.color_cube);
-  cubespin += 2 * dt;
-
-  GLenum err = glGetError();
-  if (err) {
-    str_log("[Demo.load_anim] Error: 0x{!x}", err);
-  }
-}
+////////////////////////////////////////////////////////////////////////////////
+// Game loader - after async loading, process loaded objects for the game
+////////////////////////////////////////////////////////////////////////////////
 
 bool export(wasp_load) (game_t* game, int await_count, float dt) {
 
@@ -220,6 +245,10 @@ bool export(wasp_load) (game_t* game, int await_count, float dt) {
   return 1;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Game per-frame update
+////////////////////////////////////////////////////////////////////////////////
+
 bool export(wasp_update) (game_t* game, float dt) {
   UNUSED(dt);
   level_switch_check(game);
@@ -231,6 +260,10 @@ bool export(wasp_update) (game_t* game, float dt) {
   game_update(game, dt);
   return true;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Game rendering after update
+////////////////////////////////////////////////////////////////////////////////
 
 void export(wasp_render) (game_t* game) {
   rt_bind(game->demo->render_target);
@@ -262,4 +295,3 @@ void export(wasp_render) (game_t* game) {
 
   model_render(&model_frame);
 }
-  

@@ -157,7 +157,7 @@ Image img_load_async_str(String filename) {
   assert(ret);
 
   *ret = (Image_Internal) {
-    .filename = istr_copy(filename),
+    .filename = filename,
     .type = IMG_FROM_FILE,
     .blend = true,
   };

@@ -326,6 +326,7 @@ typedef double GLclampd;
 #define GL_RENDERBUFFER_BINDING           0x8CA7
 #define GL_MAX_RENDERBUFFER_SIZE          0x84E8
 #define GL_INVALID_FRAMEBUFFER_OPERATION  0x0506
+#define GL_R8                             0x8229
 #define GL_RGB8                           0x8051
 #define GL_RGBA8                          0x8058
 #define GL_R32F                           0x822E

@@ -33,15 +33,15 @@
 #include "material.h"
 #include "render_target.h"
 
-typedef struct Game_Shaders {
+typedef struct demo_shaders_t {
   Shader loading;
   Shader frame;
   Shader basic;
   Shader light;
   Shader warhol;
-} Game_Shaders;
+} demo_shaders_t;
 
-typedef struct Game_Models {
+typedef struct demo_models_t {
   Model color_cube;
   Model gizmo;
   Model grid;
@@ -50,26 +50,26 @@ typedef struct Game_Models {
   Model player;
   Model level_test;
   Model level_1;
-} Game_Models;
+} demo_models_t;
 
-typedef struct Game_Materials {
+typedef struct demo_materials_t {
   Material grass;
   Material sands;
   Material tiles;
   Material crate;
   Material mudds;
   Material renderite;
-} Game_Materials;
+} demo_materials_t;
 
 typedef struct demo_t {
-  vec3 target;
-  vec4 light_pos;
+  vec3              target;
+  vec4              light_pos;
 
-  RenderTarget render_target;
+  RenderTarget      render_target;
 
-  Game_Shaders shaders;
-  Game_Models models;
-  Game_Materials materials;
+  demo_shaders_t    shaders;
+  demo_models_t     models;
+  demo_materials_t  materials;
 } demo_t;
 
 ////////////////////////////////////////////////////////////////////////////////

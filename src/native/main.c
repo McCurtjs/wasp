@@ -143,6 +143,8 @@ void SDL_AppQuit(void* app_state, SDL_AppResult result) {
   UNUSED(app_state);
   UNUSED(result);
 
+  str_log("[App.Quit] Closing with code: {}", (int)result);
+
   fflush(stdout);
 
   if (app.gl_context) {
