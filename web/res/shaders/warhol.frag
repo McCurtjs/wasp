@@ -10,6 +10,7 @@ uniform mat4 in_proj_inverse;
 uniform sampler2D texSamp;
 uniform sampler2D normSamp;
 uniform sampler2D depthSamp;
+uniform sampler2D propSamp;
 
 void main() {
   vec2 uv = vUV;
@@ -45,12 +46,16 @@ void main() {
   else if (uv.x > 0.5 && uv.y <= 0.5 ) {
     uv *= 2.0;
     uv.x -= 1.0;
+    //*
+    fragColor = vec4(texture(propSamp, uv).xxy, 1.0);
+    /*/
     vec3 ndc = vec3(uv.x, uv.y, texture(depthSamp, uv).r);
     vec4 clip = vec4(ndc * 2.0 - 1.0, 1.0);
     vec4 view = in_proj_inverse * clip;
     view /= view.w;
     vec3 pos = view.xyz;
     fragColor = vec4(pos / 8.0, 1.0);//view;//vec4(d, d, d, 1.0); //vec4(uv.x, uv.y, 0.0, 1.0);
+    //*/
   }
 
   // Cross?

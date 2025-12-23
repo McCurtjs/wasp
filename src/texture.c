@@ -25,6 +25,7 @@
 #include "texture.h"
 
 #include "gl.h"
+#include "str.h"
 
 static texture_t tex_default_white = { 0 };
 static texture_t tex_default_normal = { 0 };
@@ -83,9 +84,11 @@ texture_t tex_from_image(Image image) {
   glPixelStorei(GL_UNPACK_FLIP_Y_WEBGL, GL_TRUE);
 #endif
 
-  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  GLenum err = glGetError();
+
   glGenTextures(1, &ret.handle);
   glBindTexture(GL_TEXTURE_2D, ret.handle);
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
   glTexImage2D
   ( GL_TEXTURE_2D
   , 0
@@ -97,6 +100,11 @@ texture_t tex_from_image(Image image) {
   , GL_UNSIGNED_BYTE
   , image->data
   );
+
+  err = glGetError();
+  if (err) {
+    str_log("[Texture.from_image] Error after glTexImage2D: 0x{!x}", err);
+  }
 
   // Don't make mipmaps for very small textures, and set them up to use
   //    "nearest" filtering, mostly to make sure the error texture is sharp.

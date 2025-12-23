@@ -27,7 +27,7 @@
 #include "gl.h"
 #include "light.h"
 
-#define CAMERA_SPEED 9.0f
+#define CAMERA_SPEED 0.8f
 
 ////////////////////////////////////////////////////////////////////////////////
 // Behavior for controlling camera rotation and movement
@@ -47,7 +47,8 @@ void behavior_test_camera(Game game, Entity* e, float dt) {
     camera_orbit(&game->camera, demo->target, angles.xy);
   }
 
-  float cam_speed = CAMERA_SPEED * dt;
+  vec3 view_dir = v3sub(game->demo->target, game->camera.pos.xyz);
+  float cam_speed = CAMERA_SPEED * dt * v3mag(view_dir);
 
   if (input_pressed(IN_JUMP)) //game->input.pressed.forward)
     game->camera.pos.xyz = v3add(
@@ -214,9 +215,10 @@ void render_pbr(Game game, Entity* e) {
   int loc_pvm = shader_uniform_loc(shader, "in_pvm_matrix");
   int loc_sampler_tex = shader_uniform_loc(shader, "texSamp");
   int loc_sampler_norm = shader_uniform_loc(shader, "normSamp");
-  int loc_sampler_spec = shader_uniform_loc(shader, "specSamp");
+  int loc_sampler_rough = shader_uniform_loc(shader, "roughSamp");
+  int loc_sampler_metal = shader_uniform_loc(shader, "metalSamp");
   int loc_norm = shader_uniform_loc(shader, "in_normal_matrix");
-  int loc_props = shader_uniform_loc(shader, "in_props");
+  int loc_props = shader_uniform_loc(shader, "in_weights");
   int loc_tint = shader_uniform_loc(shader, "in_tint");
 
   mat4 pvm = m4mul(game->camera.projview, e->transform);
@@ -225,12 +227,7 @@ void render_pbr(Game game, Entity* e) {
   glUniformMatrix4fv(loc_pvm, 1, 0, pvm.f);
   glUniformMatrix4fv(loc_norm, 1, 0, norm.f);
 
-  vec3 props = v3f
-  ( e->material->roughness
-  , e->material->metalness
-  , e->material->normal_weight
-  );
-  glUniform3fv(loc_props, 1, props.f);
+  glUniform3fv(loc_props, 1, e->material->weights.f);
   glUniform3fv(loc_tint, 1, e->tint.f);
 
   //glUniform4fv(loc_light_pos, 1, demo->light_pos.f);
@@ -240,9 +237,10 @@ void render_pbr(Game game, Entity* e) {
   //if (e->model->type == MODEL_OBJ) use_color = e->model->mesh.use_color;
   //glUniform1i(loc_use_vert_color, use_color);
 
-  tex_apply(e->material->diffuse, 0, loc_sampler_tex);
-  tex_apply(e->material->normals, 1, loc_sampler_norm);
-  tex_apply(e->material->specular, 2, loc_sampler_spec);
+  tex_apply(e->material->map_diffuse, 0, loc_sampler_tex);
+  tex_apply(e->material->map_normals, 1, loc_sampler_norm);
+  tex_apply(e->material->map_roughness, 2, loc_sampler_rough);
+  tex_apply(e->material->map_metalness, 3, loc_sampler_metal);
 
   model_render(e->model);
 

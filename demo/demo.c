@@ -143,28 +143,29 @@ bool export(wasp_preload) (Game game) {
 
   demo.materials.grass = material_new(S("grass_rocky"));
   demo.materials.grass->use_normal_map = true;
-  demo.materials.grass->use_specular_map = true;
-  demo.materials.grass->roughness = 1.0f;
+  demo.materials.grass->use_roughness_map = true;
+  demo.materials.grass->weight_roughness = 1.0f;
 
   demo.materials.crate = material_new(S("crate"));
-  demo.materials.crate->roughness = 0.2f;
+  demo.materials.crate->weight_roughness = 1.0f;
 
   demo.materials.tiles = material_new(S("tiles"));
 
   demo.materials.sands = material_new(S("brass2"));
-  demo.materials.sands->roughness = 1.0f;
+  demo.materials.sands->weight_roughness = 1.0f;
   demo.materials.sands->use_normal_map = true;
 
-  demo.materials.mudds = material_new(S("rusty"));
+  demo.materials.mudds = material_new(S("rustediron2"));
   demo.materials.mudds->use_normal_map = true;
-  demo.materials.mudds->use_specular_map = true;
-  demo.materials.mudds->roughness = 0.2f;
-  demo.materials.mudds->metalness = 0.8f;
+  demo.materials.mudds->use_roughness_map = true;
+  demo.materials.mudds->use_metalness_map = true;
+  demo.materials.mudds->weight_roughness = 0.8f;
+  demo.materials.mudds->weight_metalness = 1.0f;
 
   demo.materials.renderite = material_new(S("renderite"));
   demo.materials.renderite->use_diffuse_map = false;
-  demo.materials.renderite->roughness = 0.0f;
-  demo.materials.renderite->metalness = 0.4f;
+  demo.materials.renderite->weight_roughness = 0.2f;
+  demo.materials.renderite->weight_metalness = 0.8f;
 
   material_load_all_async();
 

@@ -43,22 +43,9 @@ void main() {
   vec4 albedo = texture(texSamp, uv);
   vec4 props = texture(propSamp, uv);
 
-  // Light properties
-  vec3  light_color = vec3(0.9, 0.9, 0.75);
-  float light_intensity = 6.0;
-
-  vec2 light_index = vec2(3.0 / 3.0, 0);
-  light_intensity = texelFetch(lightSamp, ivec2(3, 0), 0).z;
-  vec3 light_pos = texelFetch(lightSamp, ivec2(1, 0), 0).xyz;//texture(lightSamp, light_index).xyz;
-  light_color = texelFetch(lightSamp, ivec2(3, 0), 0).xyz;//texture(lightSamp, light_index).xyz;
-  fragColor = vec4(vec3(light_color), 1.0);
-  //return;
-
-  vec3 light_value = light_color * light_intensity;
-
   // Material properties
   vec3  metallic = albedo.xyz * props.g;
-  float roughness = 1.0 - props.r;
+  float roughness = props.r;
 
   // Reconstruct fragment position in view space (camera at <0, 0, 0>)
   vec3 ndc = vec3(uv.x, uv.y, texture(depthSamp, uv).r);
@@ -83,11 +70,11 @@ void main() {
   vec3 F0 = mix(vec3(0.04), albedo.xyz, metallic);
   vec3 result = vec3(0.0);
 
-  ivec2 light_buffer_size = textureSize(lightSamp, 0);
-  for (int i = 0; i < light_buffer_size.x; i += 3) {
-    light_intensity = texelFetch(lightSamp, ivec2(i, 0), 0).z;
-    light_pos = texelFetch(lightSamp, ivec2(i+1, 0), 0).xyz;
-    light_color = texelFetch(lightSamp, ivec2(i+2, 0), 0).xyz;
+  int light_buffer_size = textureSize(lightSamp, 0).x;
+  for (int i = 0; i < light_buffer_size; i += 3) {
+    float light_intensity = texelFetch(lightSamp, ivec2(i, 0), 0).z;
+    vec3 light_pos = texelFetch(lightSamp, ivec2(i+1, 0), 0).xyz;
+    vec3 light_color = texelFetch(lightSamp, ivec2(i+2, 0), 0).xyz;
 
     vec3 L = light_pos - pos;
     float light_dist = length(L);

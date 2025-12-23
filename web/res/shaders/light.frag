@@ -12,9 +12,10 @@ uniform vec4 cameraPos;
 
 uniform sampler2D texSamp;
 uniform sampler2D normSamp;
-uniform sampler2D specSamp;
+uniform sampler2D roughSamp;
+uniform sampler2D metalSamp;
 
-uniform vec3 in_props;
+uniform vec3 in_weights; // normal, roughness, metallic
 uniform vec3 in_tint;
 
 layout(location = 0) out vec3 fragColor;
@@ -36,7 +37,9 @@ void main() {
 
   // props.r = roughness component
   // props.g = metalness component
-  fragProps.rg = texture(specSamp, vUV).rg * in_props.rg;
+  fragProps.r = texture(roughSamp, vUV).r * in_weights.g; // roughness value
+  fragProps.g = texture(metalSamp, vUV).r * in_weights.b; // metallic value
+  //fragProps.g *= in_weights.g;
 
   // Pack normal into octahedral space
   //mat3 tangent_transform = mat3(
@@ -45,7 +48,7 @@ void main() {
   //  normalize(vTangentTransform[2])
   //);
   vec3 tangent_normal = texture(normSamp, vUV).xyz * 2.0 - 1.0;
-  tangent_normal = mix(vec3(0.0, 0.0, 1.0), tangent_normal, in_props.b);
+  tangent_normal = mix(vec3(0.0, 0.0, 1.0), tangent_normal, in_weights.r);
   vec3 n = normalize(vTangentTransform * tangent_normal);
   n /= abs(n.x) + abs(n.y) + abs(n.z);
   if (n.z < 0.0) n.xy = (1.0 - abs(n.yx)) * sign(n.xy);

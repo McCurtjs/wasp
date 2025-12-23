@@ -31,23 +31,31 @@
 
 typedef struct Material_Internal {
   slice_t name;
-  texture_t diffuse;
-  texture_t normals;
-  texture_t specular;
-  float roughness;
-  float metalness;
-  float normal_weight;
+  texture_t map_diffuse;
+  texture_t map_normals;
+  texture_t map_roughness;
+  texture_t map_metalness;
+  union {
+    vec3    weights;
+    struct {
+      float weight_normal;
+      float weight_roughness;
+      float weight_metalness;
+    };
+  };
   bool ready;
   bool use_diffuse_map;
   bool use_normal_map;
-  bool use_specular_map;
+  bool use_roughness_map;
+  bool use_metalness_map;
 
   // hidden values
-  String name_internal;
+  String  name_internal;
   slice_t ext;
-  Image img_diffuse;
-  Image img_normals;
-  Image img_specular;
+  Image   img_diffuse;
+  Image   img_normals;
+  Image   img_roughness;
+  Image   img_metalness;
 } Material_Internal;
 
 #define MATERIAL_INTERNAL \
@@ -80,14 +88,15 @@ Material material_new(slice_t name) {
 
   *ret = (Material_Internal) {
     .name = name_str->slice,
+    .weight_normal = 1.0f,
+    .weight_roughness = 0.5f,
+    .weight_metalness = 0.0f,
     .ready = false,
-    .roughness = 0.5f,
-    .metalness = 0.0f,
-    .normal_weight = 1.0f,
-    .name_internal = name_str,
     .use_diffuse_map = true,
     .use_normal_map = false,
-    .use_specular_map = false,
+    .use_roughness_map = false,
+    .use_metalness_map = false,
+    .name_internal = name_str,
     .ext = S("jpg"),
   };
 
@@ -123,18 +132,23 @@ void material_load_async(Material m_in) {
   MATERIAL_INTERNAL;
 
   if (m->use_diffuse_map) {
-    String filename_d = str_format("./res/textures/{}.{}", m->name, m->ext);
-    m->img_diffuse = img_load_async_str(filename_d);
+    String filename = str_format("./res/textures/{}.{}", m->name, m->ext);
+    m->img_diffuse = img_load_async_str(filename);
   }
 
   if (m->use_normal_map) {
-    String filename_n = str_format("./res/textures/{}_n.{}", m->name, m->ext);
-    m->img_normals = img_load_async_str(filename_n);
+    String filename = str_format("./res/textures/{}_n.{}", m->name, m->ext);
+    m->img_normals = img_load_async_str(filename);
   }
 
-  if (m->use_specular_map) {
-    String filename_s = str_format("./res/textures/{}_s.{}", m->name, m->ext);
-    m->img_specular = img_load_async_str(filename_s);
+  if (m->use_roughness_map) {
+    String filename = str_format("./res/textures/{}_r.{}", m->name, m->ext);
+    m->img_roughness = img_load_async_str(filename);
+  }
+
+  if (m->use_metalness_map) {
+    String filename = str_format("./res/textures/{}_m.{}", m->name, m->ext);
+    m->img_metalness = img_load_async_str(filename);
   }
 }
 
@@ -156,24 +170,31 @@ void material_build(Material m_in) {
 
   if (m->img_diffuse) {
     assert(m->img_diffuse->ready);
-    m->diffuse = tex_from_image(m->img_diffuse);
+    m->map_diffuse = tex_from_image(m->img_diffuse);
     img_delete(&m->img_diffuse);
   }
-  else m->diffuse = tex_get_default_white();
+  else m->map_diffuse = tex_get_default_white();
 
   if (m->img_normals) {
     assert(m->img_normals->ready);
-    m->normals = tex_from_image(m->img_normals);
+    m->map_normals = tex_from_image(m->img_normals);
     img_delete(&m->img_normals);
   }
-  else m->normals = tex_get_default_normal();
+  else m->map_normals = tex_get_default_normal();
 
-  if (m->img_specular) {
-    assert(m->img_specular->ready);
-    m->specular = tex_from_image(m->img_specular);
-    img_delete(&m->img_specular);
+  if (m->img_roughness) {
+    assert(m->img_roughness->ready);
+    m->map_roughness = tex_from_image(m->img_roughness);
+    img_delete(&m->img_roughness);
   }
-  else m->specular = tex_get_default_white();
+  else m->map_roughness = tex_get_default_white();
+
+  if (m->img_metalness) {
+    assert(m->img_metalness->ready);
+    m->map_metalness = tex_from_image(m->img_metalness);
+    img_delete(&m->img_metalness);
+  }
+  else m->map_metalness = tex_get_default_white();
 
   m->ready = true;
 }

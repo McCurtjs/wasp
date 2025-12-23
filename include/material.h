@@ -32,16 +32,26 @@
 
 typedef struct _opaque_Material_t {
   slice_t   const name;
-  texture_t const diffuse;
-  texture_t const normals;
-  texture_t const specular;
-  float           roughness;
-  float           metalness;
-  float           normal_weight;
+  texture_t const map_diffuse;
+  texture_t const map_normals;
+  texture_t const map_roughness;
+  texture_t const map_metalness;
+  union {
+    vec3          weights;
+    struct {
+      float       weight_normal;
+      float       weight_roughness;
+      float       weight_metalness;
+    };
+  };
   bool      const ready;
   bool            use_diffuse_map;
   bool            use_normal_map;
-  bool            use_specular_map;
+  bool            use_roughness_map;
+  bool            use_metalness_map;
+  struct {
+    int itmes;
+  } bucket;
 }* Material;
 
 Material  material_new(slice_t name);
