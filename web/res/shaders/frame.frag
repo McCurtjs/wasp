@@ -80,39 +80,47 @@ void main() {
   // Pabst Blue Ribbon?
   vec3 N = normalize(norm);
   vec3 V = normalize(-pos);
+  vec3 F0 = mix(vec3(0.04), albedo.xyz, metallic);
   vec3 result = vec3(0.0);
 
   ivec2 light_buffer_size = textureSize(lightSamp, 0);
-
   for (int i = 0; i < light_buffer_size.x; i += 3) {
     light_intensity = texelFetch(lightSamp, ivec2(i, 0), 0).z;
     light_pos = texelFetch(lightSamp, ivec2(i+1, 0), 0).xyz;
     light_color = texelFetch(lightSamp, ivec2(i+2, 0), 0).xyz;
-    light_value = light_color * light_intensity;
 
-    vec3 L = normalize(light_pos - pos);
+    vec3 L = light_pos - pos;
+    float light_dist = length(L);
+    float attenuation = 1.0 / (light_dist * light_dist);
+    L /= light_dist;
     vec3 H = normalize(V + L);
+    vec3 radiance = light_color * light_intensity * attenuation;
 
     float NdotL = max(dot(N, L), 0.0);
     float NdotV = max(dot(N, V), 0.0);
     float NdotH = max(dot(N, H), 0.0);
     float VdotH = max(dot(V, H), 0.0);
 
-    vec3 F0 = mix(vec3(0.04), albedo.xyz, metallic);
-
     float D = D_GGX(NdotH, roughness);
     float G = G_Smith(NdotV, NdotL, roughness);
     vec3  F = F_Schlick(VdotH, F0);
 
-    vec3 specular = (D * G * F) / (4.0 * NdotV * NdotL + 1e-5);
+    vec3 specular = (D * G * F) / (4.0 * NdotV * NdotL + 1e-4);
 
     vec3 kS = F;
     vec3 kD = (1.0 - kS) * (1.0 - metallic);
 
     vec3 diffuse = kD * albedo.xyz / PI;
 
-    result += vec3((diffuse + specular) * light_value * NdotL);
+    result += vec3((diffuse + specular) * radiance * NdotL);
   }
+
+  // Gamma correction
+  //vec3 ambient = vec3(0.00);// * albedo.xyz;
+  //vec3 color = ambient + result;
+  //color = color / (color + vec3(1.0));
+  //color = pow(color, vec3(1.0/2.2));
+  //result = color;
 
   //fragColor = vec4(vec3((diffuse + specular) * light_value * NdotL), 1.0);
   fragColor = vec4(result, 1.0);

@@ -203,26 +203,26 @@ void level_load_og_test(Game game) {
 
   //* Some lights
   light_add((light_t) {
-    .intensity = 6.0f,
-    .pos = v3f(4, 3, 5),
+    .intensity = 60000.0f,
+    .pos = v3f(40, 30, 50),
     .color = v3f(0.9f, 0.9f, 0.75f),
   });
 
   light_add((light_t) {
-    .intensity = 5.0f,
+    .intensity = 50.0f,
       .pos = v3f(4, 3, 5),
       .color = v3f(0.8f, 0.8f, 0.95f),
   });
 
   light_add((light_t) {
-    .intensity = 7.0f,
-    .pos = v3f(20, 20, 7),
+    .intensity = 700.0f,
+    .pos = v3f(20, 7, 20),
     .color = v3f(1.0f, 0.2f, 0.2f),
   });
 
   light_add((light_t) {
-    .intensity = 4.0f,
-    .pos = v3f(-20, -20, 7),
+    .intensity = 400.0f,
+    .pos = v3f(-20, 7, -20),
     .color = v3f(0.0f, 0.9f, 0.4f),
   });
   //*/
