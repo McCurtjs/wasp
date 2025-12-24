@@ -61,6 +61,7 @@ void light_remove(index_t id) {
 
 void light_clear(void) {
   arr_light_clear(&_all_lights);
+  _light_index = 0;
 }
 
 index_t light_count(void) {

@@ -5,6 +5,7 @@ precision highp float;
 
 in vec4 vPos;
 in vec2 vUV;
+in vec3 vColor;
 in mat3 vTangentTransform;
 
 uniform vec4 lightPos;
@@ -27,26 +28,13 @@ void main() {
   // Get base texture color - discard fully transparent fragments
   vec4 albedo = texture(texSamp, vUV);
   if (albedo.w == 0.0) discard;
-  fragColor = albedo.xyz * in_tint;
+  fragColor = albedo.xyz * in_tint * vColor;
 
-  // If the normal is zero, preserve that and skip (unlit/non-physical object)
-  //if (n.z == 0.0) {//vNormal.z == 0.0) {
-  //  fragNormal = vec2(0.0);
-  //  return;
-  //}
-
-  // props.r = roughness component
-  // props.g = metalness component
+  // Extract material properties and apply weights
   fragProps.r = texture(roughSamp, vUV).r * in_weights.g; // roughness value
   fragProps.g = texture(metalSamp, vUV).r * in_weights.b; // metallic value
-  //fragProps.g *= in_weights.g;
 
   // Pack normal into octahedral space
-  //mat3 tangent_transform = mat3(
-  //  normalize(vTangentTransform[0]),
-  //  normalize(vTangentTransform[1]),
-  //  normalize(vTangentTransform[2])
-  //);
   vec3 tangent_normal = texture(normSamp, vUV).xyz * 2.0 - 1.0;
   tangent_normal = mix(vec3(0.0, 0.0, 1.0), tangent_normal, in_weights.r);
   vec3 n = normalize(vTangentTransform * tangent_normal);

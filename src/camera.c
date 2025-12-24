@@ -170,11 +170,12 @@ vec3 camera_ray(const camera_t* camera, vec2i scr_wh, vec2 ndc_pos) {
   // find a point 1 unit away on a plane defined by our field of view
   float half_field_of_view = camera->perspective.fov / 2;
   float screen_plane_halfwidth = tanf(half_field_of_view);
-  return v3f(
+  vec3 vec = v3f(
     screen_plane_halfwidth * i2aspect(scr_wh) * ndc_pos.x,
     screen_plane_halfwidth * ndc_pos.y,
     -1
   );
+  return mv3mul(m3transpose(m43(camera->view)), vec);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -194,5 +195,5 @@ vec2 camera_screen_to_ndc(vec2i scr_wh, vec2 screen_pos) {
 
 vec3 camera_screen_to_ray(const camera_t* camera, vec2i window, vec2 screen_pos) {
   vec2 ndc = camera_screen_to_ndc(window, screen_pos);
-  return camera_ray(camera, window, ndc);
+  return v3norm(camera_ray(camera, window, ndc));
 }

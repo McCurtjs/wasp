@@ -25,6 +25,30 @@
 #include "game.h"
 
 #include "wasm.h"
+#include "light.h"
+
+typedef struct entity_wrapper_t {
+  bool active;
+  union {
+    index_t next_free;
+    entity_id_t id;
+    entity_t entity;
+  };
+} entity_wrapper_t;
+
+#define con_type entity_wrapper_t
+#define con_prefix entity
+#include "span.h"
+#include "array.h"
+#undef con_type
+#undef con_prefix
+
+#define con_type entity_id_t
+#define con_prefix id
+#include "span.h"
+#include "array.h"
+#undef con_type
+#undef con_prefix
 
 typedef struct Game_Internal {
   void* game;
@@ -32,7 +56,6 @@ typedef struct Game_Internal {
   // const properties
   vec2i window;
   String title;
-  Array_entity entities;
   index_t scene;
 
   // setup properties
@@ -47,6 +70,13 @@ typedef struct Game_Internal {
 
   // settable events
   event_resize_window_fn_t on_window_resize;
+
+  // secrets
+  Array_entity entities;
+  Array_id entity_actors;
+  Array_id entity_removals;
+  index_t free_list;
+  uint entity_counter;
 
 } Game_Internal;
 
@@ -84,9 +114,12 @@ Game game_new(String title, vec2i window_size) {
       }
       //.ortho = {-6 * i2aspect(windim), 6 * i2aspect(windim), 6, -6, 0.1, 500}
     },
-    .entities = arr_entity_new(),
     .scene = 0,
     .next_scene = 0,
+    .entities = arr_entity_new(),
+    .entity_actors = arr_id_new(),
+    .free_list = -1,
+    .entity_counter = 0,
   };
 
   game_singleton = (Game)&_game_singleton;
@@ -124,7 +157,8 @@ static void _game_scene_switch(Game _game) {
 // TODO: actually reset the game instead of leaking memory?
 ////////////////////////////////////////////////////////////////////////////////
 
-void game_reset(Game game) {
+void game_reset(Game _game) {
+  GAME_INTERNAL;
   input_set(&game->input);
   arr_entity_clear(game->entities);
   camera_build(&game->camera);
@@ -134,31 +168,125 @@ void game_reset(Game game) {
 // Adds a game entity
 ////////////////////////////////////////////////////////////////////////////////
 
-void game_add_entity(Game game, Entity* entity) {
+entity_id_t game_entity_add(Game _game, entity_t* entity) {
+  GAME_INTERNAL;
   if (entity->tint.x == 0.0f
   &&  entity->tint.y == 0.0f
   &&  entity->tint.z == 0.0f
   ) {
     entity->tint = v3ones;
   }
-  arr_entity_write_back(game->entities, entity);
+
+  entity_wrapper_t* slot;
+  index_t index;
+  
+  // Reclaim an inactive slot, or push an entity back
+  if (game->free_list >= 0) {
+    index = game->free_list;
+    slot = arr_entity_ref(game->entities, index);
+    assert(slot && !slot->active);
+    game->free_list = slot->next_free;
+  }
+  else {
+    index = game->entities->size;
+    slot = arr_entity_emplace_back(game->entities);
+    assert(slot);
+  }
+
+  *slot = (entity_wrapper_t){
+    .active = true,
+    .entity = *entity,
+  };
+  slot->id = (entity_id_t) {
+    .index = (uint)index, .unique = ++game->entity_counter
+  };
+
+  // Register new entity's behavior function if it has one
+  if (slot->entity.behavior) {
+    entity_id_t* actor_id = arr_id_emplace_back(game->entity_actors);
+    *actor_id = slot->id;
+  }
+
+  // Register renderable
+  // TODO
+  // store object transform in hierarchy of render types
+  // render function -> materials -> geometry
+  // update the transforms buffer all at once
+
+  // Run on-create callback
+  if (slot->entity.oncreate) {
+    slot->entity.oncreate(_game, &slot->entity);
+  }
+
+  return slot->id;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+entity_t* game_entity_ref(Game _game, entity_id_t id) {
+  GAME_INTERNAL;
+  entity_wrapper_t* e = arr_entity_ref(game->entities, (index_t)id.index);
+  if (!e
+  ||  !e->active
+  ||  e->id.unique != id.unique
+  ||  !e->entity.behavior
+  ) {
+    return NULL;
+  }
+  return &e->entity;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void game_entity_remove(Game _game, entity_id_t id) {
+  GAME_INTERNAL;
+  index_t index = (index_t)id.index;
+  entity_wrapper_t* e = arr_entity_ref(game->entities, index);
+  if (!e || !e->active || e->id.unique != id.unique) {
+    return;
+  }
+
+  // TODO: remove entity from the rendering list
+
+  if (e->entity.ondelete) {
+    e->entity.ondelete(_game, &e->entity);
+  }
+
+  e->active = false;
+  e->next_free = game->free_list;
+  game->free_list = id.index;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Per-frame call to update entity behaviors and clear input changes
 ////////////////////////////////////////////////////////////////////////////////
 
-void game_update(Game game, float dt) {
+void game_update(Game _game, float dt) {
+  GAME_INTERNAL;
   // If a scene change is requested, do that now
   if (game->next_scene >= 0) {
-    _game_scene_switch(game);
+    _game_scene_switch(_game);
   }
 
-  // Update all entities by their behavior function
-  Entity* arr_foreach(entity, game->entities) {
-    if (entity->behavior) {
-      entity->behavior(game, entity, dt);
+  //for (index_t i = 0; i < game->entity_removals->size; ++i) {
+  //  entity_id_t id = game->entity_removals->begin[i];
+  //  entity_wrapper_t* e = arr_entity_ref(game->entities, (index_t)id.index);
+  //  if (!e || !e->active || e->id.unique != id.unique) continue;
+  //}
+
+  for (index_t i = 0; i < game->entity_actors->size; ) {
+    entity_id_t id = game->entity_actors->begin[i];
+    entity_wrapper_t* e = arr_entity_ref(game->entities, (index_t)id.index);
+    if (!e 
+    ||  !e->active
+    ||  e->id.unique != id.unique
+    ||  !e->entity.behavior
+    ) {
+      arr_id_remove_unstable(game->entity_actors, i);
+      continue;
     }
+    e->entity.behavior(_game, &e->entity, dt);
+    ++i;
   }
 
   // Reset button triggers (only one frame on trigger/release)
@@ -169,13 +297,14 @@ void game_update(Game game, float dt) {
 // Renders visisble game objects
 ////////////////////////////////////////////////////////////////////////////////
 
-void game_render(Game game) {
+void game_render(Game _game) {
+  GAME_INTERNAL;
   game->camera.projview = camera_projection_view(&game->camera);
   game->camera.view = camera_view(&game->camera);
 
-  Entity* arr_foreach(entity, game->entities) {
-    if (entity->render && !entity->hidden) {
-      entity->render(game, entity);
+  entity_wrapper_t* arr_foreach(e, game->entities) {
+    if (e->active && e->entity.render && !e->entity.hidden) {
+      e->entity.render(_game, &e->entity);
     }
   }
 }
@@ -184,12 +313,17 @@ void game_render(Game game) {
 // Clears game entity pool
 ////////////////////////////////////////////////////////////////////////////////
 
-void game_cleanup(Game game) {
-  Entity* arr_foreach(entity, game->entities) {
-    if (entity->delete) {
-      entity->delete(game, entity);
+void game_cleanup(Game _game) {
+  GAME_INTERNAL;
+  entity_wrapper_t* arr_foreach(e, game->entities) {
+    if (e->entity.ondelete) {
+      e->entity.ondelete(_game, &e->entity);
     }
   }
 
   arr_entity_clear(game->entities);
+  arr_id_clear(game->entity_actors);
+  light_clear();
+  game->free_list = -1;
+  game->entity_counter = 0;
 }

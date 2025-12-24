@@ -33,24 +33,31 @@
 #include "material.h"
 
 typedef struct _opaque_Game_t* Game;
-typedef struct Entity Entity;
+typedef struct entity_t entity_t;
 
-typedef void (*entity_update_fn_t)(Game game, Entity* e, float dt);
-typedef void (*entity_render_fn_t)(Game game, Entity* e);
-typedef void (*entity_delete_fn_t)(Game game, Entity* e);
+typedef void (*entity_update_fn_t)(Game game, entity_t* e, float dt);
+typedef void (*entity_render_fn_t)(Game game, entity_t* e);
+typedef void (*entity_create_fn_t)(Game game, entity_t* e);
+typedef void (*entity_delete_fn_t)(Game game, entity_t* e);
+
+typedef struct entity_id_t {
+  uint index;
+  uint unique;
+} entity_id_t;
 
 // todo: if "Entity" is not partially opaque, should it be "entity" instead?
 //          should it just be opaque? Should entities be created via a prefab
 //          or entity_builder type object (want a way to define them inline in
 //          levels and whatnot of course).
-typedef struct Entity {
-  uint type;
+typedef struct entity_t {
+  entity_id_t id;
 
   vec3 pos;
 
   union {
     quat rotation;
     float angle;
+    index_t tmp; // replace with custom data fields/pointer?
   };
 
   mat4 transform;
@@ -62,9 +69,10 @@ typedef struct Entity {
 
   entity_update_fn_t behavior;
   entity_render_fn_t render;
-  entity_delete_fn_t delete;
+  entity_create_fn_t oncreate;
+  entity_delete_fn_t ondelete;
 
-} Entity;
+} entity_t;
 
 /*
 typedef struct Entity2 {
@@ -100,13 +108,5 @@ typedef struct Entity2 {
   bool hidden;
   bool frozen;
 };//*/
-
-
-#define con_type Entity
-#define con_prefix entity
-#include "span.h"
-#include "array.h"
-#undef con_type
-#undef con_prefix
 
 #endif

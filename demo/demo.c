@@ -61,20 +61,22 @@ static keybind_t input_map[] = {
   { .name = IN_DOWN, .key = 's' },
   { .name = IN_RIGHT, .key = 'd' },
   { .name = IN_KICK, .key = SDLK_LEFT },
-  { .name = IN_REWIND, .key = 'r' },
+  { .name = IN_SNAP_LIGHT, .key = 'r' },
   { .name = IN_CAMERA_LOCK, .key = 'c' },
   { .name = IN_CLICK, .key = SDL_BUTTON_LEFT, .mouse = true },
-  { .name = IN_ROTATE_LIGHT, .key = SDL_BUTTON_RIGHT, .mouse = true },
+  { .name = IN_CREATE_OBJECT, .key = SDL_BUTTON_RIGHT, .mouse = true },
+  { .name = IN_CLICK_MOVE, .key = SDL_BUTTON_RIGHT, .mouse = true },
   { .name = IN_ROTATE_LIGHT, .key = 'e' },
   { .name = IN_SHIFT, .key = 16 },
   { .name = IN_RELOAD, .key = 'p' },
   { .name = IN_LEVEL_1, .key = '1' },
+  { .name = IN_LEVEL_2, .key = '2' },
   { .name = IN_TOGGLE_SHADER, .key = 'm' },
   { .name = IN_TOGGLE_GRID, .key = 'g' },
 };
 
 static scene_load_fn_t demo_scenes[] = {
-  level_load_og_test
+  level_load_gears, level_load_monument
 };
 
 ////////////////////////////////////////////////////////////////////////////////

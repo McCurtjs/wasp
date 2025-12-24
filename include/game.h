@@ -48,7 +48,16 @@ typedef void (*scene_load_fn_t)(Game game);
 #define con_prefix scene
 #include "span.h"
 #undef con_type
-#undef con_name
+#undef con_prefix
+
+typedef struct scene_data_t {
+  int preload;
+  int loading;
+  int load;
+  int unload;
+  int update;
+  int render;
+} scene_data_t;
 
 typedef struct app_defaults_t {
   vec2i window;
@@ -59,19 +68,18 @@ typedef struct _opaque_Game_t {
   CUSTOM_GAME_TYPE* CUSTOM_GAME_VAR;
 
   // const properties
-  const vec2i         window;
-  const String        title;
-  const Array_entity  entities;
-  const index_t       scene;
+  const vec2i   window;
+  const String  title;
+  const index_t scene;
 
   // game setup
   input_t       input;
   span_scene_t  scenes;
 
   // reactive properties
-  camera_t  camera;
-  index_t next_scene;
-  bool    should_exit;
+  camera_t      camera;
+  index_t       next_scene;
+  bool          should_exit;
 
   // settable events
   event_resize_window_fn_t on_window_resize;
@@ -82,7 +90,10 @@ Game game_new(String title, vec2i window_size);
 
 void game_reset(Game game);
 
-void game_add_entity(Game game, Entity* entity);
+entity_id_t game_entity_add(Game game, entity_t* entity);
+entity_t* game_entity_ref(Game game, entity_id_t entity_id);
+void game_entity_remove(Game game, entity_id_t entity_id);
+void game_entity_set_behavior(Game game, entity_id_t id, entity_update_fn_t bh);
 
 void game_update(Game game, float dt);
 void game_render(Game game);

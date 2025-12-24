@@ -28,17 +28,18 @@
 
 #include "light.h"
 
-void level_load_og_test(Game game) {
+void level_load_gears(Game game) {
 
   demo_t* demo = game->demo;
 
   game->camera.pos = v4f(3, 2, 45, 1);
   game->camera.front = v4front;
+  game->demo->target = v3origin;
 
   camera_look_at(&game->camera, game->demo->target);
 
   // Debug Renderer
-  game_add_entity(game, &(Entity) {
+  game_entity_add(game, &(entity_t) {
     .model = &demo->models.grid,
     .transform = m4identity,
     .render = render_debug,
@@ -46,12 +47,12 @@ void level_load_og_test(Game game) {
   });
 
   // Camera Controller
-  game_add_entity(game, &(Entity) {
-    .behavior = behavior_test_camera,
+  game_entity_add(game, &(entity_t) {
+    .behavior = behavior_camera_test,
   });
 
   //* Spinny Cube
-  game_add_entity(game, &(Entity) {
+  game_entity_add(game, &(entity_t) {
     .model = &demo->models.color_cube,
     .pos = v3f(-2, 0, 0),
     .angle = 0,
@@ -61,7 +62,7 @@ void level_load_og_test(Game game) {
   }); //*/
 
   //* Staring Cube
-  game_add_entity(game, &(Entity) {
+  game_entity_add(game, &(entity_t) {
     .model = &demo->models.color_cube,
     .pos = v3f(0, 0, 2),
     .render = render_basic,
@@ -69,20 +70,20 @@ void level_load_og_test(Game game) {
   }); //*/
 
   //* Gizmos
-  game_add_entity(game, &(Entity) {
+  game_entity_add(game, &(entity_t) {
     .model = &demo->models.gizmo,
     .render = render_basic,
     .behavior = behavior_attach_to_camera_target,
   }); //*/
 
-  game_add_entity(game, &(Entity) {
+  game_entity_add(game, &(entity_t) {
     .model = &demo->models.gizmo,
     .render = render_basic,
     .behavior = behavior_attach_to_light,
   }); //*/
 
   //* Gear 1
-  game_add_entity(game, &(Entity) {
+  game_entity_add(game, &(entity_t) {
     .model = &demo->models.gear,
     .material = demo->materials.grass,
     .transform = m4translation(v3f(0, 7, -12)),
@@ -91,7 +92,7 @@ void level_load_og_test(Game game) {
   }); //*/
 
   //* Gear 2
-  game_add_entity(game, &(Entity) {
+  game_entity_add(game, &(entity_t) {
     .model = &demo->models.gear,
     .material = demo->materials.sands,
     .transform = m4translation(v3f(20.5f, -1.5f, -12)),
@@ -100,7 +101,7 @@ void level_load_og_test(Game game) {
   }); //*/
 
   //* Gear 3
-  game_add_entity(game, &(Entity) {
+  game_entity_add(game, &(entity_t) {
     .model = &demo->models.gear,
     .material = demo->materials.mudds,
     .transform = m4translation(v3f(43.f, -1.5f, -12)),
@@ -109,7 +110,7 @@ void level_load_og_test(Game game) {
   }); //*/
 
   //* Crate
-  game_add_entity(game, &(Entity) {
+  game_entity_add(game, &(entity_t) {
     .model = &demo->models.box,
     .material = demo->materials.grass,
     .transform = m4translation(v3f(0, -0.5, 0)),
@@ -117,7 +118,7 @@ void level_load_og_test(Game game) {
   }); //*/
 
   //* Crate
-  game_add_entity(game, &(Entity) {
+  game_entity_add(game, &(entity_t) {
     .model = &demo->models.box,
     .material = demo->materials.grass,
     .transform = m4translation(v3f(1, -0.5, 0)),
@@ -125,7 +126,7 @@ void level_load_og_test(Game game) {
   }); //*/
 
   //* Crate
-  game_add_entity(game, &(Entity) {
+  game_entity_add(game, &(entity_t) {
     .model = &demo->models.box,
     .material = demo->materials.grass,
     .transform = m4translation(v3f(0, -0.5, 1)),
@@ -133,7 +134,7 @@ void level_load_og_test(Game game) {
   }); //*/
 
   //* Crate
-  game_add_entity(game, &(Entity) {
+  game_entity_add(game, &(entity_t) {
     .model = &demo->models.box,
     .material = demo->materials.grass,
     .transform = m4translation(v3f(1, -0.5, 1)),
@@ -141,19 +142,19 @@ void level_load_og_test(Game game) {
   }); //*/
 
   //* Bigger Crate
-  game_add_entity(game, &(Entity) {
+  game_entity_add(game, &(entity_t) {
     .model = &demo->models.box,
     .material = demo->materials.crate,
-    .transform = m4mul(m4translation(v3f(2, 0, 0)), m4uniform(2)),
+    .transform = m4mul(m4translation(v3f(2, 0, 0)), m4scalar(2)),
     .render = render_pbr,
   }); //*/
 
   //* Even Bigger Crate
-  game_add_entity(game, &(Entity) {
+  game_entity_add(game, &(entity_t) {
     .model = &demo->models.box,
     .material = demo->materials.renderite,
     .tint = v3f(0.8f, 0.3f, 0.6f),
-    .transform = m4mul(m4translation(v3f(5, 0.5, 0)), m4uniform(3)),
+    .transform = m4mul(m4translation(v3f(5, 0.5, 0)), m4scalar(3)),
     .render = render_pbr,
   }); //*/
 
@@ -187,13 +188,13 @@ void level_load_og_test(Game game) {
         material = j % 2 == 0 ? demo->materials.renderite : demo->materials.mudds;
       }
 
-      game_add_entity(game, &(Entity) {
+      game_entity_add(game, &(entity_t) {
         .model = &demo->models.box,
         .material = material,
         .transform =
           m4mul(
             m4mul(m4translation(pos), m4rotation(axis, angle)),
-            m4uniform(19)
+            m4scalar(19)
           ),
         .render = render_pbr,
       });
@@ -210,8 +211,8 @@ void level_load_og_test(Game game) {
 
   light_add((light_t) {
     .intensity = 50.0f,
-      .pos = v3f(4, 3, 5),
-      .color = v3f(0.8f, 0.8f, 0.95f),
+    .pos = v3f(4, 3, 5),
+    .color = v3f(0.8f, 0.8f, 0.95f),
   });
 
   light_add((light_t) {
@@ -226,4 +227,81 @@ void level_load_og_test(Game game) {
     .color = v3f(0.0f, 0.9f, 0.4f),
   });
   //*/
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void level_load_monument(Game game) {
+
+  demo_t* demo = game->demo;
+
+  game->camera.pos = v4f(3, 9, 5, 1);
+  game->camera.front = v4front;
+  game->demo->target = v3origin;
+
+  camera_look_at(&game->camera, game->demo->target);
+
+  // Debug Renderer
+  game_entity_add(game, &(entity_t) {
+    .model = &demo->models.grid,
+    .transform = m4identity,
+    .render = render_debug,
+    .behavior = behavior_grid_toggle,
+  });
+  
+  // Target gizmo
+  game_entity_add(game, &(entity_t) {
+    .model = &demo->models.gizmo,
+    .render = render_basic,
+    .behavior = behavior_click_ground,
+  });
+
+  // Wizard crate
+  game_entity_add(game, &(entity_t) {
+    .pos = v3f(0, 0.5, 0),
+    .model = &demo->models.box,
+    .material = demo->materials.crate,
+    .behavior = behavior_wizard,
+    .render = render_pbr,
+  });
+
+  // Ground tiles
+  float ext = 20.0f;
+  for (float y = -ext; y < ext; ++y) {
+    for (float x = -ext; x < ext; ++x) {
+      vec3 pos = v3f(5.f * x, -1.01f, 5.f * y);
+      Material material = demo->materials.grass;
+
+      if (x + y > 10 && y > 6)
+        material = demo->materials.sands;
+      else if (v3mag(v3sub(pos, v3f(-70, -1, -30))) < 40)
+        material = demo->materials.tiles;
+      else if (x < 8 && y > 8)
+        material = demo->materials.renderite;
+      else if
+      (  ( x > 10 && y < 5 )
+      && (  ((int)x + (int)y) % 7 == 0
+         || ((int)x - (int)y) % 7 == 0
+         )
+      )
+        material = demo->materials.mudds;
+
+      game_entity_add(game, &(entity_t) {
+        .model = &demo->models.box,
+        .material = material,
+        .transform = m4mul(
+          m4translation(pos), m4vscalar(v3f(5, 2, 5))
+        ),
+        .render = render_pbr,
+      });
+    }
+  }
+
+  // Sun
+  light_add((light_t) {
+    .intensity = 100000.0f,
+    .pos = v3f(40, 120, -50),
+    .color = v3f(0.9f, 0.9f, 0.75f),
+  });
+
 }

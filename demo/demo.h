@@ -85,22 +85,26 @@ typedef struct demo_t {
 // Entity behavior functions
 ////////////////////////////////////////////////////////////////////////////////
 
-void behavior_test_camera(Game game, Entity* entity, float dt);
-void behavior_grid_toggle(Game game, Entity* entity, float dt);
-void behavior_cubespin(Game game, Entity* entity, float dt);
-void behavior_gear_rotate_cw(Game game, Entity* entity, float dt);
-void behavior_gear_rotate_ccw(Game game, Entity* entity, float dt);
-void behavior_stare(Game game, Entity* entity, float dt);
-void behavior_attach_to_light(Game game, Entity* entity, float dt);
-void behavior_attach_to_camera_target(Game game, Entity* entity, float dt);
+void behavior_camera_test(Game game, entity_t* entity, float dt);
+void behavior_camera_wizards(Game game, entity_t* entity, float dt);
+void behavior_camera_monument(Game game, entity_t* entity, float dt);
+void behavior_grid_toggle(Game game, entity_t* entity, float dt);
+void behavior_cubespin(Game game, entity_t* entity, float dt);
+void behavior_gear_rotate_cw(Game game, entity_t* entity, float dt);
+void behavior_gear_rotate_ccw(Game game, entity_t* entity, float dt);
+void behavior_stare(Game game, entity_t* entity, float dt);
+void behavior_attach_to_light(Game game, entity_t* entity, float dt);
+void behavior_click_ground(Game game, entity_t* entity, float dt);
+void behavior_attach_to_camera_target(Game game, entity_t* entity, float dt);
+void behavior_wizard(Game game, entity_t* entity, float dt);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Entity rendering functions
 ////////////////////////////////////////////////////////////////////////////////
 
-void render_basic(Game game, Entity* entity);
-void render_debug(Game game, Entity* entity);
-void render_pbr(Game game, Entity* entity);
+void render_basic(Game game, entity_t* entity);
+void render_debug(Game game, entity_t* entity);
+void render_pbr(Game game, entity_t* entity);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Input keymap names
@@ -110,6 +114,7 @@ enum demo_key_t {
   IN_CLOSE,
 
   IN_LEVEL_1,
+  IN_LEVEL_2,
   LEVEL_COUNT,
 
   IN_JUMP,
@@ -117,11 +122,12 @@ enum demo_key_t {
   IN_DOWN,
   IN_RIGHT,
   IN_KICK,
-  IN_REWIND,
+  IN_SNAP_LIGHT,
   IN_CAMERA_LOCK,
 
-  // editor only
   IN_CLICK,
+  IN_CLICK_MOVE,
+  IN_CREATE_OBJECT,
   IN_ROTATE_LIGHT,
   IN_SHIFT,
   IN_RELOAD,
@@ -136,7 +142,8 @@ enum demo_key_t {
 void level_switch_check(Game game);
 void level_switch(Game game, index_t scene);
 
-void level_load_og_test(Game game);
+void level_load_gears(Game game);
+void level_load_monument(Game game);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Specialized event handlers

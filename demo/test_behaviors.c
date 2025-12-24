@@ -33,7 +33,7 @@
 // Behavior for controlling camera rotation and movement
 ////////////////////////////////////////////////////////////////////////////////
 
-void behavior_test_camera(Game game, Entity* e, float dt) {
+void behavior_camera_test(Game game, entity_t* e, float dt) {
   UNUSED(e);
 
   demo_t* demo = game->demo;
@@ -82,7 +82,7 @@ void behavior_test_camera(Game game, Entity* e, float dt) {
     game->should_exit = true;
   }
 
-  if (input_pressed(IN_REWIND)) {
+  if (input_pressed(IN_SNAP_LIGHT)) {
     demo->light_pos = game->camera.pos;
   }
 
@@ -97,14 +97,149 @@ void behavior_test_camera(Game game, Entity* e, float dt) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+
+vec3 game_screen_to_ray(Game game) {
+  return camera_screen_to_ray(
+    &game->camera, game->window, game->input.mouse.pos
+  );
+}
+
+void behavior_click_ground(Game game, entity_t* e, float dt) {
+  UNUSED(dt);
+  if (input_pressed(IN_CLICK_MOVE)) {
+    vec3 ray = game_screen_to_ray(game);
+    float t;
+    if (v3ray_plane(game->camera.pos.xyz, ray, v3origin, v3up, &t)) {
+      game->demo->target = v3add(game->camera.pos.xyz, v3scale(ray, t));
+      e->transform = m4translation(game->demo->target);
+    }
+  }
+}
+
+#define WIZARD_SPEED 8.0f
+#define WIZARD_FAKE_SPEED (WIZARD_SPEED * 4.0f)
+#define WIZARD_FIRE_RATE 0.2f
+
+static void _wizard_movement(Game game, entity_t* e, float dt) {
+  static vec3 fake_target = svNzero;
+
+  demo_t* demo = game->demo;
+
+  vec3 target = demo->target;
+  vec3 pos = e->pos;
+  target.y = pos.y;
+  vec3 to_target = v3sub(target, pos);
+  float distance = v3mag(to_target);
+  float max_move = WIZARD_SPEED * dt;
+  if (distance + 0.1f < WIZARD_SPEED / 3.f) {
+    max_move *= (distance + 0.1f) / (WIZARD_SPEED / 3.f);
+  }
+  if (distance <= max_move) {
+    e->pos = target;
+  }
+  else {
+    vec3 dir = v3norm(to_target);
+    e->pos = v3add(pos, v3scale(dir, max_move));
+  }
+
+  to_target = v3sub(target, fake_target);
+  distance = v3mag(to_target);
+  max_move = WIZARD_FAKE_SPEED * dt;
+  if (distance + 0.1f < WIZARD_FAKE_SPEED / 3.f) {
+    max_move *= (distance + 0.1f) / (WIZARD_FAKE_SPEED / 3.f);
+  }
+  if (distance <= max_move) {
+    fake_target = target;
+  }
+  else {
+    vec3 dir = v3norm(to_target);
+    fake_target = v3add(fake_target, v3scale(dir, max_move));
+  }
+
+  e->transform = m4translation(e->pos);
+  game->camera.pos.xyz = v3add(e->pos, v3f(6, 12, 7));
+
+  vec3 cam_to_target = v3norm(v3sub(fake_target, game->camera.pos.xyz));
+  vec3 cam_to_wizard = v3norm(v3sub(e->pos, game->camera.pos.xyz));
+  //vec3 diff = v3sub(cam_to_target, cam_to_wizard);
+  cam_to_target = v3add(cam_to_wizard, v3scale(v3norm(cam_to_target), 0.3f));
+  cam_to_target = v3norm(cam_to_target);
+
+  game->camera.front.xyz = cam_to_target;
+}
+
+static void behavior_projectile(Game game, entity_t* e, float dt) {
+  UNUSED(game);
+  vec3 new_pos = v3add(e->transform.col[3].xyz, v3scale(e->pos, dt * 25.f));
+  e->transform.col[3].xyz = new_pos;
+  light_t* light = light_ref(e->tmp);
+  if (light) {
+    light->pos = new_pos;
+  }
+  if (new_pos.y < 0) {
+    game_entity_remove(game, e->id);
+  }
+}
+
+static void ondelete_projectile(Game game, entity_t* e) {
+  UNUSED(game);
+  light_remove(e->tmp);
+}
+
+static void _wizard_projectile(Game game, entity_t* e, float dt) {
+  demo_t* demo = game->demo;
+  static float shot_timer = WIZARD_FIRE_RATE;
+  shot_timer += dt;
+  if (input_pressed(IN_CLICK) && shot_timer > WIZARD_FIRE_RATE) {
+    vec3 click_ray = game_screen_to_ray(game);
+    float t;
+    if (v3ray_plane(game->camera.pos.xyz, click_ray, v3origin, v3up, &t)) {
+      vec3 click_pos = v3add(game->camera.pos.xyz, v3scale(click_ray, t));
+      click_pos.y = 1.0f;
+      vec3 launch_point = v3f(e->pos.x, 2, e->pos.z);
+
+      index_t light_id = light_add((light_t) {
+        .color = v3f(1.0f, 0.7f, 0.8f),
+        .intensity = 8.f,
+        .pos = launch_point
+      });
+
+      game_entity_add(game, &(entity_t) {
+        .pos = v3norm(v3sub(click_pos, launch_point)),
+        .transform = m4mul(m4translation(launch_point), m4scalar(0.4f)),
+        .model = &demo->models.color_cube,
+        .render = render_basic,
+        .behavior = behavior_projectile,
+        .ondelete = ondelete_projectile,
+        .tmp = light_id,
+      });
+    }
+  }
+}
+
+void behavior_wizard(Game game, entity_t* e, float dt) {
+  demo_t* demo = game->demo;
+
+  _wizard_movement(game, e, dt);
+  _wizard_projectile(game, e, dt);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Toggles the visibility of the grid
 ////////////////////////////////////////////////////////////////////////////////
 
-void behavior_grid_toggle(Game game, Entity* e, float dt) {
+void behavior_grid_toggle(Game game, entity_t* e, float dt) {
   UNUSED(dt);
-  UNUSED(game);
   if (input_triggered(IN_TOGGLE_GRID)) {
     e->hidden = !e->hidden;
+  }
+
+  if (input_triggered(IN_LEVEL_1)) {
+    game->next_scene = 0;
+  }
+
+  if (input_triggered(IN_LEVEL_2)) {
+    game->next_scene = 1;
   }
 }
 
@@ -112,7 +247,7 @@ void behavior_grid_toggle(Game game, Entity* e, float dt) {
 // Cube spinning behavior
 ////////////////////////////////////////////////////////////////////////////////
 
-void behavior_cubespin(Game game, Entity* e, float dt) {
+void behavior_cubespin(Game game, entity_t* e, float dt) {
   UNUSED(game);
 
   e->transform = m4translation(e->pos);
@@ -134,7 +269,7 @@ void behavior_cubespin(Game game, Entity* e, float dt) {
 // Clockwise spin around the Z axis
 ////////////////////////////////////////////////////////////////////////////////
 
-void behavior_gear_rotate_cw(Game game, Entity* e, float dt) {
+void behavior_gear_rotate_cw(Game game, entity_t* e, float dt) {
   UNUSED(game);
   e->transform = m4mul(e->transform, m4rotation(v3front, dt));
 }
@@ -143,7 +278,7 @@ void behavior_gear_rotate_cw(Game game, Entity* e, float dt) {
 // Counter-clockwise spin around the Z axis
 ////////////////////////////////////////////////////////////////////////////////
 
-void behavior_gear_rotate_ccw(Game game, Entity* e, float dt) {
+void behavior_gear_rotate_ccw(Game game, entity_t* e, float dt) {
   UNUSED(game);
   e->transform = m4mul(e->transform, m4rotation(v3front, -dt));
 }
@@ -152,7 +287,7 @@ void behavior_gear_rotate_ccw(Game game, Entity* e, float dt) {
 // Orients the entity to face the camera along its local +Z axis
 ////////////////////////////////////////////////////////////////////////////////
 
-void behavior_stare(Game game, Entity* e, float dt) {
+void behavior_stare(Game game, entity_t* e, float dt) {
   UNUSED(dt);
   e->transform = m4look(e->pos, game->camera.pos.xyz, v3y);
 }
@@ -161,10 +296,11 @@ void behavior_stare(Game game, Entity* e, float dt) {
 // Sets the location of the entity to the light position
 ////////////////////////////////////////////////////////////////////////////////
 
-void behavior_attach_to_light(Game game, Entity* e, float dt) {
+void behavior_attach_to_light(Game game, entity_t* e, float dt) {
   UNUSED(dt);
   e->transform = m4translation(game->demo->light_pos.xyz);
   light_t* light = light_ref(1);
+  if (!light) return;
   light->pos = game->demo->light_pos.xyz;
   light = light_ref(2);
   light->pos = game->demo->target;
@@ -174,16 +310,34 @@ void behavior_attach_to_light(Game game, Entity* e, float dt) {
 // Sets the location of the entity to the camera target position
 ////////////////////////////////////////////////////////////////////////////////
 
-void behavior_attach_to_camera_target(Game game, Entity* e, float dt) {
+void behavior_attach_to_camera_target(Game game, entity_t* e, float dt) {
   UNUSED(dt);
   e->transform = m4translation(game->demo->target);
+
+  if (input_triggered(IN_CREATE_OBJECT)) {
+    Material mats[] = {
+      game->demo->materials.crate,
+      game->demo->materials.mudds,
+      game->demo->materials.grass,
+      game->demo->materials.tiles,
+      game->demo->materials.sands,
+      game->demo->materials.renderite,
+    };
+
+    game_entity_add(game, &(entity_t) {
+      .model = &game->demo->models.box,
+      .material = mats[(uint)e->transform.f[12] % 6],
+      .transform = m4mul(e->transform, m4scalar(10.0f)),
+      .render = render_pbr,
+    });
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Render function for un-shaded objects with vertex color
 ////////////////////////////////////////////////////////////////////////////////
 
-void render_basic(Game game, Entity* e) {
+void render_basic(Game game, entity_t* e) {
   Shader shader = game->demo->shaders.basic;
   shader_bind(shader);
 
@@ -199,7 +353,7 @@ void render_basic(Game game, Entity* e) {
 // Renders the debug objects
 ////////////////////////////////////////////////////////////////////////////////
 
-void render_debug(Game game, Entity* e) {
+void render_debug(Game game, entity_t* e) {
   render_basic(game, e);
   draw_render();
 }
@@ -208,7 +362,7 @@ void render_debug(Game game, Entity* e) {
 // Render function for physically-based lighting
 ////////////////////////////////////////////////////////////////////////////////
 
-void render_pbr(Game game, Entity* e) {
+void render_pbr(Game game, entity_t* e) {
   Shader shader = game->demo->shaders.light;
   shader_bind(shader);
 
