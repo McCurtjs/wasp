@@ -28,13 +28,14 @@
 
 #include "light.h"
 
-void level_load_gears(Game game) {
+scene_unload_fn_t scene_load_gears(Game game) {
 
   demo_t* demo = game->demo;
 
   game->camera.pos = v4f(3, 2, 45, 1);
   game->camera.front = v4front;
   game->demo->target = v3origin;
+  game->demo->light_pos = v4f(40, 60, 0, 1);
 
   camera_look_at(&game->camera, game->demo->target);
 
@@ -227,11 +228,13 @@ void level_load_gears(Game game) {
     .color = v3f(0.0f, 0.9f, 0.4f),
   });
   //*/
+
+  return NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void level_load_monument(Game game) {
+scene_unload_fn_t scene_load_wizard(Game game) {
 
   demo_t* demo = game->demo;
 
@@ -251,9 +254,12 @@ void level_load_monument(Game game) {
   
   // Target gizmo
   game_entity_add(game, &(entity_t) {
-    .model = &demo->models.gizmo,
-    .render = render_basic,
-    .behavior = behavior_click_ground,
+    .model = &demo->models.gear,
+    .render = render_pbr,
+    .tint = c4black.rgb,
+    .material = demo->materials.renderite,
+    .transform = m4mul(m4rotation(v3x, d2r(-90.f)), m4scalar(0.06f)),
+    .behavior = behavior_wizard_level,
   });
 
   // Wizard crate
@@ -279,7 +285,7 @@ void level_load_monument(Game game) {
       else if (x < 8 && y > 8)
         material = demo->materials.renderite;
       else if
-      (  ( x > 10 && y < 5 )
+      (  ( x > 5 && y < 5 )
       && (  ((int)x + (int)y) % 7 == 0
          || ((int)x - (int)y) % 7 == 0
          )
@@ -304,4 +310,151 @@ void level_load_monument(Game game) {
     .color = v3f(0.9f, 0.9f, 0.75f),
   });
 
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#include "input.h"
+
+void scene_unload_monument(Game game) {
+  UNUSED(game);
+  input_pointer_unlock();
+}
+
+static float ext = 10.f;
+static float size = 200.f;
+
+static scene_unload_fn_t _scene_load_monument(Game game) {
+
+  demo_t* demo = game->demo;
+
+  game->camera.pos = v4f(0, 0, 1, 1);
+  game->camera.front = v4front;
+  game->demo->target = v3origin;
+
+  input_pointer_lock();
+
+  camera_look_at(&game->camera, game->demo->target);
+
+  // Debug Renderer
+  game_entity_add(game, &(entity_t) {
+    .model = &demo->models.grid,
+    .transform = m4identity,
+    .render = render_debug,
+    .hidden = true,
+    .behavior = behavior_grid_toggle,
+  });
+
+  // Camera Controller
+  game_entity_add(game, &(entity_t) {
+    .angle = 5.f, // actually speed
+    .pos = v3zero, // accumulated rotation angles
+    .behavior = behavior_camera_monument,
+  });
+
+  float offset = 400.f;
+
+  // Big monumental cubes (they give you flying and indestructible)
+  for (float z = -ext; z < ext; ++z) {
+    for (float y = -ext; y < ext; ++y) {
+      for (float x = -ext; x < ext; ++x) {
+        vec3 pos = v3f(x, y, z);
+        pos = v3scale(pos, size);
+        pos.y -= offset;
+
+        if (v3mag(v3sub(pos, v3origin)) < 0.5f) {
+          continue;
+        }
+
+        game_entity_add(game, &(entity_t) {
+          .model = &demo->models.box,
+          .material = demo->materials.mudds,
+          .transform = m4mul(
+            m4translation(pos), m4scalar(120.f - 2.f * (y + ext))
+          ),
+          .render = render_pbr,
+        });
+      }
+    }
+  }
+
+  vec3 sun_pos = v3f(200, 1000, 600);
+
+  // Gear sun
+  game_entity_add(game, &(entity_t) {
+    .model = &demo->models.gear,
+    .render = render_pbr,
+    .tint = c4white.rgb,
+    .material = demo->materials.renderite,
+    .transform = m4mul(
+      m4translation(v3add(sun_pos, v3f(0, 30, 0))),
+      m4mul(
+        m4rotation(v3x, d2r(90.f)), m4scalar(15.f)
+      )
+    ),
+    .behavior = behavior_gear_rotate_cw,
+  });
+
+  // Ground
+  float ground_scale = 2500;
+  game_entity_add(game, &(entity_t) {
+    .model = &demo->models.box,
+    .material = demo->materials.grass,
+    .transform = m4mul(
+      m4translation(v3f(0,
+        -(ext * size + size) - (ground_scale / 2.f) - offset,
+      0)),
+      m4scalar(ground_scale)
+    ),
+    .render = render_pbr,
+  });
+
+  // Light 1 is left indicator (red)
+  light_add((light_t) {
+    .intensity = 4000.0f,
+    .pos = v3f(-18, 0, 0),
+    .color = v3f(1.0f, 0.3f, 0.3f),
+  });
+
+  // Light 2 is right indicator (green)
+  light_add((light_t) {
+    .intensity = 4000.0f,
+    .pos = v3f(18, 0, 0),
+    .color = v3f(0.3f, 1.0f, 0.3f),
+  });
+
+  // Sun
+  light_add((light_t) {
+    .intensity = 10000000.0f,
+    .pos = sun_pos,
+    .color = v3f(0.9f, 0.9f, 0.75f),
+  });
+
+  return scene_unload_monument;
+}
+
+scene_unload_fn_t scene_load_monument(Game game) {
+  ext = 7.0f;
+  return _scene_load_monument(game);
+}
+
+scene_unload_fn_t scene_load_monument2(Game game) {
+  ext = 15.0f;
+  return _scene_load_monument(game);
+}
+
+scene_unload_fn_t scene_load_monument3(Game game) {
+  ext = 30.0f;
+  return _scene_load_monument(game);
+}
+
+scene_unload_fn_t scene_load_monument4(Game game) {
+  ext = 40.0f;
+  return _scene_load_monument(game);
+}
+
+scene_unload_fn_t scene_load_monument5(Game game) {
+  ext = 55.0f;
+  return _scene_load_monument(game);
 }

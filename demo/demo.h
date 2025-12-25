@@ -86,7 +86,6 @@ typedef struct demo_t {
 ////////////////////////////////////////////////////////////////////////////////
 
 void behavior_camera_test(Game game, entity_t* entity, float dt);
-void behavior_camera_wizards(Game game, entity_t* entity, float dt);
 void behavior_camera_monument(Game game, entity_t* entity, float dt);
 void behavior_grid_toggle(Game game, entity_t* entity, float dt);
 void behavior_cubespin(Game game, entity_t* entity, float dt);
@@ -94,7 +93,7 @@ void behavior_gear_rotate_cw(Game game, entity_t* entity, float dt);
 void behavior_gear_rotate_ccw(Game game, entity_t* entity, float dt);
 void behavior_stare(Game game, entity_t* entity, float dt);
 void behavior_attach_to_light(Game game, entity_t* entity, float dt);
-void behavior_click_ground(Game game, entity_t* entity, float dt);
+void behavior_wizard_level(Game game, entity_t* entity, float dt);
 void behavior_attach_to_camera_target(Game game, entity_t* entity, float dt);
 void behavior_wizard(Game game, entity_t* entity, float dt);
 
@@ -115,6 +114,11 @@ enum demo_key_t {
 
   IN_LEVEL_1,
   IN_LEVEL_2,
+  IN_LEVEL_3_1,
+  IN_LEVEL_3_2,
+  IN_LEVEL_3_3,
+  IN_LEVEL_3_4,
+  IN_LEVEL_3_5,
   LEVEL_COUNT,
 
   IN_JUMP,
@@ -142,8 +146,13 @@ enum demo_key_t {
 void level_switch_check(Game game);
 void level_switch(Game game, index_t scene);
 
-void level_load_gears(Game game);
-void level_load_monument(Game game);
+scene_unload_fn_t scene_load_gears(Game game);
+scene_unload_fn_t scene_load_wizard(Game game);
+scene_unload_fn_t scene_load_monument(Game game);
+scene_unload_fn_t scene_load_monument2(Game game);
+scene_unload_fn_t scene_load_monument3(Game game);
+scene_unload_fn_t scene_load_monument4(Game game);
+scene_unload_fn_t scene_load_monument5(Game game);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Specialized event handlers

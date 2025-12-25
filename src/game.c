@@ -57,6 +57,7 @@ typedef struct Game_Internal {
   vec2i window;
   String title;
   index_t scene;
+  float scene_time;
 
   // setup properties
   input_t input;
@@ -72,6 +73,7 @@ typedef struct Game_Internal {
   event_resize_window_fn_t on_window_resize;
 
   // secrets
+  scene_unload_fn_t scene_unload;
   Array_entity entities;
   Array_id entity_actors;
   Array_id entity_removals;
@@ -135,8 +137,11 @@ Game game_new(String title, vec2i window_size) {
 
 static void _game_scene_switch(Game _game) {
   GAME_INTERNAL;
+
+  // A value of -1 means "continue playing current scene"
   if (game->next_scene < 0) return;
 
+  // Validate scene index is within count of available scenes
   index_t scene_count = span_scene_size(game->scenes);
   if (game->next_scene >= scene_count) {
     str_log("[Scene.switch] Scene index out of range: {}", game->next_scene);
@@ -144,11 +149,12 @@ static void _game_scene_switch(Game _game) {
     return;
   }
 
+  // Unload the current scene and swap to the new scene (or reload)
   game_cleanup(_game);
   game_reset(_game);
   scene_load_fn_t load_scene = span_scene_get(game->scenes, game->next_scene);
   assert(load_scene);
-  load_scene(_game);
+  game->scene_unload = load_scene(_game);
   game->scene = game->next_scene;
   game->next_scene = -1;
 }
@@ -159,6 +165,7 @@ static void _game_scene_switch(Game _game) {
 
 void game_reset(Game _game) {
   GAME_INTERNAL;
+  game->scene_time = 0.0f;
   input_set(&game->input);
   arr_entity_clear(game->entities);
   camera_build(&game->camera);
@@ -206,6 +213,8 @@ entity_id_t game_entity_add(Game _game, entity_t* entity) {
     entity_id_t* actor_id = arr_id_emplace_back(game->entity_actors);
     *actor_id = slot->id;
   }
+
+  slot->entity.create_time = game->scene_time;
 
   // Register renderable
   // TODO
@@ -274,6 +283,8 @@ void game_update(Game _game, float dt) {
   //  if (!e || !e->active || e->id.unique != id.unique) continue;
   //}
 
+  game->scene_time += dt;
+
   for (index_t i = 0; i < game->entity_actors->size; ) {
     entity_id_t id = game->entity_actors->begin[i];
     entity_wrapper_t* e = arr_entity_ref(game->entities, (index_t)id.index);
@@ -315,6 +326,12 @@ void game_render(Game _game) {
 
 void game_cleanup(Game _game) {
   GAME_INTERNAL;
+
+  if (game->scene_unload) {
+    game->scene_unload(_game);
+    game->scene_unload = NULL;
+  }
+
   entity_wrapper_t* arr_foreach(e, game->entities) {
     if (e->entity.ondelete) {
       e->entity.ondelete(_game, &e->entity);
@@ -326,4 +343,7 @@ void game_cleanup(Game _game) {
   light_clear();
   game->free_list = -1;
   game->entity_counter = 0;
+
+  game->camera.front = v4front;
+  game->camera.up = v4up;
 }

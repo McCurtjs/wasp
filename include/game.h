@@ -42,7 +42,8 @@ typedef struct _opaque_Game_t* Game;
 
 typedef void (*event_resize_window_fn_t)(Game game);
 
-typedef void (*scene_load_fn_t)(Game game);
+typedef              void (*scene_unload_fn_t)(Game game);
+typedef scene_unload_fn_t (*scene_load_fn_t)(Game game);
 
 #define con_type scene_load_fn_t
 #define con_prefix scene
@@ -71,6 +72,7 @@ typedef struct _opaque_Game_t {
   const vec2i   window;
   const String  title;
   const index_t scene;
+  const float   scene_time;
 
   // game setup
   input_t       input;

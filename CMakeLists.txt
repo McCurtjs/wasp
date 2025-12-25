@@ -27,7 +27,7 @@ function(compile_opts target)
       /W4 /WX /std:clatest)
   else()
     target_compile_options(${target} PRIVATE
-      -std=c2x -Wall -Wextra -Wpedantic -Werror -Wno-unused-value
+      -std=c2x -Wall -Wextra -Wpedantic -Werror -Wno-strict-aliasing
     )
   endif()
 endfunction()

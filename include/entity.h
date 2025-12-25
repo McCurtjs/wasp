@@ -51,6 +51,7 @@ typedef struct entity_id_t {
 //          levels and whatnot of course).
 typedef struct entity_t {
   entity_id_t id;
+  float create_time;
 
   vec3 pos;
 

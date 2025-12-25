@@ -78,10 +78,6 @@ void behavior_camera_test(Game game, entity_t* e, float dt) {
 
   // Other random inputs that aren't actaully related to camera motion
 
-  if (input_pressed(IN_CLOSE)) {
-    game->should_exit = true;
-  }
-
   if (input_pressed(IN_SNAP_LIGHT)) {
     demo->light_pos = game->camera.pos;
   }
@@ -104,21 +100,24 @@ vec3 game_screen_to_ray(Game game) {
   );
 }
 
-void behavior_click_ground(Game game, entity_t* e, float dt) {
+void behavior_wizard_level(Game game, entity_t* e, float dt) {
   UNUSED(dt);
   if (input_pressed(IN_CLICK_MOVE)) {
     vec3 ray = game_screen_to_ray(game);
     float t;
     if (v3ray_plane(game->camera.pos.xyz, ray, v3origin, v3up, &t)) {
       game->demo->target = v3add(game->camera.pos.xyz, v3scale(ray, t));
-      e->transform = m4translation(game->demo->target);
     }
   }
+  e->transform.col[3].xyz = v3zero;
+  e->transform = m4mul(e->transform, m4rotation(v3z, dt)),
+  e->transform.col[3].xyz = game->demo->target;
 }
 
 #define WIZARD_SPEED 8.0f
 #define WIZARD_FAKE_SPEED (WIZARD_SPEED * 4.0f)
-#define WIZARD_FIRE_RATE 0.2f
+#define WIZARD_FIRE_RATE 0.05f
+#define WIZARD_BADDY_SPAWN_RATE 3.0f
 
 static void _wizard_movement(Game game, entity_t* e, float dt) {
   static vec3 fake_target = svNzero;
@@ -133,6 +132,9 @@ static void _wizard_movement(Game game, entity_t* e, float dt) {
   float max_move = WIZARD_SPEED * dt;
   if (distance + 0.1f < WIZARD_SPEED / 3.f) {
     max_move *= (distance + 0.1f) / (WIZARD_SPEED / 3.f);
+  }
+  if (input_pressed(IN_CLICK)) {
+    max_move /= 2.0f;
   }
   if (distance <= max_move) {
     e->pos = target;
@@ -181,9 +183,25 @@ static void behavior_projectile(Game game, entity_t* e, float dt) {
   }
 }
 
+#define con_type entity_id_t
+#define con_prefix entity
+#include "span.h"
+#include "array.h"
+#undef con_type
+#undef con_prefix
+
+Array_entity wizard_bullets = NULL;
+
 static void ondelete_projectile(Game game, entity_t* e) {
   UNUSED(game);
   light_remove(e->tmp);
+  if (wizard_bullets) {
+    entity_id_t* arr_foreach_index(id, i, wizard_bullets) {
+      if (id->unique == e->id.unique) {
+        arr_entity_remove_unstable(wizard_bullets, i);
+      }
+    }
+  }
 }
 
 static void _wizard_projectile(Game game, entity_t* e, float dt) {
@@ -195,7 +213,7 @@ static void _wizard_projectile(Game game, entity_t* e, float dt) {
     float t;
     if (v3ray_plane(game->camera.pos.xyz, click_ray, v3origin, v3up, &t)) {
       vec3 click_pos = v3add(game->camera.pos.xyz, v3scale(click_ray, t));
-      click_pos.y = 1.0f;
+      click_pos.y = 1.5f;
       vec3 launch_point = v3f(e->pos.x, 2, e->pos.z);
 
       index_t light_id = light_add((light_t) {
@@ -204,7 +222,7 @@ static void _wizard_projectile(Game game, entity_t* e, float dt) {
         .pos = launch_point
       });
 
-      game_entity_add(game, &(entity_t) {
+      entity_id_t eid = game_entity_add(game, &(entity_t) {
         .pos = v3norm(v3sub(click_pos, launch_point)),
         .transform = m4mul(m4translation(launch_point), m4scalar(0.4f)),
         .model = &demo->models.color_cube,
@@ -213,15 +231,125 @@ static void _wizard_projectile(Game game, entity_t* e, float dt) {
         .ondelete = ondelete_projectile,
         .tmp = light_id,
       });
+
+      if (!wizard_bullets) {
+        wizard_bullets = arr_entity_new();
+      }
+
+      arr_entity_push_back(wizard_bullets, eid);
     }
   }
 }
 
-void behavior_wizard(Game game, entity_t* e, float dt) {
-  demo_t* demo = game->demo;
+#include <math.h>
 
+#define BADDY_SPEED 4.0f
+static void behavior_baddy(Game game, entity_t* e, float dt) {
+  vec3 target = game->demo->target;
+  vec3 pos = e->transform.col[3].xyz;
+  vec3 dir = v3norm(v3sub(target, pos));
+  pos = v3add(pos, v3scale(dir, BADDY_SPEED * dt));
+  pos.y = 1.0f;
+  e->transform.col[3].xyz = pos;
+
+  if (wizard_bullets) {
+    entity_id_t* arr_foreach(bullet_id, wizard_bullets) {
+      entity_t* bullet = game_entity_ref(game, *bullet_id);
+      if (!bullet) continue;
+      vec3 bullet_pos = bullet->transform.col[3].xyz;
+      if (v3mag(v3sub(pos, bullet_pos)) < 2.f) {
+        game_entity_remove(game, *bullet_id);
+        e->tint.r -= 0.025f;
+        if (e->tint.r <= 0.0f) {
+          game_entity_remove(game, e->id);
+        }
+        return;
+      }
+    }
+  }
+}
+
+static void _wizard_baddies(Game game, entity_t* e, float dt) {
+  static float timer = WIZARD_BADDY_SPAWN_RATE;// *3.f;
+  timer -= dt;
+  if (timer < 0) {
+    timer = WIZARD_BADDY_SPAWN_RATE;
+    float theta = game->scene_time * 8483.f;
+    vec3 offset = v3f(cosf(theta), 0.f, sinf(theta));
+    offset = v3scale(offset, 40.f + (cosf(theta * 52.f) + 1) * 20.f);
+    vec3 pos = v3add(e->pos, offset);
+    pos.y = 1.f;
+    game_entity_add(game, &(entity_t) {
+      .pos = pos,
+      .model = &game->demo->models.box,
+      .material = game->demo->materials.crate,
+      .transform = m4mul(m4translation(pos), m4scalar(2.f)),
+      .tint = v3f(1.0f, 0.6f, 0.6f),
+      .render = render_pbr,
+      .behavior = behavior_baddy,
+    });
+  }
+}
+
+void behavior_wizard(Game game, entity_t* e, float dt) {
   _wizard_movement(game, e, dt);
   _wizard_projectile(game, e, dt);
+  _wizard_baddies(game, e, dt);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Monumnet behaviors
+////////////////////////////////////////////////////////////////////////////////
+
+#define PLANE_SPEED_MIN 30.f
+void behavior_camera_monument(Game game, entity_t* e, float dt) {
+  UNUSED(e);
+
+  float xrot = d2r(-game->input.mouse.move.y * 180.f / (float)game->window.h);
+  float yrot = d2r(-game->input.mouse.move.x * 180.f / (float)game->window.x);
+
+  vec2 rotation = v2f(xrot, yrot);
+  if (v2mag(rotation) > 0.01f) {
+    rotation = v2norm(rotation);
+    rotation = v2scale(rotation, dt * 1.8f);
+    rotation.x *= -1.f;
+    e->pos = v3add(e->pos, v23xz(rotation));
+  }
+
+  if (v3mag(e->pos) > 0.01f) {
+    vec3 half = v3scale(e->pos, 0.6f * dt);
+    camera_rotate_local(&game->camera, half);
+    e->pos = v3sub(e->pos, half);
+  }
+
+  if (input_triggered(IN_CLICK)) {
+    input_pointer_lock();
+  }
+
+  float speed = e->angle;
+
+  vec3 direction = game->camera.front.xyz;
+  speed += v3dot(direction, v3down) * dt * 9.8f;
+  if (speed < PLANE_SPEED_MIN) {
+    speed = PLANE_SPEED_MIN;
+  }
+
+  direction = v3scale(game->camera.front.xyz, speed * dt);
+  game->camera.pos.xyz = v3add(game->camera.pos.xyz, direction);
+
+  vec3 left = v3cross(game->camera.up.xyz, game->camera.front.xyz);
+  left = v3scale(v3norm(left), 18.f);
+  vec3 right = v3scale(left, -1.f);
+  light_t* light_left = light_ref(1);
+  light_t* light_right = light_ref(2);
+  if (light_left) {
+    light_left->pos = v3add(game->camera.pos.xyz, left);
+  }
+  if (light_right) {
+    light_right->pos = v3add(game->camera.pos.xyz, right);
+  }
+
+  e->angle = speed;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -234,12 +362,36 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
     e->hidden = !e->hidden;
   }
 
+  if (input_pressed(IN_CLOSE)) {
+    game->should_exit = true;
+  }
+
   if (input_triggered(IN_LEVEL_1)) {
     game->next_scene = 0;
   }
 
   if (input_triggered(IN_LEVEL_2)) {
     game->next_scene = 1;
+  }
+
+  if (input_triggered(IN_LEVEL_3_1)) {
+    game->next_scene = 2;
+  }
+
+  if (input_triggered(IN_LEVEL_3_2)) {
+    game->next_scene = 3;
+  }
+
+  if (input_triggered(IN_LEVEL_3_3)) {
+    game->next_scene = 4;
+  }
+
+  if (input_triggered(IN_LEVEL_3_4)) {
+    game->next_scene = 5;
+  }
+
+  if (input_triggered(IN_LEVEL_3_5)) {
+    game->next_scene = 6;
   }
 }
 

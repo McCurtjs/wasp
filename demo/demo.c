@@ -71,12 +71,23 @@ static keybind_t input_map[] = {
   { .name = IN_RELOAD, .key = 'p' },
   { .name = IN_LEVEL_1, .key = '1' },
   { .name = IN_LEVEL_2, .key = '2' },
+  { .name = IN_LEVEL_3_1, .key = '3' },
+  { .name = IN_LEVEL_3_2, .key = '4' },
+  { .name = IN_LEVEL_3_3, .key = '5' },
+  { .name = IN_LEVEL_3_4, .key = '6' },
+  { .name = IN_LEVEL_3_5, .key = '7' },
   { .name = IN_TOGGLE_SHADER, .key = 'm' },
   { .name = IN_TOGGLE_GRID, .key = 'g' },
 };
 
-static scene_load_fn_t demo_scenes[] = {
-  level_load_gears, level_load_monument
+static scene_load_fn_t demo_scenes[] =
+  { scene_load_gears
+  , scene_load_wizard
+  , scene_load_monument
+  , scene_load_monument2
+  , scene_load_monument3
+  , scene_load_monument4
+  , scene_load_monument5
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -202,6 +213,9 @@ bool export(wasp_load) (Game game, int await_count, float dt) {
   };
 
   str_write("Async load finished");
+
+#undef far // why does windows define "far", lol
+  game->camera.perspective.far = 3000.0f;
 
   shader_build_all();
   material_build_all();

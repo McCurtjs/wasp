@@ -35,6 +35,14 @@ function wasm_import_base(imports, game) {
     if (!data || data.type != types.bytes) return;
     game.free(data_id);
   }
+
+  imports['js_pointer_lock'] = () => {
+    game.canvas.requestPointerLock();
+  }
+
+  imports['js_pointer_unlock'] = () => {
+    document.exitPointerLock();
+  }
 }
 
 export { wasm_import_base };

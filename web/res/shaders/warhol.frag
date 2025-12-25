@@ -39,7 +39,7 @@ void main() {
     vec4 view = in_proj_inverse * clip;
     view /= view.w;
     vec3 pos = view.xyz;
-    fragColor = vec4(vec3(length(pos)/50.0), 1.0); //vec4(uv.x, uv.y, 0.0, 1.0);
+    fragColor = vec4(vec3(length(pos)/75.0), 1.0); //vec4(uv.x, uv.y, 0.0, 1.0);
   }
 
   // Bottom Right

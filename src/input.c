@@ -27,6 +27,16 @@
 static input_t _input_default = { 0 };
 static input_t* _input = &_input_default;
 
+// imports for mouse-locking
+#ifdef __WASM__
+extern void js_pointer_lock(void);
+extern void js_pointer_unlock(void);
+#else
+#include "SDL3/SDL.h"
+#include "game.h"
+extern Game game_singleton;
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 // Use provided input struct for global input management
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,6 +63,43 @@ void input_update(input_t* input) {
     keybind->released = false;
   }
   input->mouse.move = v2zero;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Locks the cursor position and hides it
+////////////////////////////////////////////////////////////////////////////////
+
+void input_pointer_lock(void) {
+#ifdef __WASM__
+  js_pointer_lock();
+#else
+  SDL_Window* sdl_window = SDL_GL_GetCurrentWindow();
+  bool success = SDL_SetWindowRelativeMouseMode(sdl_window, true);
+  if (!success) {
+    str_write(SDL_GetError());
+  }
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Unlocks and unhides the cursor position
+////////////////////////////////////////////////////////////////////////////////
+
+void input_pointer_unlock(void) {
+#ifdef __WASM__
+  js_pointer_unlock();
+#else
+  SDL_Window* sdl_window = SDL_GL_GetCurrentWindow();
+  bool success = SDL_SetWindowRelativeMouseMode(sdl_window, false);
+  if (!success) {
+    str_write(SDL_GetError());
+  }
+  else {
+    vec2 center = v2vi(game_singleton->window);
+    center = v2scale(center, 0.5f);
+    SDL_WarpMouseInWindow(sdl_window, center.x, center.y);
+  }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
