@@ -175,13 +175,14 @@ void game_reset(Game _game) {
 // Adds a game entity
 ////////////////////////////////////////////////////////////////////////////////
 
-entity_id_t game_entity_add(Game _game, entity_t* entity) {
+entity_id_t game_entity_add(Game _game, const entity_t* entity) {
+  vec3 tint = entity->tint;
   GAME_INTERNAL;
-  if (entity->tint.x == 0.0f
-  &&  entity->tint.y == 0.0f
-  &&  entity->tint.z == 0.0f
+  if (tint.x == 0.0f
+  &&  tint.y == 0.0f
+  &&  tint.z == 0.0f
   ) {
-    entity->tint = v3ones;
+    tint = v3ones;
   }
 
   entity_wrapper_t* slot;
@@ -204,6 +205,7 @@ entity_id_t game_entity_add(Game _game, entity_t* entity) {
     .active = true,
     .entity = *entity,
   };
+  slot->entity.tint = tint;
   slot->id = (entity_id_t) {
     .index = (uint)index, .unique = ++game->entity_counter
   };

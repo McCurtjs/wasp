@@ -45,12 +45,9 @@ typedef struct entity_id_t {
   uint unique;
 } entity_id_t;
 
-// todo: if "Entity" is not partially opaque, should it be "entity" instead?
-//          should it just be opaque? Should entities be created via a prefab
-//          or entity_builder type object (want a way to define them inline in
-//          levels and whatnot of course).
 typedef struct entity_t {
   entity_id_t id;
+  slice_t name;
   float create_time;
 
   vec3 pos;

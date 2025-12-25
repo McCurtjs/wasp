@@ -146,7 +146,7 @@ scene_unload_fn_t scene_load_gears(Game game) {
   game_entity_add(game, &(entity_t) {
     .model = &demo->models.box,
     .material = demo->materials.crate,
-    .transform = m4mul(m4translation(v3f(2, 0, 0)), m4scalar(2)),
+    .transform = m4ts(v3f(2, 0, 0), 2),
     .render = render_pbr,
   }); //*/
 
@@ -155,7 +155,7 @@ scene_unload_fn_t scene_load_gears(Game game) {
     .model = &demo->models.box,
     .material = demo->materials.renderite,
     .tint = v3f(0.8f, 0.3f, 0.6f),
-    .transform = m4mul(m4translation(v3f(5, 0.5, 0)), m4scalar(3)),
+    .transform = m4ts(v3f(5, 0.5f, 0), 3.f),
     .render = render_pbr,
   }); //*/
 
@@ -165,7 +165,7 @@ scene_unload_fn_t scene_load_gears(Game game) {
       float x = 23.0f * i;
       float y = 23.0f * j;
       float angle = 0.02f; // 3.0f / (x * y);
-      vec3 axis = v3norm(v3f(cosf(y), 1, cosf(x)));
+      vec3 axis = v3norm(v3f(cosf(y), 1, sinf(x)));
       vec3 pos = v3f(x, -10.5, y);
       if (!(i == 0 && i == j)) {
         angle = 0.f;
@@ -186,17 +186,14 @@ scene_unload_fn_t scene_load_gears(Game game) {
         material = demo->materials.sands;
       }
       else if (i % 2 == 0) {
-        material = j % 2 == 0 ? demo->materials.renderite : demo->materials.mudds;
+        material = j % 2 == 0 ?
+          demo->materials.renderite : demo->materials.mudds;
       }
 
       game_entity_add(game, &(entity_t) {
         .model = &demo->models.box,
         .material = material,
-        .transform =
-          m4mul(
-            m4mul(m4translation(pos), m4rotation(axis, angle)),
-            m4scalar(19)
-          ),
+        .transform = m4trs(pos, axis, angle, 19),
         .render = render_pbr,
       });
 
@@ -295,9 +292,7 @@ scene_unload_fn_t scene_load_wizard(Game game) {
       game_entity_add(game, &(entity_t) {
         .model = &demo->models.box,
         .material = material,
-        .transform = m4mul(
-          m4translation(pos), m4vscalar(v3f(5, 2, 5))
-        ),
+        .transform = m4tsv(pos, v3f(5, 2, 5)),
         .render = render_pbr,
       });
     }
@@ -370,9 +365,7 @@ static scene_unload_fn_t _scene_load_monument(Game game) {
         game_entity_add(game, &(entity_t) {
           .model = &demo->models.box,
           .material = demo->materials.mudds,
-          .transform = m4mul(
-            m4translation(pos), m4scalar(120.f - 2.f * (y + ext))
-          ),
+          .transform = m4ts(pos, 120.f - 2.f * (y + ext)),
           .render = render_pbr,
         });
       }
@@ -387,12 +380,7 @@ static scene_unload_fn_t _scene_load_monument(Game game) {
     .render = render_pbr,
     .tint = c4white.rgb,
     .material = demo->materials.renderite,
-    .transform = m4mul(
-      m4translation(v3add(sun_pos, v3f(0, 30, 0))),
-      m4mul(
-        m4rotation(v3x, d2r(90.f)), m4scalar(15.f)
-      )
-    ),
+    .transform = m4trs(v3add(sun_pos, v3f(0, 30, 0)), v3x, d2r(90.f), 15.f),
     .behavior = behavior_gear_rotate_cw,
   });
 

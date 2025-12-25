@@ -161,10 +161,10 @@ static void _wizard_movement(Game game, entity_t* e, float dt) {
   e->transform = m4translation(e->pos);
   game->camera.pos.xyz = v3add(e->pos, v3f(6, 12, 7));
 
-  vec3 cam_to_target = v3norm(v3sub(fake_target, game->camera.pos.xyz));
-  vec3 cam_to_wizard = v3norm(v3sub(e->pos, game->camera.pos.xyz));
+  vec3 cam_to_target = v3dir(fake_target, game->camera.pos.xyz);
+  vec3 cam_to_wizard = v3dir(e->pos, game->camera.pos.xyz);
   //vec3 diff = v3sub(cam_to_target, cam_to_wizard);
-  cam_to_target = v3add(cam_to_wizard, v3scale(v3norm(cam_to_target), 0.3f));
+  cam_to_target = v3add(cam_to_wizard, v3rescale(cam_to_target, 0.3f));
   cam_to_target = v3norm(cam_to_target);
 
   game->camera.front.xyz = cam_to_target;
@@ -223,8 +223,8 @@ static void _wizard_projectile(Game game, entity_t* e, float dt) {
       });
 
       entity_id_t eid = game_entity_add(game, &(entity_t) {
-        .pos = v3norm(v3sub(click_pos, launch_point)),
-        .transform = m4mul(m4translation(launch_point), m4scalar(0.4f)),
+        .pos = v3dir(click_pos, launch_point),
+        .transform = m4ts(launch_point, 0.4f),
         .model = &demo->models.color_cube,
         .render = render_basic,
         .behavior = behavior_projectile,
@@ -247,7 +247,7 @@ static void _wizard_projectile(Game game, entity_t* e, float dt) {
 static void behavior_baddy(Game game, entity_t* e, float dt) {
   vec3 target = game->demo->target;
   vec3 pos = e->transform.col[3].xyz;
-  vec3 dir = v3norm(v3sub(target, pos));
+  vec3 dir = v3dir(target, pos);
   pos = v3add(pos, v3scale(dir, BADDY_SPEED * dt));
   pos.y = 1.0f;
   e->transform.col[3].xyz = pos;
@@ -257,7 +257,7 @@ static void behavior_baddy(Game game, entity_t* e, float dt) {
       entity_t* bullet = game_entity_ref(game, *bullet_id);
       if (!bullet) continue;
       vec3 bullet_pos = bullet->transform.col[3].xyz;
-      if (v3mag(v3sub(pos, bullet_pos)) < 2.f) {
+      if (v3dist(pos, bullet_pos) < 2.f) {
         game_entity_remove(game, *bullet_id);
         e->tint.r -= 0.025f;
         if (e->tint.r <= 0.0f) {
@@ -275,7 +275,7 @@ static void _wizard_baddies(Game game, entity_t* e, float dt) {
   if (timer < 0) {
     timer = WIZARD_BADDY_SPAWN_RATE;
     float theta = game->scene_time * 8483.f;
-    vec3 offset = v3f(cosf(theta), 0.f, sinf(theta));
+    vec3 offset = v23xz(v2heading(theta));
     offset = v3scale(offset, 40.f + (cosf(theta * 52.f) + 1) * 20.f);
     vec3 pos = v3add(e->pos, offset);
     pos.y = 1.f;
@@ -283,7 +283,7 @@ static void _wizard_baddies(Game game, entity_t* e, float dt) {
       .pos = pos,
       .model = &game->demo->models.box,
       .material = game->demo->materials.crate,
-      .transform = m4mul(m4translation(pos), m4scalar(2.f)),
+      .transform = m4ts(pos, 2.f),
       .tint = v3f(1.0f, 0.6f, 0.6f),
       .render = render_pbr,
       .behavior = behavior_baddy,
@@ -338,7 +338,7 @@ void behavior_camera_monument(Game game, entity_t* e, float dt) {
   game->camera.pos.xyz = v3add(game->camera.pos.xyz, direction);
 
   vec3 left = v3cross(game->camera.up.xyz, game->camera.front.xyz);
-  left = v3scale(v3norm(left), 18.f);
+  left = v3rescale(left, 18.f);
   vec3 right = v3scale(left, -1.f);
   light_t* light_left = light_ref(1);
   light_t* light_right = light_ref(2);

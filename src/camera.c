@@ -50,7 +50,7 @@ static mat4 _camera_look(vec3 pos, vec3 target, vec3 up) {
 void camera_build(camera_t* camera) {
   if (camera->type == CAMERA_ORTHOGRAPHIC) {
     Camera_Orthographic params = camera->orthographic;
-    camera->projection = m4ortho(
+    camera->projection = m4orthographic(
       params.left, params.right,
       params.top, params.bottom,
       params.near, params.far
