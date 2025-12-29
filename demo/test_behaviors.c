@@ -183,7 +183,7 @@ static void behavior_projectile(Game game, entity_t* e, float dt) {
   }
 }
 
-#define con_type entity_id_t
+#define con_type slotkey_t
 #define con_prefix entity
 #include "span.h"
 #include "array.h"
@@ -196,8 +196,8 @@ static void ondelete_projectile(Game game, entity_t* e) {
   UNUSED(game);
   light_remove(e->tmp);
   if (wizard_bullets) {
-    entity_id_t* arr_foreach_index(id, i, wizard_bullets) {
-      if (id->unique == e->id.unique) {
+    slotkey_t* arr_foreach_index(id, i, wizard_bullets) {
+      if (id->hash == e->id.hash) {
         arr_entity_remove_unstable(wizard_bullets, i);
       }
     }
@@ -222,7 +222,7 @@ static void _wizard_projectile(Game game, entity_t* e, float dt) {
         .pos = launch_point
       });
 
-      entity_id_t eid = game_entity_add(game, &(entity_t) {
+      slotkey_t eid = game_entity_add(game, &(entity_t) {
         .pos = v3dir(click_pos, launch_point),
         .transform = m4ts(launch_point, 0.4f),
         .model = &demo->models.color_cube,
@@ -253,7 +253,7 @@ static void behavior_baddy(Game game, entity_t* e, float dt) {
   e->transform.col[3].xyz = pos;
 
   if (wizard_bullets) {
-    entity_id_t* arr_foreach(bullet_id, wizard_bullets) {
+    slotkey_t* arr_foreach(bullet_id, wizard_bullets) {
       entity_t* bullet = game_entity_ref(game, *bullet_id);
       if (!bullet) continue;
       vec3 bullet_pos = bullet->transform.col[3].xyz;

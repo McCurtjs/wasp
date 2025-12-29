@@ -31,6 +31,7 @@
 #include "shader.h"
 #include "array.h"
 #include "material.h"
+#include "slotkey.h"
 
 typedef struct _opaque_Game_t* Game;
 typedef struct entity_t entity_t;
@@ -40,13 +41,8 @@ typedef void (*entity_render_fn_t)(Game game, entity_t* e);
 typedef void (*entity_create_fn_t)(Game game, entity_t* e);
 typedef void (*entity_delete_fn_t)(Game game, entity_t* e);
 
-typedef struct entity_id_t {
-  uint index;
-  uint unique;
-} entity_id_t;
-
 typedef struct entity_t {
-  entity_id_t id;
+  slotkey_t id;
   slice_t name;
   float create_time;
 

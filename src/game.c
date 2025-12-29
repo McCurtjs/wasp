@@ -27,28 +27,18 @@
 #include "wasm.h"
 #include "light.h"
 
-typedef struct entity_wrapper_t {
-  bool active;
-  union {
-    index_t next_free;
-    entity_id_t id;
-    entity_t entity;
-  };
-} entity_wrapper_t;
-
-#define con_type entity_wrapper_t
+#define con_type entity_t
 #define con_prefix entity
-#include "span.h"
-#include "array.h"
-#undef con_type
+#include "slotmap.h"
 #undef con_prefix
+#undef con_type
 
-#define con_type entity_id_t
+#define con_type slotkey_t
 #define con_prefix id
 #include "span.h"
 #include "array.h"
-#undef con_type
 #undef con_prefix
+#undef con_type
 
 typedef struct Game_Internal {
   void* game;
@@ -74,11 +64,9 @@ typedef struct Game_Internal {
 
   // secrets
   scene_unload_fn_t scene_unload;
-  Array_entity entities;
+  SlotMap_entity entities;
   Array_id entity_actors;
   Array_id entity_removals;
-  index_t free_list;
-  uint entity_counter;
 
 } Game_Internal;
 
@@ -118,10 +106,9 @@ Game game_new(String title, vec2i window_size) {
     },
     .scene = 0,
     .next_scene = 0,
-    .entities = arr_entity_new(),
+    .entities = smap_entity_new(),
     .entity_actors = arr_id_new(),
-    .free_list = -1,
-    .entity_counter = 0,
+    .entity_removals = arr_id_new(),
   };
 
   game_singleton = (Game)&_game_singleton;
@@ -167,7 +154,7 @@ void game_reset(Game _game) {
   GAME_INTERNAL;
   game->scene_time = 0.0f;
   input_set(&game->input);
-  arr_entity_clear(game->entities);
+  smap_entity_clear(game->entities);
   camera_build(&game->camera);
 }
 
@@ -175,8 +162,8 @@ void game_reset(Game _game) {
 // Adds a game entity
 ////////////////////////////////////////////////////////////////////////////////
 
-entity_id_t game_entity_add(Game _game, const entity_t* entity) {
-  vec3 tint = entity->tint;
+slotkey_t game_entity_add(Game _game, const entity_t* input_entity) {
+  vec3 tint = input_entity->tint;
   GAME_INTERNAL;
   if (tint.x == 0.0f
   &&  tint.y == 0.0f
@@ -185,38 +172,19 @@ entity_id_t game_entity_add(Game _game, const entity_t* entity) {
     tint = v3ones;
   }
 
-  entity_wrapper_t* slot;
-  index_t index;
-  
-  // Reclaim an inactive slot, or push an entity back
-  if (game->free_list >= 0) {
-    index = game->free_list;
-    slot = arr_entity_ref(game->entities, index);
-    assert(slot && !slot->active);
-    game->free_list = slot->next_free;
-  }
-  else {
-    index = game->entities->size;
-    slot = arr_entity_emplace_back(game->entities);
-    assert(slot);
-  }
+  slotkey_t key;
+  entity_t* entity = smap_entity_emplace(game->entities, &key);
 
-  *slot = (entity_wrapper_t){
-    .active = true,
-    .entity = *entity,
-  };
-  slot->entity.tint = tint;
-  slot->id = (entity_id_t) {
-    .index = (uint)index, .unique = ++game->entity_counter
-  };
+  *entity = *input_entity;
+  entity->id = key;
+  entity->tint = tint;
 
   // Register new entity's behavior function if it has one
-  if (slot->entity.behavior) {
-    entity_id_t* actor_id = arr_id_emplace_back(game->entity_actors);
-    *actor_id = slot->id;
+  if (entity->behavior) {
+    arr_id_push_back(game->entity_actors, key);
   }
 
-  slot->entity.create_time = game->scene_time;
+  entity->create_time = game->scene_time;
 
   // Register renderable
   // TODO
@@ -225,47 +193,34 @@ entity_id_t game_entity_add(Game _game, const entity_t* entity) {
   // update the transforms buffer all at once
 
   // Run on-create callback
-  if (slot->entity.oncreate) {
-    slot->entity.oncreate(_game, &slot->entity);
+  if (entity->oncreate) {
+    entity->oncreate(_game, entity);
   }
 
-  return slot->id;
+  return key;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-entity_t* game_entity_ref(Game _game, entity_id_t id) {
+entity_t* game_entity_ref(Game _game, slotkey_t id) {
   GAME_INTERNAL;
-  entity_wrapper_t* e = arr_entity_ref(game->entities, (index_t)id.index);
-  if (!e
-  ||  !e->active
-  ||  e->id.unique != id.unique
-  ||  !e->entity.behavior
-  ) {
-    return NULL;
-  }
-  return &e->entity;
+  return smap_entity_ref(game->entities, id);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void game_entity_remove(Game _game, entity_id_t id) {
+void game_entity_remove(Game _game, slotkey_t id) {
   GAME_INTERNAL;
-  index_t index = (index_t)id.index;
-  entity_wrapper_t* e = arr_entity_ref(game->entities, index);
-  if (!e || !e->active || e->id.unique != id.unique) {
-    return;
-  }
+  entity_t* entity = smap_entity_ref(game->entities, id);
+  if (!entity) return;
 
   // TODO: remove entity from the rendering list
 
-  if (e->entity.ondelete) {
-    e->entity.ondelete(_game, &e->entity);
+  if (entity->ondelete) {
+    entity->ondelete(_game, entity);
   }
 
-  e->active = false;
-  e->next_free = game->free_list;
-  game->free_list = id.index;
+  smap_entity_remove(game->entities, id);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -288,17 +243,16 @@ void game_update(Game _game, float dt) {
   game->scene_time += dt;
 
   for (index_t i = 0; i < game->entity_actors->size; ) {
-    entity_id_t id = game->entity_actors->begin[i];
-    entity_wrapper_t* e = arr_entity_ref(game->entities, (index_t)id.index);
-    if (!e 
-    ||  !e->active
-    ||  e->id.unique != id.unique
-    ||  !e->entity.behavior
-    ) {
+    slotkey_t id = game->entity_actors->begin[i];
+    entity_t* entity = smap_entity_ref(game->entities, id);
+
+    if (!entity || !entity->behavior) {
       arr_id_remove_unstable(game->entity_actors, i);
       continue;
     }
-    e->entity.behavior(_game, &e->entity, dt);
+
+    entity->behavior(_game, entity, dt);
+
     ++i;
   }
 
@@ -315,9 +269,9 @@ void game_render(Game _game) {
   game->camera.projview = camera_projection_view(&game->camera);
   game->camera.view = camera_view(&game->camera);
 
-  entity_wrapper_t* arr_foreach(e, game->entities) {
-    if (e->active && e->entity.render && !e->entity.hidden) {
-      e->entity.render(_game, &e->entity);
+  entity_t* smap_foreach(entity, game->entities) {
+    if (entity->render && !entity->hidden) {
+      entity->render(_game, entity);
     }
   }
 }
@@ -334,17 +288,15 @@ void game_cleanup(Game _game) {
     game->scene_unload = NULL;
   }
 
-  entity_wrapper_t* arr_foreach(e, game->entities) {
-    if (e->entity.ondelete) {
-      e->entity.ondelete(_game, &e->entity);
+  entity_t* smap_foreach(entity, game->entities) {
+    if (entity->ondelete) {
+      entity->ondelete(_game, entity);
     }
   }
 
-  arr_entity_clear(game->entities);
+  smap_entity_clear(game->entities);
   arr_id_clear(game->entity_actors);
   light_clear();
-  game->free_list = -1;
-  game->entity_counter = 0;
 
   game->camera.front = v4front;
   game->camera.up = v4up;

@@ -92,10 +92,10 @@ Game game_new(String title, vec2i window_size);
 
 void game_reset(Game game);
 
-entity_id_t game_entity_add(Game game, const entity_t* entity);
-entity_t* game_entity_ref(Game game, entity_id_t entity_id);
-void game_entity_remove(Game game, entity_id_t entity_id);
-void game_entity_set_behavior(Game game, entity_id_t id, entity_update_fn_t bh);
+slotkey_t game_entity_add(Game game, const entity_t* entity);
+entity_t* game_entity_ref(Game game, slotkey_t entity_id);
+void game_entity_remove(Game game, slotkey_t entity_id);
+void game_entity_set_behavior(Game game, slotkey_t id, entity_update_fn_t bh);
 
 void game_update(Game game, float dt);
 void game_render(Game game);
