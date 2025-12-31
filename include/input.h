@@ -53,8 +53,6 @@ typedef struct input_t {
   input_mouse_t mouse;
 } input_t;
 
-void input_set(input_t* input);
-void input_unset(const input_t* input);
 void input_update(input_t* input);
 void input_pointer_lock(void);
 void input_pointer_unlock(void);

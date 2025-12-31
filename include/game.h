@@ -90,8 +90,13 @@ typedef struct _opaque_Game_t {
 
 Game game_init(int window_width, int window_height);
 Game game_new(String title, vec2i window_size);
+void game_delete(Game* game);
 
-void game_reset(Game game);
+void game_set_active(Game game);
+Game game_get_active(void);
+
+void game_set_local(Game game);
+Game game_get_local(void);
 
 slotkey_t game_entity_add(Game game, const entity_t* entity);
 entity_t* game_entity_ref(Game game, slotkey_t entity_id);
@@ -100,6 +105,5 @@ void game_entity_set_behavior(Game game, slotkey_t id, entity_update_fn_t bh);
 
 void game_update(Game game, float dt);
 void game_render(Game game);
-void game_cleanup(Game game);
 
 #endif

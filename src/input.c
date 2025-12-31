@@ -23,9 +23,7 @@
 */
 
 #include "input.h"
-
-static input_t _input_default = { 0 };
-static input_t* _input = &_input_default;
+#include "game.h"
 
 // imports for mouse-locking
 #ifdef __WASM__
@@ -33,31 +31,13 @@ extern void js_pointer_lock(void);
 extern void js_pointer_unlock(void);
 #else
 #include "SDL3/SDL.h"
-#include "game.h"
-extern Game game_singleton;
 #endif
-
-////////////////////////////////////////////////////////////////////////////////
-// Use provided input struct for global input management
-////////////////////////////////////////////////////////////////////////////////
-
-void input_set(input_t* input) {
-  if (input == NULL) input = &_input_default;
-  _input = input;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-void input_unset(const input_t* input) {
-  if (_input == input) input_set(NULL);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Update active input by clearing per-frame values
 ////////////////////////////////////////////////////////////////////////////////
 
 void input_update(input_t* input) {
-  if (input == NULL) input = _input;
   keybind_t* span_foreach(keybind, input->keymap) {
     keybind->triggered = false;
     keybind->released = false;
@@ -92,11 +72,11 @@ void input_pointer_unlock(void) {
   SDL_Window* sdl_window = SDL_GL_GetCurrentWindow();
   bool success = SDL_SetWindowRelativeMouseMode(sdl_window, false);
   if (!success) {
-    str_write(SDL_GetError());
+    str_log("[Input.pointer] Failed to unlock: {}", SDL_GetError());
   }
   else {
-    vec2 center = v2vi(game_singleton->window);
-    center = v2scale(center, 0.5f);
+    vec2i window = game_get_active()->window;
+    vec2 center = v2scale(v2vi(window), 0.5f);
     SDL_WarpMouseInWindow(sdl_window, center.x, center.y);
   }
 #endif
@@ -107,7 +87,8 @@ void input_pointer_unlock(void) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool input_triggered(int input_name) {
-  keybind_t* span_foreach(keybind, _input->keymap) {
+  span_keymap_t keymap = game_get_active()->input.keymap;
+  keybind_t* span_foreach(keybind, keymap) {
     if (keybind->name == input_name && keybind->triggered) {
       return true;
     }
@@ -120,7 +101,8 @@ bool input_triggered(int input_name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool input_pressed(int input_name) {
-  keybind_t* span_foreach(keybind, _input->keymap) {
+  span_keymap_t keymap = game_get_active()->input.keymap;
+  keybind_t* span_foreach(keybind, keymap) {
     if (keybind->name == input_name && keybind->pressed) {
       return true;
     }
@@ -133,7 +115,8 @@ bool input_pressed(int input_name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool input_released(int input_name) {
-  keybind_t* span_foreach(keybind, _input->keymap) {
+  span_keymap_t keymap = game_get_active()->input.keymap;
+  keybind_t* span_foreach(keybind, keymap) {
     if (keybind->name == input_name && keybind->released) {
       return true;
     }

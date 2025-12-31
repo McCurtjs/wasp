@@ -72,13 +72,13 @@ static keybind_t input_map[] = {
 };
 
 static scene_load_fn_t demo_scenes[] =
-  { scene_load_gears
-  , scene_load_wizard
-  , scene_load_monument
-  , scene_load_monument2
-  , scene_load_monument3
-  , scene_load_monument4
-  , scene_load_monument5
+{ scene_load_gears
+, scene_load_wizard
+, scene_load_monument
+, scene_load_monument2
+, scene_load_monument3
+, scene_load_monument4
+, scene_load_monument5
 };
 
 ////////////////////////////////////////////////////////////////////////////////

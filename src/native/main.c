@@ -47,8 +47,11 @@ static struct {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int SDLCALL _loading_thread_fn(void* data) {
+  game_set_local(data);
   return wasp_preload(data);
 }
+
+////////////////////////////////////////////////////////////////////////////////
 
 SDL_AppResult SDL_AppInit(void** app_state, int argc, char* argv[]) {
   UNUSED(app_state);
@@ -167,6 +170,8 @@ void SDL_AppQuit(void* app_state, SDL_AppResult result) {
   str_log("[App.Quit] Closing with code: {}", (int)result);
 
   fflush(stdout);
+
+  game_delete(&app.game);
 
   if (app.gl_context) {
     SDL_GL_DestroyContext(app.gl_context);

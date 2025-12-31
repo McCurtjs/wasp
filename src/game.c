@@ -40,6 +40,8 @@
 #undef con_prefix
 #undef con_type
 
+#include <stdlib.h>
+
 typedef struct Game_Internal {
   void* game;
 
@@ -74,8 +76,8 @@ typedef struct Game_Internal {
   Game_Internal* game = (Game_Internal*)(_game); \
   assert(game)
 
-static Game_Internal _game_singleton;
-Game game_singleton = (Game)&_game_singleton;
+static Game _game_instance_primary = NULL;
+static thread_local Game _game_instance_local = NULL;
 
 #ifdef __WASM__
 int export(canary)(int _) {
@@ -85,6 +87,63 @@ int export(canary)(int _) {
   return 0;
 }
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+// Closing and changing the game level
+////////////////////////////////////////////////////////////////////////////////
+
+static void _game_scene_close(Game_Internal* game) {
+  if (game->scene_unload) {
+    game->scene_unload((Game)game);
+    game->scene_unload = NULL;
+  }
+
+  // Run all remaining entity ondelete functions in case they need to clear out
+  //    other resources.
+  // Should this be removed? We probably don't want game-related events to
+  //    trigger here, like playing sounds or affecting score or the like.
+  entity_t* smap_foreach(entity, game->entities) {
+    if (entity->ondelete) {
+      entity->ondelete((Game)game, entity);
+    }
+  }
+
+  smap_entity_clear(game->entities);
+  light_clear();
+  arr_id_clear(game->entity_actors);
+  arr_id_clear(game->entity_removals);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static void _game_scene_switch(Game_Internal* game) {
+
+  // A value of -1 means "continue playing current scene"
+  if (game->next_scene < 0) return;
+
+  // Validate scene index is within count of available scenes
+  index_t scene_count = span_scene_size(game->scenes);
+  if (game->next_scene >= scene_count) {
+    str_log("[Scene.switch] Scene index out of range: {}", game->next_scene);
+    game->next_scene = -1;
+    return;
+  }
+
+  _game_scene_close(game);
+
+  // Reset camera to the default
+  game->camera.up = v4up;
+  game->camera.front = v4front;
+  camera_build(&game->camera);
+  game->scene_time = 0.0f;
+
+  // Load the next scene
+  scene_load_fn_t load_scene = span_scene_get(game->scenes, game->next_scene);
+  assert(load_scene);
+  game->scene_unload = load_scene((Game)game);
+  game->scene = game->next_scene;
+  game->next_scene = -1;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Game initialization function
@@ -111,7 +170,9 @@ Game export(game_init) (int x, int y) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Game game_new(String title, vec2i window_size) {
-  _game_singleton = (Game_Internal) {
+  Game_Internal* ret = malloc(sizeof(Game_Internal));
+  assert(ret);
+  *ret = (Game_Internal){
     .window = window_size,
     .title = title,
     .camera = {
@@ -129,56 +190,68 @@ Game game_new(String title, vec2i window_size) {
     },
     .scene = 0,
     .next_scene = 0,
+    .scene_time = 0,
     .entities = smap_entity_new(),
     .entity_actors = arr_id_new(),
     .entity_removals = arr_id_new(),
   };
 
-  game_singleton = (Game)&_game_singleton;
+  Game p_ret = (Game)ret;
 
-  game_reset(game_singleton);
-
-  return game_singleton;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Changes the game level
-////////////////////////////////////////////////////////////////////////////////
-
-static void _game_scene_switch(Game _game) {
-  GAME_INTERNAL;
-
-  // A value of -1 means "continue playing current scene"
-  if (game->next_scene < 0) return;
-
-  // Validate scene index is within count of available scenes
-  index_t scene_count = span_scene_size(game->scenes);
-  if (game->next_scene >= scene_count) {
-    str_log("[Scene.switch] Scene index out of range: {}", game->next_scene);
-    game->next_scene = -1;
-    return;
+  if (!_game_instance_primary) {
+    _game_instance_primary = p_ret;
   }
 
-  // Unload the current scene and swap to the new scene (or reload)
-  game_cleanup(_game);
-  game_reset(_game);
-  scene_load_fn_t load_scene = span_scene_get(game->scenes, game->next_scene);
-  assert(load_scene);
-  game->scene_unload = load_scene(_game);
-  game->scene = game->next_scene;
-  game->next_scene = -1;
+  if (!_game_instance_local) {
+    _game_instance_local = p_ret;
+  }
+
+  camera_build(&ret->camera);
+
+  return p_ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// TODO: actually reset the game instead of leaking memory?
+// Deletes and cleans up the game
 ////////////////////////////////////////////////////////////////////////////////
 
-void game_reset(Game _game) {
-  GAME_INTERNAL;
-  game->scene_time = 0.0f;
-  input_set(&game->input);
-  smap_entity_clear(game->entities);
-  camera_build(&game->camera);
+void game_delete(Game* _game) {
+  if (!_game || !*_game) return;
+  Game_Internal* game = (Game_Internal*)*_game;
+  _game_scene_close(game);
+  smap_entity_delete(&game->entities);
+  arr_id_delete(&game->entity_actors);
+  arr_id_delete(&game->entity_removals);
+  if (_game_instance_primary == *_game) _game_instance_primary = NULL;
+  if (_game_instance_local == *_game) _game_instance_local = NULL;
+  free(game);
+  *_game = NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Assign or get active primary or thread-local Game object
+////////////////////////////////////////////////////////////////////////////////
+
+void game_set_active(Game game) {
+  _game_instance_primary = game;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+Game game_get_active(void) {
+  return _game_instance_primary;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void game_set_local(Game game) {
+  _game_instance_local = game;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+Game game_get_local(void) {
+  return _game_instance_local;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -260,7 +333,7 @@ void game_update(Game _game, float dt) {
   GAME_INTERNAL;
   // If a scene change is requested, do that now
   if (game->next_scene >= 0) {
-    _game_scene_switch(_game);
+    _game_scene_switch(game);
   }
   else {
     game->scene_time += dt;
@@ -309,30 +382,4 @@ void game_render(Game _game) {
       entity->render(_game, entity);
     }
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Clears game entity pool
-////////////////////////////////////////////////////////////////////////////////
-
-void game_cleanup(Game _game) {
-  GAME_INTERNAL;
-
-  if (game->scene_unload) {
-    game->scene_unload(_game);
-    game->scene_unload = NULL;
-  }
-
-  entity_t* smap_foreach(entity, game->entities) {
-    if (entity->ondelete) {
-      entity->ondelete(_game, entity);
-    }
-  }
-
-  smap_entity_clear(game->entities);
-  arr_id_clear(game->entity_actors);
-  light_clear();
-
-  game->camera.front = v4front;
-  game->camera.up = v4up;
 }
