@@ -26,6 +26,7 @@
 
 #include "wasm.h"
 #include "light.h"
+#include "graphics.h"
 #include "wasp.h"
 
 #define con_type entity_t
@@ -51,10 +52,12 @@ typedef struct Game_Internal {
   index_t scene;
   float scene_time;
 
+  // systems
+  Graphics graphics;
+
   // setup properties
   input_t input;
   span_scene_t scenes;
-
 
   // reactive properties
   camera_t camera;
@@ -175,6 +178,9 @@ Game game_new(String title, vec2i window_size) {
   *ret = (Game_Internal){
     .window = window_size,
     .title = title,
+    .scene = 0,
+    .scene_time = 0.0,
+    .graphics = gfx_new(),
     .camera = {
       .type = CAMERA_PERSPECTIVE,
       .pos = p4origin,//v4f(0, 0, 60, 1),

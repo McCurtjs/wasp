@@ -27,6 +27,7 @@
 
 #include "types.h"
 #include "vec.h"
+#include "slotkey.h"
 
 #pragma pack(1)
 typedef struct light_t {
@@ -38,12 +39,21 @@ typedef struct light_t {
 } light_t;
 #pragma pack()
 
-index_t   light_add(light_t light);
-light_t*  light_ref(index_t id);
-void      light_remove(index_t id);
-void      light_clear(void);
+#define con_type light_t
+#define con_prefix light
+#include "view.h"
+#undef con_prefix
+#undef con_type
 
-index_t   light_count(void);
-light_t*  light_buffer(void);
+slotkey_t     light_add(light_t light);
+light_t*      light_ref(slotkey_t id);
+void          light_remove(slotkey_t id);
+void          light_clear(void);
+
+view_light_t  light_buffer(void);
+
+#ifdef WASP_TEXTURE_H_
+#include "texture.h"
+#endif
 
 #endif

@@ -51,7 +51,7 @@ typedef struct entity_t {
   union {
     quat rotation;
     float angle;
-    index_t tmp; // replace with custom data fields/pointer?
+    slotkey_t tmp; // replace with custom data fields/pointer?
   };
 
   mat4 transform;

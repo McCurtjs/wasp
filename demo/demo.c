@@ -275,16 +275,7 @@ void wasp_render(Game game) {
   rt_bind(game->demo->render_target);
   game_render(game);
 
-  light_t* buffer = malloc(light_count() * sizeof(light_t));
-  if (!buffer) return;
-  memcpy(buffer, light_buffer(), light_count() * sizeof(light_t));
-  for (index_t i = 0; i < light_count(); ++i) {
-    buffer[i].pos = mv4mul(game->camera.view, p34(buffer[i].pos)).xyz;
-  }
-  texture_t lights = tex_from_data(
-    TF_RGB_32, v2i((int)light_count() * 3, 1), buffer
-  );
-  free(buffer);
+  texture_t lights = tex_from_lights();
 
   rt_bind_default();
   /*

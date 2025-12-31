@@ -28,6 +28,8 @@
 
 #include "light.h"
 
+slotkey_t editor_light_bright;
+slotkey_t editor_light_gizmo;
 scene_unload_fn_t scene_load_gears(Game game) {
 
   demo_t* demo = game->demo;
@@ -201,13 +203,13 @@ scene_unload_fn_t scene_load_gears(Game game) {
   } //*/
 
   //* Some lights
-  light_add((light_t) {
+  editor_light_bright = light_add((light_t) {
     .intensity = 60000.0f,
     .pos = v3f(40, 30, 50),
     .color = v3f(0.9f, 0.9f, 0.75f),
   });
 
-  light_add((light_t) {
+  editor_light_gizmo = light_add((light_t) {
     .intensity = 50.0f,
     .pos = v3f(4, 3, 5),
     .color = v3f(0.8f, 0.8f, 0.95f),
@@ -320,6 +322,9 @@ void scene_unload_monument(Game game) {
 static float ext = 10.f;
 static float size = 200.f;
 
+slotkey_t monument_light_left;
+slotkey_t monument_light_right;
+
 static scene_unload_fn_t _scene_load_monument(Game game) {
 
   demo_t* demo = game->demo;
@@ -399,14 +404,14 @@ static scene_unload_fn_t _scene_load_monument(Game game) {
   });
 
   // Light 1 is left indicator (red)
-  light_add((light_t) {
+  monument_light_left = light_add((light_t) {
     .intensity = 4000.0f,
     .pos = v3f(-18, 0, 0),
     .color = v3f(1.0f, 0.3f, 0.3f),
   });
 
   // Light 2 is right indicator (green)
-  light_add((light_t) {
+  monument_light_right = light_add((light_t) {
     .intensity = 4000.0f,
     .pos = v3f(18, 0, 0),
     .color = v3f(0.3f, 1.0f, 0.3f),

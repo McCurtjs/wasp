@@ -58,3 +58,8 @@ void      tex_apply(texture_t texture, uint slot, int sampler);
 void      tex_free(texture_t* handle);
 
 #endif
+
+// Specialty function for when both texture and light headers are included
+#ifdef WASP_LIGHT_H_
+texture_t tex_from_lights(void);
+#endif

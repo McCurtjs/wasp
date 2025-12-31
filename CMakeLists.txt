@@ -48,9 +48,9 @@ target_sources(Wasp PRIVATE
   src/draw.c
   src/file.c
   src/game.c
+  src/graphics.c
   src/image.c
   src/input.c
-  src/light.c
   src/material.c
   src/model.c
   src/render_target.c
@@ -63,6 +63,7 @@ target_sources(Wasp PRIVATE
   include/entity.h
   include/file.h
   include/game.h
+  include/graphics.h
   include/gl.h
   include/image.h
   include/input.h

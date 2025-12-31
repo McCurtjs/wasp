@@ -38,6 +38,8 @@
 #include "entity.h"
 #include "input.h"
 
+typedef struct Graphics_Internal* Graphics;
+
 typedef struct _opaque_Game_t* Game;
 
 typedef void (*event_resize_window_fn_t)(Game game);
@@ -70,19 +72,22 @@ typedef struct _opaque_Game_t {
   CUSTOM_GAME_TYPE* CUSTOM_GAME_VAR;
 
   // const properties
-  const vec2i   window;
-  const String  title;
-  const index_t scene;
-  const float   scene_time;
+  const vec2i     window;
+  const String    title;
+  const index_t   scene;
+  const float     scene_time;
+
+  // systems
+  const Graphics  graphics;
 
   // game setup
-  input_t       input;
-  span_scene_t  scenes;
+  input_t         input;
+  span_scene_t    scenes;
 
   // reactive properties
-  camera_t      camera;
-  index_t       next_scene;
-  bool          should_exit;
+  camera_t        camera;
+  index_t         next_scene;
+  bool            should_exit;
 
   // settable events
   event_resize_window_fn_t on_window_resize;

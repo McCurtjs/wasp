@@ -22,52 +22,15 @@
 * SOFTWARE.
 */
 
-#include "light.h"
+#ifndef WASP_GRAPHICS_H_
+#define WASP_GRAPHICS_H_
 
-#define con_type light_t
-#define con_prefix light
-#include "span.h"
-#include "array.h"
-#undef con_type
-#undef con_prefix
+#include "types.h"
 
-array_light_t _all_lights = {
-  .element_size = sizeof(light_t)
-};
-index_t _light_index = 0;
+typedef struct _opaque_Game_t* Game;
+typedef struct Graphics_Internal* Graphics;
 
-index_t light_add(light_t light) {
-  light.id = (uint)++_light_index;
-  arr_light_push_back(&_all_lights, light);
-  return light.id;
-}
+Graphics gfx_new(void);
+void gfx_delete(Graphics* gfx);
 
-light_t* light_ref(index_t id) {
-  light_t* arr_foreach(light, &_all_lights) {
-    if (light->id == (uint)id) {
-      return light;
-    }
-  }
-  return NULL;
-}
-
-void light_remove(index_t id) {
-  light_t* arr_foreach_index(light, index, &_all_lights) {
-    if (light->id == (uint)id) {
-      arr_light_remove_unstable(&_all_lights, index);
-    }
-  }
-}
-
-void light_clear(void) {
-  arr_light_clear(&_all_lights);
-  _light_index = 0;
-}
-
-index_t light_count(void) {
-  return _all_lights.size;
-}
-
-light_t* light_buffer(void) {
-  return _all_lights.begin;
-}
+#endif

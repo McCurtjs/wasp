@@ -216,7 +216,7 @@ static void _wizard_projectile(Game game, entity_t* e, float dt) {
       click_pos.y = 1.5f;
       vec3 launch_point = v3f(e->pos.x, 2, e->pos.z);
 
-      index_t light_id = light_add((light_t) {
+      slotkey_t light_id = light_add((light_t) {
         .color = v3f(1.0f, 0.7f, 0.8f),
         .intensity = 8.f,
         .pos = launch_point
@@ -301,6 +301,8 @@ void behavior_wizard(Game game, entity_t* e, float dt) {
 // Monumnet behaviors
 ////////////////////////////////////////////////////////////////////////////////
 
+extern slotkey_t monument_light_left;
+extern slotkey_t monument_light_right;
 #define PLANE_SPEED_MIN 30.f
 void behavior_camera_monument(Game game, entity_t* e, float dt) {
   UNUSED(e);
@@ -340,8 +342,8 @@ void behavior_camera_monument(Game game, entity_t* e, float dt) {
   vec3 left = v3cross(game->camera.up.xyz, game->camera.front.xyz);
   left = v3rescale(left, 18.f);
   vec3 right = v3scale(left, -1.f);
-  light_t* light_left = light_ref(1);
-  light_t* light_right = light_ref(2);
+  light_t* light_left = light_ref(monument_light_left);
+  light_t* light_right = light_ref(monument_light_right);
   if (light_left) {
     light_left->pos = v3add(game->camera.pos.xyz, left);
   }
@@ -448,13 +450,15 @@ void behavior_stare(Game game, entity_t* e, float dt) {
 // Sets the location of the entity to the light position
 ////////////////////////////////////////////////////////////////////////////////
 
+extern slotkey_t editor_light_bright;
+extern slotkey_t editor_light_gizmo;
 void behavior_attach_to_light(Game game, entity_t* e, float dt) {
   UNUSED(dt);
   e->transform = m4translation(game->demo->light_pos.xyz);
-  light_t* light = light_ref(1);
+  light_t* light = light_ref(editor_light_bright);
   if (!light) return;
   light->pos = game->demo->light_pos.xyz;
-  light = light_ref(2);
+  light = light_ref(editor_light_gizmo);
   light->pos = game->demo->target;
 }
 
