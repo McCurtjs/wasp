@@ -36,34 +36,30 @@
 #include "gl.h"
 #include "stdio.h" // fflush
 
-bool game_loaded = false;
-
-struct {
+static struct {
   SDL_Window* window;
   SDL_GLContext gl_context;
+  SDL_Thread* loading;
   uint64_t previous_time;
   Game game;
 } app = { 0 };
 
 ////////////////////////////////////////////////////////////////////////////////
 
+static int SDLCALL _loading_thread_fn(void* data) {
+  return wasp_preload(data);
+}
+
 SDL_AppResult SDL_AppInit(void** app_state, int argc, char* argv[]) {
   UNUSED(app_state);
   UNUSED(argc);
   UNUSED(argv);
 
-  str_write("Here we go!");
+  str_write("[App.Init] Here we go!");
 
-  app_defaults_t defaults = (app_defaults_t){
-    .window = v2i(640, 480),
-    .title = NULL,
-  };
-  wasp_init(&defaults);
+  app.game = game_init(640, 480);
 
-  app.game = game_new
-  ( defaults.title ? defaults.title : str_copy("Game Title")
-  , defaults.window
-  );
+  str_log("[App.Init] Initializing game: {}", app.game->title);
 
   SDL_WindowFlags flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
   app.window = SDL_CreateWindow(
@@ -76,6 +72,7 @@ SDL_AppResult SDL_AppInit(void** app_state, int argc, char* argv[]) {
   if (!app.window) return SDL_APP_FAILURE;
 
   app.gl_context = SDL_GL_CreateContext(app.window);
+  SDL_GL_SetSwapInterval(0);
 
   if (!app.gl_context) return SDL_APP_FAILURE;
 
@@ -85,14 +82,19 @@ SDL_AppResult SDL_AppInit(void** app_state, int argc, char* argv[]) {
   glEnable(GL_CULL_FACE);
   glDepthFunc(GL_LEQUAL);
 
-  wasp_preload(app.game);
-
   SDL_SetWindowSize(app.window, app.game->window.w, app.game->window.h);
   SDL_SetWindowTitle(app.window, app.game->title->begin);
 
   glViewport(0, 0, app.game->window.x, app.game->window.y);
 
   app.previous_time = SDL_GetTicks();
+
+  app.loading = SDL_CreateThread(_loading_thread_fn, "load", &app.game);
+
+  if (!app.loading) {
+    str_log("[App.Init] Failed to create loading thread: {}", SDL_GetError());
+    return SDL_APP_FAILURE;
+  }
 
   return SDL_APP_CONTINUE;
 }
@@ -106,13 +108,30 @@ SDL_AppResult SDL_AppIterate(void* app_state) {
   float dt = (float)(current_time - app.previous_time) / 1000.f;
   app.previous_time = current_time;
 
-  if (!game_loaded) {
-    if (wasp_load(app.game, 0, dt)) {
-      str_write("Loaded");
-      game_loaded = true;
+  if (app.loading) {
+    float load_time = (float)current_time / 1000.f;
+    SDL_ThreadState state = SDL_GetThreadState(app.loading);
+
+    if (state == SDL_THREAD_COMPLETE) {
+      int result;
+      SDL_WaitThread(app.loading, &result);
+      if (!result) {
+        str_write("[App.Preload] Failed preload step");
+        return SDL_APP_FAILURE;
+      }
+      str_log("[App.Preload] Loaded - time elapsed: {}", load_time);
+      app.loading = NULL;
     }
 
-    return SDL_APP_CONTINUE;
+    wasp_load(app.game, !!app.loading, dt);
+
+    if (!app.loading) {
+      str_log("[App.Load] Loaded - time elapsed: {}", load_time);
+    }
+    else {
+      SDL_GL_SwapWindow(app.window);
+      return SDL_APP_CONTINUE;
+    }
   }
 
   shader_check_updates();

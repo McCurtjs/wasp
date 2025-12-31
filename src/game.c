@@ -26,6 +26,7 @@
 
 #include "wasm.h"
 #include "light.h"
+#include "wasp.h"
 
 #define con_type entity_t
 #define con_prefix entity
@@ -35,7 +36,6 @@
 
 #define con_type slotkey_t
 #define con_prefix id
-#include "span.h"
 #include "array.h"
 #undef con_prefix
 #undef con_type
@@ -77,12 +77,35 @@ typedef struct Game_Internal {
 static Game_Internal _game_singleton;
 Game game_singleton = (Game)&_game_singleton;
 
+#ifdef __WASM__
+int export(canary)(int _) {
+  UNUSED(_);
+  slice_write = wasm_write;
+  str_write("[Canary] WASM is connected!");
+  return 0;
+}
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 // Game initialization function
 ////////////////////////////////////////////////////////////////////////////////
 
 Game export(game_init) (int x, int y) {
-  return game_new(str_copy("Game"), v2i(x, y));
+  app_defaults_t defaults = (app_defaults_t) {
+    .window = v2i(x, y),
+    .title = str_empty,
+    .game = NULL,
+  };
+
+  wasp_init(&defaults);
+
+#ifdef __WASM__
+  defaults.window = v2i(x, y);
+#endif
+
+  Game game = game_new(defaults.title, defaults.window);
+  game->game = defaults.game;
+  return game;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -211,16 +234,22 @@ entity_t* game_entity_ref(Game _game, slotkey_t id) {
 
 void game_entity_remove(Game _game, slotkey_t id) {
   GAME_INTERNAL;
-  entity_t* entity = smap_entity_ref(game->entities, id);
-  if (!entity) return;
+  arr_id_push_back(game->entity_removals, id);
+}
 
-  // TODO: remove entity from the rendering list
+static void _game_entity_remove_execute(Game _game, slotkey_t key) {
+  GAME_INTERNAL;
+  entity_t* entity = smap_entity_ref(game->entities, key);
 
-  if (entity->ondelete) {
-    entity->ondelete(_game, entity);
+  if (entity) {
+    if (entity->ondelete) {
+      entity->ondelete(_game, entity);
+    }
+
+    // remove from rendering, physics, etc queues here
+
+    smap_entity_remove(game->entities, entity->id);
   }
-
-  smap_entity_remove(game->entities, id);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -233,18 +262,16 @@ void game_update(Game _game, float dt) {
   if (game->next_scene >= 0) {
     _game_scene_switch(_game);
   }
+  else {
+    game->scene_time += dt;
+  }
 
-  //for (index_t i = 0; i < game->entity_removals->size; ++i) {
-  //  entity_id_t id = game->entity_removals->begin[i];
-  //  entity_wrapper_t* e = arr_entity_ref(game->entities, (index_t)id.index);
-  //  if (!e || !e->active || e->id.unique != id.unique) continue;
-  //}
-
-  game->scene_time += dt;
-
+  // Go through the list of "acting" entities with behaviors and update.
+  // Clean up the actor list as we go by removing any stale keys or keys of
+  //    entities that no longer have a behavior function.
   for (index_t i = 0; i < game->entity_actors->size; ) {
-    slotkey_t id = game->entity_actors->begin[i];
-    entity_t* entity = smap_entity_ref(game->entities, id);
+    slotkey_t key = game->entity_actors->begin[i];
+    entity_t* entity = smap_entity_ref(game->entities, key);
 
     if (!entity || !entity->behavior) {
       arr_id_remove_unstable(game->entity_actors, i);
@@ -252,9 +279,17 @@ void game_update(Game _game, float dt) {
     }
 
     entity->behavior(_game, entity, dt);
-
     ++i;
   }
+
+  // Remove all the entities that were flagged for removal by either by their
+  //    own behaviors or by another entity or system.
+  // If an ondelete function causes more entities to be deleted, those entities
+  //    should also be processed and removed on the same frame.
+  slotkey_t* arr_foreach(key, game->entity_removals) {
+    _game_entity_remove_execute(_game, *key);
+  }
+  arr_id_clear(game->entity_removals);
 
   // Reset button triggers (only one frame on trigger/release)
   input_update(&game->input);

@@ -37,9 +37,9 @@
 
 void wasp_init(app_defaults_t* defaults);
 
-bool wasp_preload(Game game);
-bool wasp_load(Game game, int await_count, float dt);
-bool wasp_update(Game game, float dt);
-void wasp_render(Game game);
+bool export(wasp_preload) (Game game);
+bool export(wasp_load) (Game game, int await_count, float dt);
+bool export(wasp_update) (Game game, float dt);
+void export(wasp_render) (Game game);
 
 #endif

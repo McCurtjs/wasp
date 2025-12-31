@@ -63,6 +63,7 @@ typedef struct scene_data_t {
 typedef struct app_defaults_t {
   vec2i window;
   String title;
+  CUSTOM_GAME_TYPE* CUSTOM_GAME_VAR;
 } app_defaults_t;
 
 typedef struct _opaque_Game_t {

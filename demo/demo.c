@@ -35,15 +35,6 @@ static File file_model_gear = NULL;
 # pragma clang diagnostic ignored "-Wconstant-logical-operand"
 #endif
 
-#ifdef __WASM__
-int export(canary) (int _) {
-  UNUSED(_);
-  slice_write = wasm_write;
-  str_write("WASM is connected!");
-  return 0;
-}
-#endif
-
 static demo_t demo;
 
 static int active_shader = 1;
@@ -97,6 +88,13 @@ static scene_load_fn_t demo_scenes[] =
 void wasp_init(app_defaults_t* game) {
   game->window = v2i(1024, 768);
   game->title = str_copy("WASP Demo");
+
+  demo = (demo_t) {
+    .target = v3origin,
+    .light_pos = v4f(4, 3, 5, 1),
+  };
+
+  game->demo = &demo;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -121,7 +119,7 @@ static void cheesy_loading_animation(Game game, float dt) {
   shader_bind(demo.shaders.loading);
   int loc_pvm = shader_uniform_loc(demo.shaders.loading, "in_pvm_matrix");
 
-  mat4 model = m4translation(v3f(0, 0, 0));
+  mat4 model = m4translation(v3f(0, 0, -3));
   model = m4mul(model, m4rotation(v3norm(v3f(1.f, 1.5f, -.7f)), cubespin));
   model = m4mul(model, m4rotation(v3norm(v3f(-4.f, 1.5f, 1.f)), cubespin / 3.6f));
 
@@ -139,18 +137,8 @@ static void cheesy_loading_animation(Game game, float dt) {
 // Game preloader - starts asynchronous loading
 ////////////////////////////////////////////////////////////////////////////////
 
-bool export(wasp_preload) (Game game) {
-
-  demo = (demo_t) {
-    .target = v3origin,
-    .light_pos = v4f( 4, 3, 5, 1 ),
-  };
-
-  game->demo = &demo;
-  game->on_window_resize = demo_callback_window_resize;
-
-  game->input.keymap = span_keymap(input_map, ARRAY_COUNT(input_map));
-  game->scenes = span_scene(demo_scenes, ARRAY_COUNT(demo_scenes));
+bool wasp_preload(Game game) {
+  UNUSED(game);
 
   file_model_gear = file_new(S("./res/models/gear.obj"));
 
@@ -182,21 +170,10 @@ bool export(wasp_preload) (Game game) {
 
   material_load_all_async();
 
-  // load this first since it's the loading screen spinner
-  demo.models.color_cube.type = MODEL_CUBE_COLOR;
-  model_build(&demo.models.color_cube);
-  model_build(&model_frame);
-
-  demo.shaders.loading = shader_new(S("basic"));
   demo.shaders.basic = shader_new_load_async(S("basic_deferred"));
   demo.shaders.light = shader_new_load_async(S("light"));
   demo.shaders.frame = shader_new_load_async(S("frame"));
   demo.shaders.warhol = shader_new_load_async(S("warhol"));
-
-  game->demo->render_target = rt_new(
-    TF_RGB_8, TF_RG_16, TF_RGB_10_A_2, TF_DEPTH_32
-  );
-  rt_build(game->demo->render_target, game->window);
 
   return true;
 }
@@ -205,17 +182,37 @@ bool export(wasp_preload) (Game game) {
 // Game loader - after async loading, process loaded objects for the game
 ////////////////////////////////////////////////////////////////////////////////
 
-bool export(wasp_load) (Game game, int await_count, float dt) {
+#ifdef far
+# undef far // why does windows define "far", lol
+#endif
+
+bool wasp_load (Game game, int await_count, float dt) {
+
+  // load this first since it's the loading screen spinner
+  if (!demo.shaders.loading) {
+    demo.shaders.loading = shader_new(S("basic"));
+    demo.models.color_cube.type = MODEL_CUBE_COLOR;
+    model_build(&demo.models.color_cube);
+    model_build(&model_frame);
+  }
 
   if (await_count) {
     cheesy_loading_animation(game, dt);
     return 0;
   };
 
-  str_write("Async load finished");
+  str_write("[Demo.Load] Async load finished");
 
-#undef far // why does windows define "far", lol
   game->camera.perspective.far = 3000.0f;
+  game->on_window_resize = demo_callback_window_resize;
+
+  game->demo->render_target = rt_new(
+    TF_RGB_8, TF_RG_16, TF_RGB_10_A_2, TF_DEPTH_32
+  );
+  rt_build(game->demo->render_target, game->window);
+
+  game->input.keymap = span_keymap(input_map, ARRAY_COUNT(input_map));
+  game->scenes = span_scene(demo_scenes, ARRAY_COUNT(demo_scenes));
 
   shader_build_all();
   material_build_all();
@@ -247,6 +244,8 @@ bool export(wasp_load) (Game game, int await_count, float dt) {
   model_build(&demo.models.grid);
   model_build(&demo.models.gizmo);
 
+  str_write("[Demo.Load] Loading complete!");
+
   return 1;
 }
 
@@ -254,7 +253,7 @@ bool export(wasp_load) (Game game, int await_count, float dt) {
 // Game per-frame update
 ////////////////////////////////////////////////////////////////////////////////
 
-bool export(wasp_update) (Game game, float dt) {
+bool wasp_update (Game game, float dt) {
   if (input_triggered(IN_TOGGLE_SHADER)) {
     active_shader = (active_shader + 1) % 2;
   }
@@ -272,7 +271,7 @@ bool export(wasp_update) (Game game, float dt) {
 #include <stdlib.h>
 #include <string.h>
 
-void export(wasp_render) (Game game) {
+void wasp_render(Game game) {
   rt_bind(game->demo->render_target);
   game_render(game);
 
