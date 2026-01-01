@@ -207,6 +207,9 @@ scene_unload_fn_t scene_load_gears(Game game) {
     .intensity = 60000.0f,
     .pos = v3f(40, 30, 50),
     .color = v3f(0.9f, 0.9f, 0.75f),
+    .dir = v3sub(demo->target, v3f(40, 30, 50)),
+    .spot_outer = 0.8f,
+    .spot_inner = 0.9f,
   });
 
   editor_light_gizmo = light_add((light_t) {
@@ -324,6 +327,7 @@ static float size = 200.f;
 
 slotkey_t monument_light_left;
 slotkey_t monument_light_right;
+slotkey_t monument_light_spot;
 
 static scene_unload_fn_t _scene_load_monument(Game game) {
 
@@ -415,6 +419,16 @@ static scene_unload_fn_t _scene_load_monument(Game game) {
     .intensity = 4000.0f,
     .pos = v3f(18, 0, 0),
     .color = v3f(0.3f, 1.0f, 0.3f),
+  });
+
+  // Light 2 is right indicator (green)
+  monument_light_spot = light_add((light_t) {
+    .intensity = 10000.0f,
+    .pos = v3origin,
+    .color = v3f(1.0f, 1.0f, 0.7f),
+    .dir = v3front,
+    .spot_inner = 0.9f,
+    .spot_outer = 0.85f,
   });
 
   // Sun

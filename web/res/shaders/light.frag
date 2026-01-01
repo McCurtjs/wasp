@@ -23,6 +23,13 @@ layout(location = 0) out vec3 fragColor;
 layout(location = 1) out vec2 fragNormal;
 layout(location = 2) out vec4 fragProps;
 
+vec2 oct_encode(vec3 n) {
+  n = normalize(n);
+  n /= abs(n.x) + abs(n.y) + abs(n.z);
+  if (n.z < 0.0) n.xy = (1.0 - abs(n.yx)) * sign(n.xy);
+  return n.xy;
+}
+
 void main() {
 
   // Get base texture color - discard fully transparent fragments
@@ -37,8 +44,7 @@ void main() {
   // Pack normal into octahedral space
   vec3 tangent_normal = texture(normSamp, vUV).xyz * 2.0 - 1.0;
   tangent_normal = mix(vec3(0.0, 0.0, 1.0), tangent_normal, in_weights.r);
-  vec3 n = normalize(vTangentTransform * tangent_normal);
-  n /= abs(n.x) + abs(n.y) + abs(n.z);
-  if (n.z < 0.0) n.xy = (1.0 - abs(n.yx)) * sign(n.xy);
-  fragNormal = n.xy * 0.5 + 0.5;
+  vec3 n = vTangentTransform * tangent_normal;
+  vec2 oct = oct_encode(n);
+  fragNormal = oct * 0.5 + 0.5;
 }

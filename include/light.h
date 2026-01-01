@@ -29,15 +29,17 @@
 #include "vec.h"
 #include "slotkey.h"
 
-#pragma pack(1)
 typedef struct light_t {
-  uint  id;
-  uint  _unused;
+  vec3 pos;
+  vec3 dir;
+  vec3 color;
+
   float intensity;
-  vec3  pos;
-  vec3  color;
+  float radius;
+  float spot_outer;
+  float spot_inner;
 } light_t;
-#pragma pack()
+
 
 #define con_type light_t
 #define con_prefix light

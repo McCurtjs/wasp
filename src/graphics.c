@@ -88,19 +88,45 @@ view_light_t light_buffer(void) {
   return graphics->lights->view;
 }
 
+#pragma pack(1)
+typedef struct light_img_t {
+  vec3 pos;
+  float radius;
+
+  vec2 dir_oct;
+  float spot_outer;
+  float spot_inner;
+
+  vec3 color;
+  float intensity;
+} light_img_t;
+#pragma pack()
+
 texture_t tex_from_lights(void) {
   GRAPHICS_INTERNAL;
-  light_t* buffer = malloc(graphics->lights->size * sizeof(light_t));
-  assert(buffer);
-  memcpy(buffer, graphics->lights->begin, graphics->lights->size_bytes);
 
-  // transform all light positions from world to view space
-  for (index_t i = 0; i < graphics->lights->size; ++i) {
-    buffer[i].pos = mv4mul(game->camera.view, p34(buffer[i].pos)).xyz;
+  light_img_t* buffer = malloc(graphics->lights->size * sizeof(light_img_t));
+  assert(buffer);
+
+  const light_t* pmap_foreach_index(light, i, graphics->lights) {
+    vec2 dir = v2zero;
+    if (!v3eq(light->dir, v3zero)) {
+      dir = v3oct(mv4mul(game->camera.view, v34(light->dir)).xyz);
+    }
+
+    buffer[i] = (light_img_t) {
+      .pos = mv4mul(game->camera.view, p34(light->pos)).xyz,
+      .radius = light->radius,
+      .dir_oct = dir,
+      .spot_outer = light->spot_outer,
+      .spot_inner = light->spot_inner,
+      .color = light->color,
+      .intensity = light->intensity,
+    };
   }
 
-  vec2i tex_size = v2i((int)graphics->lights->size * 3, 1);
-  texture_t texture = tex_from_data(TF_RGB_32, tex_size, buffer);
+  vec2i tex_size = v2i(3, (int)graphics->lights->size);
+  texture_t texture = tex_from_data(TF_RGBA_32, tex_size, buffer);
   free(buffer);
   return texture;
 }

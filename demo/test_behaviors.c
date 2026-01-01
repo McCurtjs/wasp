@@ -303,6 +303,7 @@ void behavior_wizard(Game game, entity_t* e, float dt) {
 
 extern slotkey_t monument_light_left;
 extern slotkey_t monument_light_right;
+extern slotkey_t monument_light_spot;
 #define PLANE_SPEED_MIN 30.f
 void behavior_camera_monument(Game game, entity_t* e, float dt) {
   UNUSED(e);
@@ -344,11 +345,16 @@ void behavior_camera_monument(Game game, entity_t* e, float dt) {
   vec3 right = v3scale(left, -1.f);
   light_t* light_left = light_ref(monument_light_left);
   light_t* light_right = light_ref(monument_light_right);
+  light_t* light_spot = light_ref(monument_light_spot);
   if (light_left) {
     light_left->pos = v3add(game->camera.pos.xyz, left);
   }
   if (light_right) {
     light_right->pos = v3add(game->camera.pos.xyz, right);
+  }
+  if (light_spot) {
+    light_spot->pos = game->camera.pos.xyz;
+    light_spot->dir = game->camera.front.xyz;
   }
 
   e->angle = speed;
@@ -458,6 +464,7 @@ void behavior_attach_to_light(Game game, entity_t* e, float dt) {
   light_t* light = light_ref(editor_light_bright);
   if (!light) return;
   light->pos = game->demo->light_pos.xyz;
+  light->dir = v3sub(game->demo->target, game->demo->light_pos.xyz);
   light = light_ref(editor_light_gizmo);
   light->pos = game->demo->target;
 }
