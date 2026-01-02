@@ -6,7 +6,6 @@ in lowp vec2 vUV;
 out lowp vec4 fragColor;
 
 uniform mat4 in_proj_inverse;
-uniform vec4 lightPos;
 
 uniform sampler2D texSamp;
 uniform sampler2D normSamp;
@@ -66,7 +65,7 @@ struct LightSpot {
 
 struct LightColor {
   vec3 color;
-  float intensity; // todo: remove
+  float unused;
 };
 
 struct Light {
@@ -77,7 +76,7 @@ struct Light {
 
 LightPos get_light_transform(int i) {
   vec4 T = texelFetch(lightSamp, ivec2(0, i), 0);
-  return LightPos(T.xyz, T.z);
+  return LightPos(T.xyz, T.w);
 }
 
 LightSpot get_light_spot(int i) {
@@ -92,6 +91,19 @@ LightSpot get_light_spot(int i) {
 LightColor get_light_color(int i) {
   vec4 T = texelFetch(lightSamp, ivec2(2, i), 0);
   return LightColor(T.xyz, T.w);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Geometric functions
+vec3 snap_to_circle_3d(
+  vec3 frag_pos, vec3 light_pos, vec3 light_dir, float radius, vec3 Lv
+) {
+  float dist_to_plane = dot(-Lv, light_dir); // light_dir must be normalized
+  vec3 plane_pos = frag_pos - light_dir * dist_to_plane;
+  vec3 L2P = plane_pos - light_pos;
+  float r = length(L2P);
+  bool is_outside_circle = r > radius;
+  return light_pos + (is_outside_circle ? (L2P * (radius / r)) : L2P);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -112,7 +124,7 @@ void main() {
   vec4 clip = vec4(ndc * 2.0 - 1.0, 1.0);
   vec4 view = in_proj_inverse * clip;
   view /= view.w;
-  vec3 pos = view.xyz;
+  vec3 frag_pos = view.xyz;
 
   // Unpack octahedral encoded normal
   vec3 norm = texture(normSamp, uv).xyz;
@@ -120,46 +132,47 @@ void main() {
     fragColor = albedo;
     return;
   }
-  //norm = norm * 2.0 - 1.0;
   norm = oct_decode(norm.xy * 2.0 - 1.0);
 
-  // Pabst Blue Ribbon?
+  // Set up shared values
   vec3 N = norm;
-  vec3 V = normalize(-pos);
+  vec3 V = normalize(-frag_pos);
   vec3 F0 = mix(vec3(0.04), albedo.xyz, metallic);
   vec3 result = vec3(0.0);
 
+  // Run PBR lighting calaculations for each light in the scene
   int light_buffer_size = textureSize(lightSamp, 0).y;
   for (int i = 0; i < light_buffer_size; ++i) {
     Light light;
     light.transform = get_light_transform(i);
+    vec3 light_center = light.transform.pos;
+    vec3 light_pos = light_center;
 
-    vec3 light_pos = light.transform.pos;
-    vec3 Lv = light_pos - pos;
+    // calculate basic lighting terms and skip if behind surface
+    vec3 Lv = light_pos - frag_pos;
+    if (light.transform.radius == 0.0 && dot(N, Lv) < 0.0) continue;
     float light_dist = length(Lv);
     vec3 L = Lv / light_dist;
     float falloff = 1.0;
 
     light.spot = get_light_spot(i);
+    float light_radius = light.transform.radius;
 
-    // Spotlight (radius = disc)
+    // Spotlight culling and falloff (radius = disc)
     if (light.spot.use_bounds) {
 
       // calculate lighting for a disk with given radius
-      float light_radius = light.transform.radius;
       if (light_radius > 0.00001) {
-        float dist_to_plane = dot(-Lv, light.spot.dir);
-        vec3 plane_pos = pos - light.spot.dir * dist_to_plane;
-        vec3 C = plane_pos - light_pos;
-        float r = length(C);
-        light_pos += mix(C, C * (light_radius / r), r > light_radius);
-        Lv = light_pos - pos;
+        light_pos = snap_to_circle_3d(
+          frag_pos, light_pos, light.spot.dir, light_radius, Lv
+        );
+        Lv = light_pos - frag_pos;
         light_dist = length(Lv);
         L = Lv / light_dist;
-        falloff *= max(0.0, dot(light.spot.dir, -L));
       }
 
-      float LdotS = max(0.0, dot(-L, light.spot.dir));
+      // calculate blended falloff for cone extents
+      float LdotS = max(-1.0, dot(-L, light.spot.dir));
       if (LdotS < light.spot.outer) {
         continue;
       }
@@ -169,59 +182,85 @@ void main() {
         falloff *= smoothstep(0.0, 1.0, LdotS);
       }
     }
-    // Globelight (radius = sphere)
+    // Globelight (no direction + radius = sphere)
     else {
-      //light_dist = max(light_dist - light.transform.radius, 0.0);
-      //vec3 L = Lv / light_dist;
-      //float falloff = 1.0;
+      light_dist = max(light_dist - light_radius, 0.00001);
     }
 
+    // calculate final attenuation component for the light
+    float omega;
+    if (light_radius > 0.0) {
+      // solid-angle surface brightness for spherical emitters
+      float d = length(light_center - frag_pos);
+      float o_denom_sq = d*d + light_radius*light_radius;
+      omega = 2.0 * PI * (1.0 - d / (sqrt(o_denom_sq)));
+    }
+    else {
+      // attenuation for point lights
+      omega = max(0.0, 1.0 / (light_dist*light_dist));
+    }
+    float attenuation = falloff * omega;
 
-
-    float attenuation = falloff / (light_dist * light_dist);
+    // apply light color
     light.color = get_light_color(i);
+    vec3 radiance = light.color.color * attenuation;
 
-    vec3 H = normalize(V + L);
-    vec3 radiance = light.color.color * light.color.intensity * attenuation;
+    // specular modifier based on emitter size
+    vec3 Rdir = reflect(-V, N);
+    vec3 Ps = light_pos + Rdir * light_radius;
+    vec3 Ls = normalize(Ps - frag_pos);
 
-    float NdotL = max(dot(N, L), 0.0);
+    // halfway "normal" vector between light and view position
+    vec3 H = normalize(V + Ls);
+
+    float NdotL = max(dot(N, Ls), 0.0);
     float NdotV = max(dot(N, V), 0.0);
     float NdotH = max(dot(N, H), 0.0);
     float VdotH = max(dot(V, H), 0.0);
 
+    // calculate PBR terms
     float D = D_GGX(NdotH, roughness);
     float G = G_Smith(NdotV, NdotL, roughness);
     vec3  F = F_Schlick(VdotH, F0);
 
+    // final diffuse and specular values
     vec3 specular = (D * G * F) / (4.0 * NdotV * NdotL + 1e-4);
-
-    vec3 kS = F;
-    vec3 kD = (1.0 - kS) * (1.0 - metallic);
-
+    vec3 kD = (1.0 - F) * (1.0 - metallic);
     vec3 diffuse = kD * albedo.xyz / PI;
 
     result += vec3((diffuse + specular) * radiance * NdotL);
   }
 
-  // Gamma correction
-  //vec3 ambient = vec3(0.00);// * albedo.xyz;
-  //vec3 color = ambient + result;
-  //color = color / (color + vec3(1.0));
-  //color = pow(color, vec3(1.0/2.2));
-  //result = color;
+  /* // Gamma correction
+  vec3 ambient = vec3(0.00);// * albedo.xyz;
+  vec3 color = ambient + result;
+  color = color / (color + vec3(1.0));
+  color = pow(color, vec3(1.0/2.2));
+  result = color;
+  //*/
 
-  //fragColor = vec4(vec3((diffuse + specular) * light_value * NdotL), 1.0);
   fragColor = vec4(result, 1.0);
-  //ivec2 test = ivec2(int(uv.x * 3.0), int(uv.y * float(light_buffer_size)));
-  //fragColor = texelFetch(lightSamp, test, 0);
-  //fragColor = vec4(vec3(NdotV), 1.0);
-  //fragColor = vec4(normalize(pos - light_pos.xyz), 1.0);
-  //fragColor = vec4(vec3(norm), 1.0);
-  //fragColor = vec4(vec3(roughness), 1.0);
 
-  // ambient color (IBL approx)
+  // ambient color (IBL approx) (TODO)
   //vec3 irradiance_map = vec3(0.2, 0.1, 0.2);
   //vec3 ambient_diffuse = irradiance_map * albedo.xyz * kD;
   //vec3 ambient_specular = env * (F * brdf.x + brdf.y);
   //fragColor.xyz += ambient_diffuse;// + ambient_specular;
+
+  /* // Test render the metallicness map
+  fragColor = vec4(vec3(metallic), 1.0);
+  //*/
+
+  /* // Test render the roughness map
+  fragColor = vec4(vec3(roughness), 1.0);
+  //*/
+
+  /* // Test render the view-space normal map
+  fragColor = vec4(norm, 1.0);
+  //*/
+
+  /* // Test render the lights texture
+  ivec2 test = ivec2(int(uv.x * 3.0), int(uv.y * float(light_buffer_size)));
+  fragColor = texelFetch(lightSamp, test, 0);
+  //*/
 }

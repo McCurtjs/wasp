@@ -29,9 +29,7 @@
 
 #define con_type light_t
 #define con_prefix light
-#define con_view_type view_light_t
-#include "packedmap.h"
-#undef con_view_type
+#include "slotmap.h"
 #undef con_prefix
 #undef con_type
 
@@ -39,7 +37,7 @@
 #include <string.h> // memcpy
 
 typedef struct Graphics_Internal {
-  PackedMap_light lights;
+  SlotMap_light lights;
 } Graphics_Internal;
 
 #define GRAPHICS_INTERNAL                                                     \
@@ -51,7 +49,7 @@ Graphics gfx_new(void) {
   Graphics_Internal* ret = malloc(sizeof(Graphics_Internal));
   assert(ret);
   *ret = (Graphics_Internal){
-    .lights = pmap_light_new(),
+    .lights = smap_light_new(),
   };
   return ret;
 }
@@ -59,33 +57,28 @@ Graphics gfx_new(void) {
 void gfx_delete(Graphics* gfx) {
   if (!gfx || !*gfx) return;
   Graphics_Internal* graphics = (Graphics_Internal*)*gfx;
-  pmap_light_delete(&graphics->lights);
+  smap_light_delete(&graphics->lights);
   *gfx = NULL;
 }
 
 slotkey_t light_add(light_t light) {
   GRAPHICS_INTERNAL;
-  return pmap_light_insert(graphics->lights, &light);
+  return smap_light_insert(graphics->lights, &light);
 }
 
 light_t* light_ref(slotkey_t light_id) {
   GRAPHICS_INTERNAL;
-  return pmap_light_ref(graphics->lights, light_id);
+  return smap_light_ref(graphics->lights, light_id);
 }
 
 void light_remove(slotkey_t light_id) {
   GRAPHICS_INTERNAL;
-  pmap_light_remove(graphics->lights, light_id);
+  smap_light_remove(graphics->lights, light_id);
 }
 
 void light_clear(void) {
   GRAPHICS_INTERNAL;
-  pmap_light_clear(graphics->lights);
-}
-
-view_light_t light_buffer(void) {
-  GRAPHICS_INTERNAL;
-  return graphics->lights->view;
+  smap_light_clear(graphics->lights);
 }
 
 #pragma pack(1)
@@ -98,7 +91,7 @@ typedef struct light_img_t {
   float spot_inner;
 
   vec3 color;
-  float intensity;
+  float _unused;
 } light_img_t;
 #pragma pack()
 
@@ -108,7 +101,7 @@ texture_t tex_from_lights(void) {
   light_img_t* buffer = malloc(graphics->lights->size * sizeof(light_img_t));
   assert(buffer);
 
-  const light_t* pmap_foreach_index(light, i, graphics->lights) {
+  const light_t* smap_foreach_index(light, i, graphics->lights) {
     vec2 dir = v2zero;
     if (!v3eq(light->dir, v3zero)) {
       dir = v3oct(mv4mul(game->camera.view, v34(light->dir)).xyz);
@@ -120,8 +113,8 @@ texture_t tex_from_lights(void) {
       .dir_oct = dir,
       .spot_outer = light->spot_outer,
       .spot_inner = light->spot_inner,
-      .color = light->color,
-      .intensity = light->intensity,
+      .color = v3scale(light->color, light->intensity),
+      ._unused = 0.0f,
     };
   }
 

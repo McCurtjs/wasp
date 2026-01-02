@@ -179,7 +179,7 @@ Game game_new(String title, vec2i window_size) {
     .window = window_size,
     .title = title,
     .scene = 0,
-    .scene_time = 0.0,
+    .scene_time = 0,
     .graphics = gfx_new(),
     .camera = {
       .type = CAMERA_PERSPECTIVE,
@@ -194,9 +194,7 @@ Game game_new(String title, vec2i window_size) {
       }
       //.ortho = {-6 * i2aspect(windim), 6 * i2aspect(windim), 6, -6, 0.1, 500}
     },
-    .scene = 0,
     .next_scene = 0,
-    .scene_time = 0,
     .entities = smap_entity_new(),
     .entity_actors = arr_id_new(),
     .entity_removals = arr_id_new(),

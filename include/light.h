@@ -52,8 +52,6 @@ light_t*      light_ref(slotkey_t id);
 void          light_remove(slotkey_t id);
 void          light_clear(void);
 
-view_light_t  light_buffer(void);
-
 #ifdef WASP_TEXTURE_H_
 #include "texture.h"
 #endif
