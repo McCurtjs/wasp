@@ -83,6 +83,7 @@ typedef struct _opaque_Game_t {
   // game setup
   input_t         input;
   span_scene_t    scenes;
+  span_renderer_t renderers;
 
   // reactive properties
   camera_t        camera;
@@ -103,10 +104,12 @@ Game game_get_active(void);
 void game_set_local(Game game);
 Game game_get_local(void);
 
-slotkey_t game_entity_add(Game game, const entity_t* entity);
-entity_t* game_entity_ref(Game game, slotkey_t entity_id);
-void game_entity_remove(Game game, slotkey_t entity_id);
-void game_entity_set_behavior(Game game, slotkey_t id, entity_update_fn_t bh);
+slotkey_t entity_add(Game game, const entity_t* entity);
+entity_t* entity_ref(Game game, slotkey_t entity_id);
+void entity_remove(Game game, slotkey_t entity_id);
+void entity_set_behavior(Game game, slotkey_t id, entity_update_fn_t bh);
+
+void entity_apply_transform(slotkey_t entity_id);
 
 void game_update(Game game, float dt);
 void game_render(Game game);

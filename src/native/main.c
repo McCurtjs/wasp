@@ -39,7 +39,8 @@
 static struct {
   SDL_Window* window;
   SDL_GLContext gl_context;
-  SDL_Thread* loading;
+  SDL_Thread* loading_thread;
+  bool loading_done;
   uint64_t previous_time;
   Game game;
 } app = { 0 };
@@ -92,9 +93,9 @@ SDL_AppResult SDL_AppInit(void** app_state, int argc, char* argv[]) {
 
   app.previous_time = SDL_GetTicks();
 
-  app.loading = SDL_CreateThread(_loading_thread_fn, "load", &app.game);
+  app.loading_thread = SDL_CreateThread(_loading_thread_fn, "load", &app.game);
 
-  if (!app.loading) {
+  if (!app.loading_thread) {
     str_log("[App.Init] Failed to create loading thread: {}", SDL_GetError());
     return SDL_APP_FAILURE;
   }
@@ -111,24 +112,27 @@ SDL_AppResult SDL_AppIterate(void* app_state) {
   float dt = (float)(current_time - app.previous_time) / 1000.f;
   app.previous_time = current_time;
 
-  if (app.loading) {
+  if (!app.loading_done) {
     float load_time = (float)current_time / 1000.f;
-    SDL_ThreadState state = SDL_GetThreadState(app.loading);
 
-    if (state == SDL_THREAD_COMPLETE) {
-      int result;
-      SDL_WaitThread(app.loading, &result);
-      if (!result) {
-        str_write("[App.Preload] Failed preload step");
-        return SDL_APP_FAILURE;
+    if (app.loading_thread) {
+      SDL_ThreadState state = SDL_GetThreadState(app.loading_thread);
+
+      if (state == SDL_THREAD_COMPLETE) {
+        int result;
+        SDL_WaitThread(app.loading_thread, &result);
+        if (!result) {
+          str_write("[App.Preload] Failed preload step");
+          return SDL_APP_FAILURE;
+        }
+        str_log("[App.Preload] Loaded - time elapsed: {}", load_time);
+        app.loading_thread = NULL;
       }
-      str_log("[App.Preload] Loaded - time elapsed: {}", load_time);
-      app.loading = NULL;
     }
 
-    wasp_load(app.game, !!app.loading, dt);
+    app.loading_done = wasp_load(app.game, !!app.loading_thread, dt);
 
-    if (!app.loading) {
+    if (!app.loading_thread && app.loading_done) {
       str_log("[App.Load] Loaded - time elapsed: {}", load_time);
     }
     else {

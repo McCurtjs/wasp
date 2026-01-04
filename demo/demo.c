@@ -41,6 +41,29 @@ static int active_shader = 1;
 
 static Model model_frame = { .type = MODEL_FRAME };// { .type = MODEL_FRAME };
 
+static renderer_t _renderer_basic = {
+  .render_entity = render_basic2,
+};
+renderer_t* renderer_basic = &_renderer_basic;
+
+static renderer_t _renderer_pbr = {
+  .register_entity = render_pbr_register,
+  .unregister_entity = render_pbr_unregister,
+  .render_entity = render_pbr2,
+  .render = render_pbr3,
+};
+renderer_t* renderer_pbr = &_renderer_pbr;
+
+static renderer_t _renderer_debug = {
+  .render_entity = render_basic2,
+  .render = render_debug3,
+};
+renderer_t* renderer_debug = &_renderer_debug;
+
+static renderer_t* renderers[] = {
+  &_renderer_basic, &_renderer_pbr, &_renderer_debug
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 // Mapping of keys to actions
 ////////////////////////////////////////////////////////////////////////////////
@@ -174,6 +197,9 @@ bool wasp_preload(Game game) {
   demo.shaders.light = shader_new_load_async(S("light"));
   demo.shaders.frame = shader_new_load_async(S("frame"));
   demo.shaders.warhol = shader_new_load_async(S("warhol"));
+  demo.shaders.light_inst = shader_new(S("light_inst"));
+  shader_file_frag(demo.shaders.light_inst, S("light"));
+  shader_load_async(demo.shaders.light_inst);
 
   return true;
 }
@@ -213,6 +239,7 @@ bool wasp_load (Game game, int await_count, float dt) {
 
   game->input.keymap = span_keymap(input_map, ARRAY_COUNT(input_map));
   game->scenes = span_scene(demo_scenes, ARRAY_COUNT(demo_scenes));
+  game->renderers = span_renderer(renderers, ARRAY_COUNT(renderers));
 
   shader_build_all();
   material_build_all();
@@ -234,13 +261,17 @@ bool wasp_load (Game game, int await_count, float dt) {
     .grid = {.w = 16, .h = 16},
   };
 
+  demo.models.box.type = MODEL_CUBE;
+
+  demo.models.box_inst.type = MODEL_CUBE_INST;
+
   model_build(&demo.models.player);
   model_build(&demo.models.level_test);
   //model_build(&game.models.level_1);
   model_build(&demo.models.gear);
   model_grid_set_default(&demo.models.gizmo, -2);
-  demo.models.box.type = MODEL_CUBE;
   model_build(&demo.models.box);
+  model_build(&demo.models.box_inst);
   model_build(&demo.models.grid);
   model_build(&demo.models.gizmo);
 

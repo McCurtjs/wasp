@@ -38,6 +38,7 @@ typedef struct demo_shaders_t {
   Shader frame;
   Shader basic;
   Shader light;
+  Shader light_inst;
   Shader warhol;
 } demo_shaders_t;
 
@@ -46,6 +47,7 @@ typedef struct demo_models_t {
   Model gizmo;
   Model grid;
   Model box;
+  Model box_inst;
   Model gear;
   Model player;
   Model level_test;
@@ -104,6 +106,20 @@ void behavior_wizard(Game game, entity_t* entity, float dt);
 void render_basic(Game game, entity_t* entity);
 void render_debug(Game game, entity_t* entity);
 void render_pbr(Game game, entity_t* entity);
+
+void render_basic2(renderer_t* renderer, Game game, entity_t* entity);
+void render_debug2(renderer_t* renderer, Game game, entity_t* entity);
+
+void render_pbr_register(entity_t* e, Game game);
+void render_pbr_unregister(entity_t* e);
+void render_pbr2(renderer_t* renderer, Game game, entity_t* entity);
+void render_pbr3(renderer_t* renderer, Game game);
+
+void render_debug3(renderer_t* renderer, Game game);
+
+extern renderer_t* renderer_pbr;
+extern renderer_t* renderer_basic;
+extern renderer_t* renderer_debug;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Input keymap names

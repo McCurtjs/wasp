@@ -227,6 +227,18 @@ Shader shader_new_load_async(slice_t name) {
   return ret;
 }
 
+void shader_delete(Shader* shader) {
+  if (!shader || !*shader) return;
+  Shader_Internal* s = (Shader_Internal*)*shader;
+  str_delete(&s->name_internal);
+  str_delete(&s->frag_filename);
+  str_delete(&s->vert_filename);
+  map_delete(&s->uniforms);
+
+  // TODO: Safely free all the shader related memory/handles
+  *shader = NULL;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Start loading the shader files
 ////////////////////////////////////////////////////////////////////////////////
@@ -255,14 +267,11 @@ void shader_load_async(Shader s_in) {
   if (vert_ens.is_new) {
     *vert = (gl_shader_t) {
       .handle = 0,
-      .filename = s->vert_filename,
+      .filename = str_copy(s->vert_filename),
       .file = file_new(s->vert_filename->slice),
       .ready = false,
       .type = ST_VERTEX
     };
-  }
-  else {
-    str_delete(&s->vert_filename);
   }
 
   if (!s->frag_filename) {
@@ -275,15 +284,26 @@ void shader_load_async(Shader s_in) {
   if (frag_ens.is_new) {
     *frag = (gl_shader_t) {
       .handle = 0,
-      .filename = s->frag_filename,
+      .filename = str_copy(s->frag_filename),
       .file = file_new(s->frag_filename->slice),
       .ready = false,
       .type = ST_FRAGMENT
     };
   }
-  else {
-    str_delete(&s->frag_filename);
-  }
+}
+
+void shader_file_vert(Shader s_in, slice_t override) {
+  SHADER_INTERNAL;
+  assert(!s->ready);
+  assert(!s->vert_filename);
+  s->vert_filename = str_format("./res/shaders/{}.vert", override);
+}
+
+void shader_file_frag(Shader s_in, slice_t override) {
+  SHADER_INTERNAL;
+  assert(!s->ready);
+  assert(!s->frag_filename);
+  s->frag_filename = str_format("./res/shaders/{}.frag", override);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

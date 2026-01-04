@@ -58,6 +58,7 @@ typedef struct Game_Internal {
   // setup properties
   input_t input;
   span_scene_t scenes;
+  span_renderer_t renderers;
 
   // reactive properties
   camera_t camera;
@@ -72,6 +73,7 @@ typedef struct Game_Internal {
   SlotMap_entity entities;
   Array_id entity_actors;
   Array_id entity_removals;
+  Array_id entity_updates;
 
 } Game_Internal;
 
@@ -198,6 +200,7 @@ Game game_new(String title, vec2i window_size) {
     .entities = smap_entity_new(),
     .entity_actors = arr_id_new(),
     .entity_removals = arr_id_new(),
+    .entity_updates = arr_id_new(),
   };
 
   Game p_ret = (Game)ret;
@@ -226,6 +229,7 @@ void game_delete(Game* _game) {
   smap_entity_delete(&game->entities);
   arr_id_delete(&game->entity_actors);
   arr_id_delete(&game->entity_removals);
+  arr_id_delete(&game->entity_updates);
   if (_game_instance_primary == *_game) _game_instance_primary = NULL;
   if (_game_instance_local == *_game) _game_instance_local = NULL;
   free(game);
@@ -262,7 +266,7 @@ Game game_get_local(void) {
 // Adds a game entity
 ////////////////////////////////////////////////////////////////////////////////
 
-slotkey_t game_entity_add(Game _game, const entity_t* input_entity) {
+slotkey_t entity_add(Game _game, const entity_t* input_entity) {
   vec3 tint = input_entity->tint;
   GAME_INTERNAL;
   if (tint.x == 0.0f
@@ -284,6 +288,11 @@ slotkey_t game_entity_add(Game _game, const entity_t* input_entity) {
     arr_id_push_back(game->entity_actors, key);
   }
 
+  // Register it with a renderer if it has one
+  if (entity->renderer && entity->renderer->register_entity) {
+    entity->renderer->register_entity(entity, _game);
+  }
+
   entity->create_time = game->scene_time;
 
   // Register renderable
@@ -302,17 +311,23 @@ slotkey_t game_entity_add(Game _game, const entity_t* input_entity) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-entity_t* game_entity_ref(Game _game, slotkey_t id) {
+entity_t* entity_ref(Game _game, slotkey_t id) {
   GAME_INTERNAL;
   return smap_entity_ref(game->entities, id);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Don't delete entities right away, flag them for removal after updates.
+////////////////////////////////////////////////////////////////////////////////
 
-void game_entity_remove(Game _game, slotkey_t id) {
+void entity_remove(Game _game, slotkey_t id) {
   GAME_INTERNAL;
   arr_id_push_back(game->entity_removals, id);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Per-entity update functions
+////////////////////////////////////////////////////////////////////////////////
 
 static void _game_entity_remove_execute(Game _game, slotkey_t key) {
   GAME_INTERNAL;
@@ -327,6 +342,13 @@ static void _game_entity_remove_execute(Game _game, slotkey_t key) {
 
     smap_entity_remove(game->entities, entity->id);
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static void _game_entity_update_execute(Game_Internal* game, slotkey_t key) {
+  UNUSED(game);
+  UNUSED(key);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -368,6 +390,14 @@ void game_update(Game _game, float dt) {
   }
   arr_id_clear(game->entity_removals);
 
+  // Update values of entities flagged as having changed to reflect their
+  //    current state in other systems, namely, updating the transform for
+  //    rendering and converting it to view space.
+  arr_foreach(key, game->entity_updates) {
+    _game_entity_update_execute(game, *key);
+  }
+  arr_id_clear(game->entity_updates);
+
   // Reset button triggers (only one frame on trigger/release)
   input_update(&game->input);
 }
@@ -382,8 +412,27 @@ void game_render(Game _game) {
   game->camera.view = camera_view(&game->camera);
 
   entity_t* smap_foreach(entity, game->entities) {
-    if (entity->render && !entity->hidden) {
+    if (entity->render && !entity->is_hidden) {
       entity->render(_game, entity);
     }
+    if (entity->renderer && entity->renderer->render_entity) {
+      entity->renderer->render_entity(entity->renderer, _game, entity);
+    }
   }
+
+  renderer_t** span_foreach(prenderer, game->renderers) {
+    renderer_t* renderer = *prenderer;
+    if (renderer->render) {
+      renderer->render(renderer, _game);
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Renders visisble game objects
+////////////////////////////////////////////////////////////////////////////////
+
+void entity_apply_transform(slotkey_t entity_id) {
+  Game_Internal* game = (Game_Internal*)game_get_active();
+  arr_id_push_back(game->entity_updates, entity_id);
 }

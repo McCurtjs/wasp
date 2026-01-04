@@ -41,6 +41,49 @@ typedef void (*entity_render_fn_t)(Game game, entity_t* e);
 typedef void (*entity_create_fn_t)(Game game, entity_t* e);
 typedef void (*entity_delete_fn_t)(Game game, entity_t* e);
 
+typedef enum renderer_type_t {
+  R_BASIC,
+  R_PBR,
+  R_BASIC_DEFERRED,
+  R_PBR_DEFERRED,
+  R_CUSTOM_START,
+} renderer_type_t;
+
+typedef struct renderer_t renderer_t;
+
+// Called once for each entity that's flagged for update
+typedef void (*renderer_entity_update_fn_t)(renderer_t*, entity_t*);
+
+typedef void (*renderer_entity_register_fn_t)(entity_t*, Game);
+typedef void (*renderer_entity_unregister_fn_t)(entity_t*);
+
+// Called once for each entity before the final render function
+typedef void (*renderer_entity_render_fn_t)(renderer_t*, Game, entity_t*);
+
+// Called once per frame after the entities are processed 
+typedef void (*renderer_render_fn_t)(renderer_t*, Game);
+
+// Called when the renderer is destroyed
+typedef void (*renderer_delete_fn_t)(renderer_t**);
+
+typedef struct renderer_basic_t {
+  renderer_type_t type;
+} renderer_basic_t;
+
+typedef struct renderer_t {
+  renderer_entity_register_fn_t register_entity;
+  renderer_entity_unregister_fn_t unregister_entity;
+  renderer_entity_update_fn_t update_entity;
+  renderer_entity_render_fn_t render_entity;
+  renderer_render_fn_t render;
+} renderer_t;
+
+#define con_type renderer_t*
+#define con_prefix renderer
+#include "span.h"
+#undef con_prefix
+#undef con_type
+
 typedef struct entity_t {
   slotkey_t id;
   slice_t name;
@@ -55,11 +98,15 @@ typedef struct entity_t {
   };
 
   mat4 transform;
-  const Model* model;
+  Model* model;
   Material material;
   vec3 tint;
 
-  bool hidden;
+  bool is_static;
+  bool is_hidden;
+
+  renderer_t* renderer;
+  slotkey_t render_id;
 
   entity_update_fn_t behavior;
   entity_render_fn_t render;

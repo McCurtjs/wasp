@@ -34,6 +34,7 @@ typedef enum ModelType {
   MODEL_NONE = 0,
   MODEL_GRID,
   MODEL_CUBE,
+  MODEL_CUBE_INST,
   MODEL_CUBE_COLOR,
   MODEL_FRAME,
   MODEL_SPRITES,
@@ -45,7 +46,7 @@ typedef enum ModelType {
 // if extent is 0, render only a unit axis gizmo
 // use a negative extent to scale the gizmo by the absolute value
 typedef struct Model_Grid {
-  uint type;
+  ModelType type;
   uint ready;
   int  extent;
   vec3 basis[3];
@@ -56,22 +57,29 @@ typedef struct Model_Grid {
 } Model_Grid;
 
 typedef struct Model_Cube {
-  uint type;
+  ModelType type;
   uint ready;
 } Model_Cube;
 
+typedef struct Model_Cube_Inst {
+  ModelType type;
+  uint ready;
+  uint instances;
+  uint vao;
+} Model_Cube_Inst;
+
 typedef struct Model_CubeColor {
-  uint type;
+  ModelType type;
   uint ready;
 } Model_CubeColor;
 
 typedef struct Model_Frame {
-  uint type;
+  ModelType type;
   uint ready;
 } Model_Frame;
 
 typedef struct Model_Sprites {
-  uint type;
+  ModelType type;
   uint ready;
   vec2i grid;
   uint vao;
@@ -80,7 +88,7 @@ typedef struct Model_Sprites {
 } Model_Sprites;
 
 typedef struct Model_Mesh {
-  uint type;
+  ModelType type;
   uint ready;
   bool use_color;
   Array verts;
@@ -98,11 +106,12 @@ typedef struct Model_Mesh {
 
 typedef union Model {
   struct {
-    uint type;
+    ModelType type;
     uint ready;
   };
   Model_Grid grid;
   Model_Cube cube;
+  Model_Cube_Inst cube_inst;
   Model_CubeColor cube_color;
   Model_Frame frame;
   Model_Sprites sprites;
@@ -111,6 +120,7 @@ typedef union Model {
 
 int  model_build(Model* model);
 void model_render(const Model* model);
+void model_render_instanced(const Model* model, index_t count);
 
 void model_load_obj(Model* model, File file);
 

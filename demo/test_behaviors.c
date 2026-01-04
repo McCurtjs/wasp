@@ -179,18 +179,18 @@ static void behavior_projectile(Game game, entity_t* e, float dt) {
     light->pos = new_pos;
   }
   if (new_pos.y < 0) {
-    game_entity_remove(game, e->id);
+    entity_remove(game, e->id);
   }
 }
 
 #define con_type slotkey_t
-#define con_prefix entity
+#define con_prefix id
 #include "span.h"
 #include "array.h"
 #undef con_type
 #undef con_prefix
 
-Array_entity wizard_bullets = NULL;
+Array_id wizard_bullets = NULL;
 
 static void ondelete_projectile(Game game, entity_t* e) {
   UNUSED(game);
@@ -198,7 +198,7 @@ static void ondelete_projectile(Game game, entity_t* e) {
   if (wizard_bullets) {
     slotkey_t* arr_foreach_index(id, i, wizard_bullets) {
       if (id->hash == e->id.hash) {
-        arr_entity_remove_unstable(wizard_bullets, i);
+        arr_id_remove_unstable(wizard_bullets, i);
       }
     }
   }
@@ -222,7 +222,7 @@ static void _wizard_projectile(Game game, entity_t* e, float dt) {
         .pos = launch_point
       });
 
-      slotkey_t eid = game_entity_add(game, &(entity_t) {
+      slotkey_t eid = entity_add(game, &(entity_t) {
         .pos = v3dir(click_pos, launch_point),
         .transform = m4ts(launch_point, 0.4f),
         .model = &demo->models.color_cube,
@@ -233,10 +233,10 @@ static void _wizard_projectile(Game game, entity_t* e, float dt) {
       });
 
       if (!wizard_bullets) {
-        wizard_bullets = arr_entity_new();
+        wizard_bullets = arr_id_new();
       }
 
-      arr_entity_push_back(wizard_bullets, eid);
+      arr_id_push_back(wizard_bullets, eid);
     }
   }
 }
@@ -254,14 +254,14 @@ static void behavior_baddy(Game game, entity_t* e, float dt) {
 
   if (wizard_bullets) {
     slotkey_t* arr_foreach(bullet_id, wizard_bullets) {
-      entity_t* bullet = game_entity_ref(game, *bullet_id);
+      entity_t* bullet = entity_ref(game, *bullet_id);
       if (!bullet) continue;
       vec3 bullet_pos = bullet->transform.col[3].xyz;
       if (v3dist(pos, bullet_pos) < 2.f) {
-        game_entity_remove(game, *bullet_id);
+        entity_remove(game, *bullet_id);
         e->tint.r -= 0.025f;
         if (e->tint.r <= 0.0f) {
-          game_entity_remove(game, e->id);
+          entity_remove(game, e->id);
         }
         return;
       }
@@ -279,7 +279,7 @@ static void _wizard_baddies(Game game, entity_t* e, float dt) {
     offset = v3scale(offset, 40.f + (cosf(theta * 52.f) + 1) * 20.f);
     vec3 pos = v3add(e->pos, offset);
     pos.y = 1.f;
-    game_entity_add(game, &(entity_t) {
+    entity_add(game, &(entity_t) {
       .pos = pos,
       .model = &game->demo->models.box,
       .material = game->demo->materials.crate,
@@ -367,7 +367,7 @@ void behavior_camera_monument(Game game, entity_t* e, float dt) {
 void behavior_grid_toggle(Game game, entity_t* e, float dt) {
   UNUSED(dt);
   if (input_triggered(IN_TOGGLE_GRID)) {
-    e->hidden = !e->hidden;
+    e->is_hidden = !e->is_hidden;
   }
 
   if (input_pressed(IN_CLOSE)) {
@@ -487,7 +487,7 @@ void behavior_attach_to_camera_target(Game game, entity_t* e, float dt) {
       game->demo->materials.renderite,
     };
 
-    game_entity_add(game, &(entity_t) {
+    entity_add(game, &(entity_t) {
       .model = &game->demo->models.box,
       .material = mats[(uint)e->transform.f[12] % 6],
       .transform = m4mul(e->transform, m4scalar(10.0f)),
@@ -512,12 +512,28 @@ void render_basic(Game game, entity_t* e) {
   model_render(e->model);
 }
 
+void render_basic2(renderer_t* renderer, Game game, entity_t* e) {
+  UNUSED(renderer);
+  render_basic(game, e);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Renders the debug objects
 ////////////////////////////////////////////////////////////////////////////////
 
 void render_debug(Game game, entity_t* e) {
   render_basic(game, e);
+  draw_render();
+}
+
+void render_debug2(renderer_t* renderer, Game game, entity_t* e) {
+  UNUSED(renderer);
+  render_debug(game, e);
+}
+
+void render_debug3(renderer_t* renderer, Game game) {
+  UNUSED(renderer);
+  UNUSED(game);
   draw_render();
 }
 
@@ -529,7 +545,12 @@ void render_pbr(Game game, entity_t* e) {
   Shader shader = game->demo->shaders.light;
   shader_bind(shader);
 
+  // Per-object properties
+
+  // Model positioning
   int loc_pvm = shader_uniform_loc(shader, "in_pvm_matrix");
+
+  // Material properties
   int loc_sampler_tex = shader_uniform_loc(shader, "texSamp");
   int loc_sampler_norm = shader_uniform_loc(shader, "normSamp");
   int loc_sampler_rough = shader_uniform_loc(shader, "roughSamp");
@@ -541,11 +562,11 @@ void render_pbr(Game game, entity_t* e) {
   mat4 pvm = m4mul(game->camera.projview, e->transform);
   mat4 norm = m4transpose(m4inverse(m4mul(game->camera.view, e->transform)));
 
+  glUniform3fv(loc_tint, 1, e->tint.f);
+
   glUniformMatrix4fv(loc_pvm, 1, 0, pvm.f);
   glUniformMatrix4fv(loc_norm, 1, 0, norm.f);
-
   glUniform3fv(loc_props, 1, e->material->weights.f);
-  glUniform3fv(loc_tint, 1, e->tint.f);
 
   //glUniform4fv(loc_light_pos, 1, demo->light_pos.f);
   //glUniform4fv(loc_camera_pos, 1, game->camera.pos.f);
@@ -562,4 +583,110 @@ void render_pbr(Game game, entity_t* e) {
   model_render(e->model);
 
   glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+typedef struct pbr_instance_attributes_t {
+  mat4 transform;
+  vec3 tint;
+} pbr_instance_attributes_t;
+
+#define con_type pbr_instance_attributes_t
+#define con_prefix instance
+#include "packedmap.h"
+#undef con_prefix
+#undef con_type
+
+static PackedMap_instance pbr_instances = NULL;
+static Model_Cube_Inst* cube_inst = NULL;
+
+void render_pbr_register(entity_t* e, Game game) {
+  assert(e->renderer == renderer_pbr);
+  assert(e->model->type == MODEL_CUBE_INST);
+  if (!pbr_instances) pbr_instances = pmap_instance_new();
+  if (!cube_inst) cube_inst = (Model_Cube_Inst*)e->model;
+
+  mat4* view = &game->camera.view;
+  e->render_id = pmap_instance_insert(pbr_instances, 
+    &(pbr_instance_attributes_t) {
+      .transform = e->transform,
+      .tint = e->tint,
+    }
+  );
+}
+
+void render_pbr_unregister(entity_t* e) {
+  assert(e->renderer == renderer_pbr);
+  pmap_instance_remove(pbr_instances, e->render_id);
+  e->render_id = SK_NULL;
+}
+
+void render_pbr2(renderer_t* renderer, Game game, entity_t* e) {
+  UNUSED(renderer);
+  UNUSED(game);
+  UNUSED(e);
+  //render_pbr(game, e);
+}
+
+void render_pbr3(renderer_t* renderer, Game game) {
+  UNUSED(renderer);
+  UNUSED(game);
+  if (!pbr_instances) return;
+  if (!cube_inst) return;
+  //*
+  Shader shader = game->demo->shaders.light;
+  shader_bind(shader);
+
+  GLsizei ins_size = sizeof(pbr_instance_attributes_t);
+  if (!cube_inst->instances) {
+    glBindVertexArray(cube_inst->vao);
+    glGenBuffers(1, &cube_inst->instances);
+    glBindBuffer(GL_ARRAY_BUFFER, cube_inst->instances);
+    glBufferData(GL_ARRAY_BUFFER
+    , sizeof(pbr_instance_attributes_t) * pbr_instances->size
+    , pbr_instances->begin
+    , GL_STATIC_DRAW
+    );
+
+    glEnableVertexAttribArray(5);
+    glEnableVertexAttribArray(6);
+    glEnableVertexAttribArray(7);
+    glEnableVertexAttribArray(8);
+    glEnableVertexAttribArray(9);
+    glVertexAttribPointer(5, 4, GL_FLOAT, false, m4bytes, (void*)0);
+    glVertexAttribPointer(6, 4, GL_FLOAT, false, m4bytes, (void*)(1 * v4bytes));
+    glVertexAttribPointer(7, 4, GL_FLOAT, false, m4bytes, (void*)(2 * v4bytes));
+    glVertexAttribPointer(8, 4, GL_FLOAT, false, m4bytes, (void*)(3 * v4bytes));
+    glVertexAttribPointer(9, 3, GL_FLOAT, false, m3bytes, (void*)(4 * v4bytes));
+    glVertexAttribDivisor(5, 1);
+    glVertexAttribDivisor(6, 1);
+    glVertexAttribDivisor(7, 1);
+    glVertexAttribDivisor(8, 1);
+    glVertexAttribDivisor(9, 1);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+  }
+
+  // Material properties
+  int loc_sampler_tex = shader_uniform_loc(shader, "texSamp");
+  int loc_sampler_norm = shader_uniform_loc(shader, "normSamp");
+  int loc_sampler_rough = shader_uniform_loc(shader, "roughSamp");
+  int loc_sampler_metal = shader_uniform_loc(shader, "metalSamp");
+  int loc_props = shader_uniform_loc(shader, "in_weights");
+
+  tex_apply(game->demo->materials.mudds->map_diffuse, 0, loc_sampler_tex);
+  tex_apply(game->demo->materials.mudds->map_normals, 1, loc_sampler_norm);
+  tex_apply(game->demo->materials.mudds->map_roughness, 2, loc_sampler_rough);
+  tex_apply(game->demo->materials.mudds->map_metalness, 3, loc_sampler_metal);
+  glUniform3fv(loc_props, 1, game->demo->materials.mudds->weights.f);
+
+  // Shared uniforms
+  int loc_pv = shader_uniform_loc(shader, "in_pv_matrix");
+  int loc_view = shader_uniform_loc(shader, "in_view_matrix");
+  glUniformMatrix4fv(loc_pv, 1, 0, game->camera.projview.f);
+  glUniformMatrix4fv(loc_view, 1, 0, game->camera.view.f);
+
+  model_render_instanced(&game->demo->models.box, pbr_instances->size);
+  glBindTexture(GL_TEXTURE_2D, 0);
+  //*/
 }
