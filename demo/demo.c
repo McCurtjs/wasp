@@ -245,6 +245,9 @@ bool wasp_load (Game game, int await_count, float dt) {
   material_build_all();
   model_load_obj(&demo.models.gear, file_model_gear);
 
+  _renderer_pbr.shader = game->demo->shaders.light_inst;
+  _renderer_pbr.groups = map_rg_new();
+
   // Delete async loaded resources
   file_delete(&file_model_gear);
 
@@ -263,7 +266,7 @@ bool wasp_load (Game game, int await_count, float dt) {
 
   demo.models.box.type = MODEL_CUBE;
 
-  demo.models.box_inst.type = MODEL_CUBE_INST;
+  demo.models.box_inst.type = MODEL_CUBE;
 
   model_build(&demo.models.player);
   model_build(&demo.models.level_test);

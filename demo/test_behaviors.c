@@ -590,33 +590,43 @@ typedef struct pbr_instance_attributes_t {
   vec3 tint;
 } pbr_instance_attributes_t;
 
-#define con_type pbr_instance_attributes_t
-#define con_prefix instance
-#include "packedmap.h"
-#undef con_prefix
-#undef con_type
-
-static PackedMap_instance pbr_instances = NULL;
-static Model_Cube_Inst* cube_inst = NULL;
-
 void render_pbr_register(entity_t* e, Game game) {
+  UNUSED(game);
   assert(e->renderer == renderer_pbr);
-  assert(e->model->type == MODEL_CUBE_INST);
-  if (!pbr_instances) pbr_instances = pmap_instance_new();
-  if (!cube_inst) cube_inst = (Model_Cube_Inst*)e->model;
+  assert(e->model->type == MODEL_CUBE);
 
-  mat4* view = &game->camera.view;
-  e->render_id = pmap_instance_insert(pbr_instances, 
+  // get associated render group
+  render_group_key_t key = { e->model, e->material, e->is_static };
+  res_ensure_rg_t group_slot = map_rg_ensure(e->renderer->groups, key);
+
+  if (group_slot.is_new) {
+    *group_slot.value = (render_group_t){
+      .instances = pmap_new(pbr_instance_attributes_t),
+      .material = e->material,
+      .model = e->model,
+      .is_static = e->is_static,
+    };
+  }
+
+  // add instance to the group and save its instance id
+  e->render_id = pmap_insert(group_slot.value->instances, 
     &(pbr_instance_attributes_t) {
       .transform = e->transform,
       .tint = e->tint,
     }
   );
+
+  ((render_group_t*)group_slot.value)->needs_update = true;
 }
 
 void render_pbr_unregister(entity_t* e) {
   assert(e->renderer == renderer_pbr);
-  pmap_instance_remove(pbr_instances, e->render_id);
+  render_group_key_t key = { e->model, e->material, e->is_static };
+  render_group_t* group = map_rg_ref(e->renderer->groups, key);
+  if (!group) return;
+  pmap_remove(group->instances, e->render_id);
+  group->needs_update = true;
+  e->renderer = NULL;
   e->render_id = SK_NULL;
 }
 
@@ -628,44 +638,9 @@ void render_pbr2(renderer_t* renderer, Game game, entity_t* e) {
 }
 
 void render_pbr3(renderer_t* renderer, Game game) {
-  UNUSED(renderer);
-  UNUSED(game);
-  if (!pbr_instances) return;
-  if (!cube_inst) return;
-  //*
-  Shader shader = game->demo->shaders.light;
+  if (!renderer->groups || !renderer->groups->size) return;
+  Shader shader = renderer->shader;
   shader_bind(shader);
-
-  GLsizei ins_size = sizeof(pbr_instance_attributes_t);
-  if (!cube_inst->instances) {
-    glBindVertexArray(cube_inst->vao);
-    glGenBuffers(1, &cube_inst->instances);
-    glBindBuffer(GL_ARRAY_BUFFER, cube_inst->instances);
-    glBufferData(GL_ARRAY_BUFFER
-    , sizeof(pbr_instance_attributes_t) * pbr_instances->size
-    , pbr_instances->begin
-    , GL_STATIC_DRAW
-    );
-
-    glEnableVertexAttribArray(5);
-    glEnableVertexAttribArray(6);
-    glEnableVertexAttribArray(7);
-    glEnableVertexAttribArray(8);
-    glEnableVertexAttribArray(9);
-    glVertexAttribPointer(5, 4, GL_FLOAT, false, m4bytes, (void*)0);
-    glVertexAttribPointer(6, 4, GL_FLOAT, false, m4bytes, (void*)(1 * v4bytes));
-    glVertexAttribPointer(7, 4, GL_FLOAT, false, m4bytes, (void*)(2 * v4bytes));
-    glVertexAttribPointer(8, 4, GL_FLOAT, false, m4bytes, (void*)(3 * v4bytes));
-    glVertexAttribPointer(9, 3, GL_FLOAT, false, m3bytes, (void*)(4 * v4bytes));
-    glVertexAttribDivisor(5, 1);
-    glVertexAttribDivisor(6, 1);
-    glVertexAttribDivisor(7, 1);
-    glVertexAttribDivisor(8, 1);
-    glVertexAttribDivisor(9, 1);
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
-  }
 
   // Material properties
   int loc_sampler_tex = shader_uniform_loc(shader, "texSamp");
@@ -686,7 +661,83 @@ void render_pbr3(renderer_t* renderer, Game game) {
   glUniformMatrix4fv(loc_pv, 1, 0, game->camera.projview.f);
   glUniformMatrix4fv(loc_view, 1, 0, game->camera.view.f);
 
-  model_render_instanced(&game->demo->models.box, pbr_instances->size);
-  glBindTexture(GL_TEXTURE_2D, 0);
-  //*/
+  // Render each model group in a batch
+  render_group_t* map_foreach(group, renderer->groups) {
+    if (!group->instances || group->instances->size == 0) continue;
+
+    // create the vao and instance buffer handle on first run
+    if (!group->vao) {
+      glGenVertexArrays(1, &group->vao);
+      glBindVertexArray(group->vao);
+
+      model_bind(group->model);
+
+      glGenBuffers(1, &group->instance_buffer);
+      glBindBuffer(GL_ARRAY_BUFFER, group->instance_buffer);
+      glBufferData(GL_ARRAY_BUFFER
+      , group->instances->size_bytes
+      , group->instances->begin
+      , group->is_static ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW
+      );
+
+      group->needs_update = false;
+
+      GLsizei stride = sizeof(pbr_instance_attributes_t);
+      glEnableVertexAttribArray(5); // Transform
+      glEnableVertexAttribArray(6);
+      glEnableVertexAttribArray(7);
+      glEnableVertexAttribArray(8);
+      //glEnableVertexAttribArray(9); // Tint color
+      glVertexAttribPointer(5, 4, GL_FLOAT, false, stride, (void*)0);
+      glVertexAttribPointer(6, 4, GL_FLOAT, false, stride, (void*)(1*v4bytes));
+      glVertexAttribPointer(7, 4, GL_FLOAT, false, stride, (void*)(2*v4bytes));
+      glVertexAttribPointer(8, 4, GL_FLOAT, false, stride, (void*)(3*v4bytes));
+      //glVertexAttribPointer(9, 3, GL_FLOAT, false, stride, (void*)(4*v4bytes));
+      glVertexAttribDivisor(5, 1);
+      glVertexAttribDivisor(6, 1);
+      glVertexAttribDivisor(7, 1);
+      glVertexAttribDivisor(8, 1);
+      //glVertexAttribDivisor(9, 1);
+
+      glBindBuffer(GL_ARRAY_BUFFER, 0);
+      glBindVertexArray(0);
+    }
+
+    // update the instance buffer if items have changed
+    if (group->needs_update) {
+      glBindBuffer(GL_ARRAY_BUFFER, group->instance_buffer);
+      glBufferData(GL_ARRAY_BUFFER
+      , group->instances->size_bytes
+      , group->instances->begin
+      , group->is_static ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW
+      );
+      glBindBuffer(GL_ARRAY_BUFFER, 0);
+      group->needs_update = false;
+    }
+
+    // set up render and draw call
+    glBindVertexArray(group->vao);
+
+    if (group->model->index_count) {
+      // indexed draw
+      glDrawElementsInstanced
+      ( GL_TRIANGLES
+      , (GLsizei)group->model->vert_count
+      , GL_UNSIGNED_INT
+      , 0
+      , (GLsizei)group->instances->size
+      );
+    }
+    else {
+      // non-indexed draw
+      glDrawArraysInstanced
+      ( GL_TRIANGLES
+      , 0
+      , (GLsizei)group->model->vert_count
+      , (GLsizei)group->instances->size
+      );
+    }
+
+    glBindVertexArray(0);
+  }
 }

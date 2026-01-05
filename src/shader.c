@@ -389,12 +389,35 @@ int shader_uniform_loc(Shader s_in, const char* name) {
   res_ensure_t slot = map_ensure(s->uniforms, &name_slice);
 
   if (slot.is_new) {
+    glGetError();
     *(GLint*)slot.value = glGetUniformLocation(s->program_handle, name);
     int err = glGetError();
     if (err) {
       str_log("[Shader.uniform_loc] Failed: {}, error: 0x{!x}", name, err);
     }
+  }
 
+  return *(int*)slot.value;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Get an attribute location by name from the shader
+////////////////////////////////////////////////////////////////////////////////
+
+int shader_attribute_loc(Shader s_in, const char* name) {
+  SHADER_INTERNAL;
+  assert(s->ready);
+
+  slice_t name_slice = slice_from_c_str(name);
+  res_ensure_t slot = map_ensure(s->uniforms, &name_slice);
+
+  if (slot.is_new) {
+    glGetError();
+    *(GLint*)slot.value = glGetAttribLocation(s->program_handle, name);
+    int err = glGetError();
+    if (err) {
+      str_log("[Shader.attrib_loc] Failed: {}, error: 0x{!x}", name, err);
+    }
   }
 
   return *(int*)slot.value;
@@ -443,6 +466,11 @@ void _gl_shader_update_program(Shader s_in, gl_shader_t* part) {
   glDeleteProgram(s->program_handle);
 
   str_log("[Shader.watch] Re-linked: {}", s->name);
+
+  int err = glGetError();
+  if (err) {
+    str_log("[Shader.watch] Error during reload: 0x{!x:04}", err);
+  }
 
   *s = temp;
   map_clear(s->uniforms);

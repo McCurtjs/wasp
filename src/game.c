@@ -117,6 +117,18 @@ static void _game_scene_close(Game_Internal* game) {
   light_clear();
   arr_id_clear(game->entity_actors);
   arr_id_clear(game->entity_removals);
+  arr_id_clear(game->entity_updates);
+
+  // Clear out instance data from the renderers
+  renderer_t** span_foreach(prenderer, game->renderers) {
+    renderer_t* renderer = *prenderer;
+    if (renderer->groups) {
+      render_group_t* map_foreach(group, renderer->groups) {
+        pmap_clear(group->instances);
+        group->needs_update = true;
+      }
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

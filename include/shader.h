@@ -45,6 +45,7 @@ void    shader_bind(Shader shader);
 void    shader_delete(Shader* shader);
 
 int     shader_uniform_loc(Shader shader, const char* name);
+int     shader_attribute_loc(Shader shader, const char* name);
 
 void    shader_check_updates(void);
 

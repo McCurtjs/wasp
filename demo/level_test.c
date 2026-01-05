@@ -196,7 +196,7 @@ scene_unload_fn_t scene_load_gears(Game game) {
         .model = &demo->models.box,
         .material = material,
         .transform = m4trs(pos, axis, angle, 19),
-        .render = render_pbr,
+        .renderer = renderer_pbr,
       });
 
     }
@@ -375,7 +375,7 @@ static scene_unload_fn_t _scene_load_monument(Game game) {
           .model = &demo->models.box,
           .material = demo->materials.mudds,
           .transform = m4ts(pos, 120.f - 2.f * (y + ext)),
-          .render = render_pbr,
+          .renderer = renderer_pbr,
         });
       }
     }

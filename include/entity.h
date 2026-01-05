@@ -70,12 +70,48 @@ typedef struct renderer_basic_t {
   renderer_type_t type;
 } renderer_basic_t;
 
+typedef struct render_group_key_t {
+  Model* model;
+  Material material;
+  bool is_static;
+} render_group_key_t;
+
+#include "packedmap.h"
+
+typedef struct render_group_t {
+  union {
+    render_group_key_t key;
+    struct {
+      Model* model;
+      Material material;
+      bool is_static;
+    };
+  };
+  PackedMap instances;
+  uint vao;
+  uint instance_buffer;
+  index_t update_range_low;
+  index_t update_range_high;
+  bool needs_update;
+} render_group_t;
+
+
+#define con_type render_group_t
+#define key_type render_group_key_t
+#define con_prefix rg
+#include "map.h"
+#undef con_prefix
+#undef key_type
+#undef con_type
+
 typedef struct renderer_t {
   renderer_entity_register_fn_t register_entity;
   renderer_entity_unregister_fn_t unregister_entity;
   renderer_entity_update_fn_t update_entity;
   renderer_entity_render_fn_t render_entity;
   renderer_render_fn_t render;
+  HMap_rg groups;
+  Shader shader;
 } renderer_t;
 
 #define con_type renderer_t*

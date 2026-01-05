@@ -49,9 +49,6 @@ typedef struct _opaque_Material_t {
   bool            use_normal_map;
   bool            use_roughness_map;
   bool            use_metalness_map;
-  struct {
-    int itmes;
-  } bucket;
 }* Material;
 
 Material  material_new(slice_t name);

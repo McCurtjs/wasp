@@ -101,6 +101,7 @@ static void prim_bind_frame(void) {
 
 static int model_build_grid(Model_Grid* grid) {
   if (grid->ready) return 1;
+  grid->index_count = 0;
 
   glGenVertexArrays(1, &grid->vao);
   glBindVertexArray(grid->vao);
@@ -109,16 +110,16 @@ static int model_build_grid(Model_Grid* grid) {
   int gext = ext;
 
   if (ext <= 0) {
-    grid->points_count = 6;
+    grid->vert_count = 6;
     gext = -ext > 1 ? -ext : 1;
   } else {
-    grid->points_count = 12 + 8 * ext;
+    grid->vert_count = 12 + 8 * ext;
   }
 
   float exf = (float)ext;
 
-  vec3* points = malloc(sizeof(vec3) * grid->points_count);
-  color3b* colors = malloc(sizeof(color3b) * grid->points_count);
+  vec3* points = malloc(sizeof(vec3) * grid->vert_count);
+  color3b* colors = malloc(sizeof(color3b) * grid->vert_count);
 
   assert(points != NULL);
   assert(colors != NULL);
@@ -144,7 +145,7 @@ static int model_build_grid(Model_Grid* grid) {
       points[i] = v3scale(basis[j], -exf);
     }
 
-    for (int j = 1; i < grid->points_count; i += 8, ++j) {
+    for (int j = 1; i < grid->vert_count; i += 8, ++j) {
       // (x * ext) + (y * j)
       float jf = (float)j;
       points[i+0] = v3add(v3scale(basis[ga], exf), v3scale(basis[gb], jf));
@@ -164,14 +165,14 @@ static int model_build_grid(Model_Grid* grid) {
     }
   }
 
-  GLsizeiptr points_size = sizeof(*points) * grid->points_count;
+  GLsizeiptr points_size = sizeof(*points) * grid->vert_count;
   glGenBuffers(2, grid->buffers);
   glBindBuffer(GL_ARRAY_BUFFER, grid->buffers[0]);
   glBufferData(GL_ARRAY_BUFFER, points_size, points, GL_STATIC_DRAW);
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
   glEnableVertexAttribArray(0);
 
-  GLsizeiptr colors_size = sizeof(*colors) * grid->points_count;
+  GLsizeiptr colors_size = sizeof(*colors) * grid->vert_count;
   glBindBuffer(GL_ARRAY_BUFFER, grid->buffers[1]);
   glBufferData(GL_ARRAY_BUFFER, colors_size, colors, GL_STATIC_DRAW);
   glVertexAttribPointer(1, sizeof(*colors), GL_UNSIGNED_BYTE, GL_TRUE, 0, 0);
@@ -187,7 +188,7 @@ static int model_build_grid(Model_Grid* grid) {
 
 static void model_render_grid(const Model_Grid* grid) {
   glBindVertexArray(grid->vao);
-  glDrawArrays(GL_LINES, 0, grid->points_count);
+  glDrawArrays(GL_LINES, 0, (GLsizei)grid->vert_count);
   glBindVertexArray(0);
 }
 
@@ -200,38 +201,21 @@ static int model_build_cube(Model_Cube* cube) {
   prim_bind_cube_2();
   glBindVertexArray(0);
   cube->ready = TRUE;
+  cube->vert_count = 36;
+  cube->index_count = 0;
   return 1;
+}
+
+static void model_bind_cube(const Model_Cube* cube) {
+  UNUSED(cube);
+  prim_bind_cube_2();
 }
 
 static void model_render_cube(const Model_Cube* cube) {
   UNUSED(cube);
-
   glBindVertexArray(cube_vao);
   glDrawArrays(GL_TRIANGLES, 0, 36);
   glBindVertexArray(0);
-}
-
-// Model_Cube_Inst
-
-static int model_build_cube_inst(Model_Cube_Inst* cube) {
-  if (cube->vao) return 1;
-  glGenVertexArrays(1, &cube->vao);
-  glBindVertexArray(cube->vao);
-  prim_bind_cube_2();
-  glBindVertexArray(0);
-  cube->ready = true;
-  return 1;
-}
-
-static void model_render_cube_inst(const Model_Cube_Inst* cube, GLsizei count) {
-  if (cube->vao) {
-    glBindVertexArray(cube_vao);
-    glDrawArraysInstanced(GL_TRIANGLES, 0, 36, count);
-    glBindVertexArray(0);
-  }
-  else {
-    model_render_cube((Model_Cube*)cube);
-  }
 }
 
 // Model_CubeColor
@@ -244,6 +228,8 @@ static int model_build_cube_color(Model_CubeColor* cube) {
   prim_bind_cube_color();
   glBindVertexArray(0);
   cube->ready = TRUE;
+  cube->vert_count = 14;
+  cube->index_count = 0;
   return 1;
 }
 
@@ -264,6 +250,8 @@ static int model_build_frame(Model_Frame* frame) {
   prim_bind_frame();
   glBindVertexArray(0);
   frame->ready = TRUE;
+  frame->vert_count = 3;
+  frame->index_count = 0;
   return 1;
 }
 
@@ -461,6 +449,9 @@ static int model_build_mesh(Model_Mesh* mesh) {
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
+  mesh->vert_count = mesh->verts->size;
+  mesh->index_count = mesh->indices->size;
+
   arr_delete(&mesh->verts);
   arr_delete(&mesh->indices);
 
@@ -471,7 +462,10 @@ static int model_build_mesh(Model_Mesh* mesh) {
 static void model_render_mesh(Model_Mesh* mesh) {
   glBindVertexArray(mesh->vao);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
-  glDrawElements(GL_TRIANGLES, mesh->index_count, GL_UNSIGNED_INT, 0);
+  glDrawElements(GL_TRIANGLES
+  , (GLsizei)mesh->index_count
+  , GL_UNSIGNED_INT
+  , 0);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
 }
@@ -479,12 +473,12 @@ static void model_render_mesh(Model_Mesh* mesh) {
 // Exported functions
 
 typedef int  (*model_build_pfn)(void* model);
+typedef void (*model_bind_fn_t)(const void* model);
 typedef void (*model_render_pfn)(const void* model);
 typedef void (*model_render_instanced_pfn)(const void* model, GLsizei count);
 
 static model_build_pfn model_build_fns[MODEL_TYPES_COUNT] = {
   (model_build_pfn)model_build_grid,
-  (model_build_pfn)model_build_cube,
   (model_build_pfn)model_build_cube,
   (model_build_pfn)model_build_cube_color,
   (model_build_pfn)model_build_frame,
@@ -494,13 +488,11 @@ static model_build_pfn model_build_fns[MODEL_TYPES_COUNT] = {
 
 int model_build(Model* model) {
   if (!model || !model->type || model->ready) return 0;
-
   return model_build_fns[model->type - 1](model);
 }
 
 static model_render_pfn model_render_fns[MODEL_TYPES_COUNT] = {
   (model_render_pfn)model_render_grid,
-  (model_render_pfn)model_render_cube,
   (model_render_pfn)model_render_cube,
   (model_render_pfn)model_render_cube_color,
   (model_render_pfn)model_render_frame,
@@ -508,25 +500,23 @@ static model_render_pfn model_render_fns[MODEL_TYPES_COUNT] = {
   (model_render_pfn)model_render_mesh
 };
 
-static model_render_instanced_pfn model_render_instanced_fns[MODEL_TYPES_COUNT]
-= {
+void model_render(const Model* model) {
+  if (!model || !model->type || !model->ready) return;
+  model_render_fns[model->type - 1](model);
+}
+
+static model_bind_fn_t model_bind_fns[MODEL_TYPES_COUNT] = {
   NULL,
-  (model_render_instanced_pfn)model_render_cube_inst,
+  (model_bind_fn_t)model_bind_cube,
   NULL,
   NULL,
   NULL,
   NULL
 };
 
-void model_render(const Model* model) {
+void model_bind(const Model* model) {
   if (!model || !model->type || !model->ready) return;
-  model_render_fns[model->type - 1](model);
-}
-
-void model_render_instanced(const Model* model, index_t count) {
-  if (!model || !model->type || !model->ready) return;
-  assert(model_render_instanced_fns[model->type - 1]);
-  model_render_instanced_fns[model->type - 1](model, (GLsizei)count);
+  model_bind_fns[model->type - 1](model);
 }
 
 void model_grid_set_default(Model* model, int extent) {

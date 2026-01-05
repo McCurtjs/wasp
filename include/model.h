@@ -30,57 +30,58 @@
 #include "array.h"
 #include "file.h"
 
-typedef enum ModelType {
+typedef enum model_type_t {
   MODEL_NONE = 0,
   MODEL_GRID,
   MODEL_CUBE,
-  MODEL_CUBE_INST,
   MODEL_CUBE_COLOR,
   MODEL_FRAME,
   MODEL_SPRITES,
   MODEL_OBJ,
   MODEL_TYPES_COUNT
-} ModelType;
+} model_type_t;
 
 // A grid defined by the basis axes provided, along the index primary axes
 // if extent is 0, render only a unit axis gizmo
 // use a negative extent to scale the gizmo by the absolute value
 typedef struct Model_Grid {
-  ModelType type;
-  uint ready;
+  model_type_t type;
+  index_t vert_count;
+  index_t index_count;
+  bool ready;
   int  extent;
   vec3 basis[3];
   byte primary[2];
   uint vao;
-  uint points_count;
   uint buffers[2];
 } Model_Grid;
 
 typedef struct Model_Cube {
-  ModelType type;
-  uint ready;
+  model_type_t type;
+  index_t vert_count;
+  index_t index_count;
+  bool ready;
 } Model_Cube;
 
-typedef struct Model_Cube_Inst {
-  ModelType type;
-  uint ready;
-  uint instances;
-  uint vao;
-} Model_Cube_Inst;
-
 typedef struct Model_CubeColor {
-  ModelType type;
-  uint ready;
+  model_type_t type;
+  index_t vert_count;
+  index_t index_count;
+  bool ready;
 } Model_CubeColor;
 
 typedef struct Model_Frame {
-  ModelType type;
-  uint ready;
+  model_type_t type;
+  index_t vert_count;
+  index_t index_count;
+  bool ready;
 } Model_Frame;
 
 typedef struct Model_Sprites {
-  ModelType type;
-  uint ready;
+  model_type_t type;
+  index_t vert_count;
+  index_t index_count;
+  bool ready;
   vec2i grid;
   uint vao;
   uint buffer;
@@ -88,12 +89,13 @@ typedef struct Model_Sprites {
 } Model_Sprites;
 
 typedef struct Model_Mesh {
-  ModelType type;
-  uint ready;
+  model_type_t type;
+  index_t vert_count;
+  index_t index_count;
+  bool ready;
   bool use_color;
   Array verts;
   Array indices;
-  int index_count;
   uint vao;
   union {
     uint buffers[2];
@@ -106,12 +108,13 @@ typedef struct Model_Mesh {
 
 typedef union Model {
   struct {
-    ModelType type;
-    uint ready;
+    model_type_t type;
+    index_t vert_count;
+    index_t index_count;
+    bool ready;
   };
   Model_Grid grid;
   Model_Cube cube;
-  Model_Cube_Inst cube_inst;
   Model_CubeColor cube_color;
   Model_Frame frame;
   Model_Sprites sprites;
@@ -119,6 +122,7 @@ typedef union Model {
 } Model;
 
 int  model_build(Model* model);
+void model_bind(const Model* model);
 void model_render(const Model* model);
 void model_render_instanced(const Model* model, index_t count);
 
