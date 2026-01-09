@@ -389,7 +389,6 @@ int shader_uniform_loc(Shader s_in, const char* name) {
   res_ensure_t slot = map_ensure(s->uniforms, &name_slice);
 
   if (slot.is_new) {
-    glGetError();
     *(GLint*)slot.value = glGetUniformLocation(s->program_handle, name);
     int err = glGetError();
     if (err) {
@@ -412,7 +411,6 @@ int shader_attribute_loc(Shader s_in, const char* name) {
   res_ensure_t slot = map_ensure(s->uniforms, &name_slice);
 
   if (slot.is_new) {
-    glGetError();
     *(GLint*)slot.value = glGetAttribLocation(s->program_handle, name);
     int err = glGetError();
     if (err) {

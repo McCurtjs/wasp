@@ -77,11 +77,6 @@ static void prim_bind_cube_2(void) {
   glVertexAttribPointer(3, v4floats, GL_FLOAT, GL_FALSE, stride, offset);
 }
 
-static GLuint cube_inst_vao = 0;
-static void prim_bind_Cube_2_inst(void) {
-
-}
-
 static GLuint frame_verts_buffer = 0;
 static GLuint frame_vao = 0;
 static void prim_bind_frame(void) {

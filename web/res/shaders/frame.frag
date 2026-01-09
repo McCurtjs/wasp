@@ -95,6 +95,7 @@ LightColor get_light_color(int i) {
 
 ////////////////////////////////////////////////////////////////////////////////
 // Geometric functions
+
 vec3 snap_to_circle_3d(
   vec3 frag_pos, vec3 light_pos, vec3 light_dir, float radius, vec3 Lv
 ) {

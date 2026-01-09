@@ -38,9 +38,8 @@
 #include "entity.h"
 #include "input.h"
 
-typedef struct Graphics_Internal* Graphics;
-
 typedef struct _opaque_Game_t* Game;
+typedef struct _opaque_Graphics_t* Graphics;
 
 typedef void (*event_resize_window_fn_t)(Game game);
 
@@ -83,7 +82,6 @@ typedef struct _opaque_Game_t {
   // game setup
   input_t         input;
   span_scene_t    scenes;
-  span_renderer_t renderers;
 
   // reactive properties
   camera_t        camera;
@@ -100,16 +98,8 @@ void game_delete(Game* game);
 
 void game_set_active(Game game);
 Game game_get_active(void);
-
 void game_set_local(Game game);
 Game game_get_local(void);
-
-slotkey_t entity_add(Game game, const entity_t* entity);
-entity_t* entity_ref(Game game, slotkey_t entity_id);
-void entity_remove(Game game, slotkey_t entity_id);
-void entity_set_behavior(Game game, slotkey_t id, entity_update_fn_t bh);
-
-void entity_apply_transform(slotkey_t entity_id);
 
 void game_update(Game game, float dt);
 void game_render(Game game);

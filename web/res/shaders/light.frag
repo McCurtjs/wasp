@@ -8,9 +8,6 @@ in vec2 vUV;
 in vec3 vColor;
 in mat3 vTangentTransform;
 
-uniform vec4 lightPos;
-uniform vec4 cameraPos;
-
 uniform sampler2D texSamp;
 uniform sampler2D normSamp;
 uniform sampler2D roughSamp;
@@ -23,6 +20,9 @@ layout(location = 0) out vec3 fragColor;
 layout(location = 1) out vec2 fragNormal;
 layout(location = 2) out vec4 fragProps;
 
+////////////////////////////////////////////////////////////////////////////////
+// Octahedral encode
+
 vec2 oct_encode(vec3 n) {
   n = normalize(n);
   n /= abs(n.x) + abs(n.y) + abs(n.z);
@@ -30,12 +30,15 @@ vec2 oct_encode(vec3 n) {
   return n.xy;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Write out to G-buffer
+
 void main() {
 
   // Get base texture color - discard fully transparent fragments
   vec4 albedo = texture(texSamp, vUV);
   if (albedo.w == 0.0) discard;
-  fragColor = albedo.xyz * in_tint * vColor;
+  fragColor = albedo.xyz * vColor;
 
   // Extract material properties and apply weights
   fragProps.r = texture(roughSamp, vUV).r * in_weights.g; // roughness value

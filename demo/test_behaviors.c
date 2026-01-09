@@ -26,6 +26,7 @@
 #include "draw.h"
 #include "gl.h"
 #include "light.h"
+#include "graphics.h"
 
 #define CAMERA_SPEED 0.8f
 
@@ -590,7 +591,7 @@ typedef struct pbr_instance_attributes_t {
   vec3 tint;
 } pbr_instance_attributes_t;
 
-void render_pbr_register(entity_t* e, Game game) {
+slotkey_t render_pbr_register(entity_t* e, Game game) {
   UNUSED(game);
   assert(e->renderer == renderer_pbr);
   assert(e->model->type == MODEL_CUBE);
@@ -600,7 +601,7 @@ void render_pbr_register(entity_t* e, Game game) {
   res_ensure_rg_t group_slot = map_rg_ensure(e->renderer->groups, key);
 
   if (group_slot.is_new) {
-    *group_slot.value = (render_group_t){
+    *group_slot.value = (render_group_t) {
       .instances = pmap_new(pbr_instance_attributes_t),
       .material = e->material,
       .model = e->model,
@@ -608,15 +609,15 @@ void render_pbr_register(entity_t* e, Game game) {
     };
   }
 
+  group_slot.value->needs_update = true;
+
   // add instance to the group and save its instance id
-  e->render_id = pmap_insert(group_slot.value->instances, 
+  return pmap_insert(group_slot.value->instances, 
     &(pbr_instance_attributes_t) {
       .transform = e->transform,
       .tint = e->tint,
     }
   );
-
-  ((render_group_t*)group_slot.value)->needs_update = true;
 }
 
 void render_pbr_unregister(entity_t* e) {

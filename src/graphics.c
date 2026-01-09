@@ -1,7 +1,7 @@
 /*******************************************************************************
 * MIT License
 *
-* Copyright (c) 2025 Curtis McCoy
+* Copyright (c) 2026 Curtis McCoy
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -37,13 +37,17 @@
 #include <string.h> // memcpy
 
 typedef struct Graphics_Internal {
+  span_renderer_t renderers;
   SlotMap_light lights;
 } Graphics_Internal;
 
 #define GRAPHICS_INTERNAL                                                     \
-  Game game = game_get_active();                                              \
-  Graphics_Internal* graphics = (Graphics_Internal*)game->graphics;           \
-  assert(graphics)                                                            //
+  Graphics_Internal* gfx = (Graphics_Internal*)_gfx;                          \
+  assert(gfx)                                                                 //
+
+////////////////////////////////////////////////////////////////////////////////
+// Initialize rendering containers
+////////////////////////////////////////////////////////////////////////////////
 
 Graphics gfx_new(void) {
   Graphics_Internal* ret = malloc(sizeof(Graphics_Internal));
@@ -51,8 +55,12 @@ Graphics gfx_new(void) {
   *ret = (Graphics_Internal){
     .lights = smap_light_new(),
   };
-  return ret;
+  return (Graphics)ret;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Deletes and cleans up graphics components
+////////////////////////////////////////////////////////////////////////////////
 
 void gfx_delete(Graphics* gfx) {
   if (!gfx || !*gfx) return;
@@ -61,25 +69,82 @@ void gfx_delete(Graphics* gfx) {
   *gfx = NULL;
 }
 
-slotkey_t light_add(light_t light) {
+////////////////////////////////////////////////////////////////////////////////
+// Iterates the list of renderers in order and executes their render functions
+////////////////////////////////////////////////////////////////////////////////
+
+void gfx_render(Graphics _gfx, Game game) {
   GRAPHICS_INTERNAL;
+  renderer_t** span_foreach(renderer_ptr, gfx->renderers) {
+    renderer_t* renderer = *renderer_ptr;
+    if (renderer->render) {
+      renderer->render(renderer, game);
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Clears out instances data from all renderers
+////////////////////////////////////////////////////////////////////////////////
+
+void gfx_clear_instances(Graphics gfx) {
+  assert(gfx);
+  renderer_t** span_foreach(prenderer, gfx->renderers) {
+    renderer_t* renderer = *prenderer;
+    assert(renderer);
+    if (renderer->groups) {
+      render_group_t* map_foreach(group, renderer->groups) {
+        pmap_clear(group->instances);
+        group->needs_update = true;
+      }
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// Handling for lights
+////////////////////////////////////////////////////////////////////////////////
+
+#define LIGHT_INTERNAL                                                        \
+  Game game = game_get_active();                                              \
+  Graphics_Internal* graphics = (Graphics_Internal*)game->graphics;           \
+  assert(graphics)                                                            //
+
+////////////////////////////////////////////////////////////////////////////////
+
+slotkey_t light_add(light_t light) {
+  LIGHT_INTERNAL;
   return smap_light_insert(graphics->lights, &light);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
 light_t* light_ref(slotkey_t light_id) {
-  GRAPHICS_INTERNAL;
+  LIGHT_INTERNAL;
   return smap_light_ref(graphics->lights, light_id);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
 void light_remove(slotkey_t light_id) {
-  GRAPHICS_INTERNAL;
+  LIGHT_INTERNAL;
   smap_light_remove(graphics->lights, light_id);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
 void light_clear(void) {
-  GRAPHICS_INTERNAL;
+  LIGHT_INTERNAL;
   smap_light_clear(graphics->lights);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Build a data texture representing light data for the scene
+////////////////////////////////////////////////////////////////////////////////
 
 #pragma pack(1)
 typedef struct light_img_t {
@@ -95,8 +160,10 @@ typedef struct light_img_t {
 } light_img_t;
 #pragma pack()
 
+////////////////////////////////////////////////////////////////////////////////
+
 texture_t tex_from_lights(void) {
-  GRAPHICS_INTERNAL;
+  LIGHT_INTERNAL;
 
   light_img_t* buffer = malloc(graphics->lights->size * sizeof(light_img_t));
   assert(buffer);

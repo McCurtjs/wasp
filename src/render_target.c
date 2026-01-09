@@ -231,7 +231,6 @@ void rt_bind(RenderTarget rt_in) {
 
 void rt_bind_default(void) {
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  glBindTexture(GL_TEXTURE_2D, 0);
   glBindRenderbuffer(GL_RENDERBUFFER, 0);
   glClearColor(0.2f, 0.2f, 0.2f, 1);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

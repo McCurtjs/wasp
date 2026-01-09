@@ -110,7 +110,7 @@ void render_pbr(Game game, entity_t* entity);
 void render_basic2(renderer_t* renderer, Game game, entity_t* entity);
 void render_debug2(renderer_t* renderer, Game game, entity_t* entity);
 
-void render_pbr_register(entity_t* e, Game game);
+slotkey_t render_pbr_register(entity_t* e, Game game);
 void render_pbr_unregister(entity_t* e);
 void render_pbr2(renderer_t* renderer, Game game, entity_t* entity);
 void render_pbr3(renderer_t* renderer, Game game);

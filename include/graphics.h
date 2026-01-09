@@ -1,7 +1,7 @@
 /*******************************************************************************
 * MIT License
 *
-* Copyright (c) 2025 Curtis McCoy
+* Copyright (c) 2026 Curtis McCoy
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -26,11 +26,17 @@
 #define WASP_GRAPHICS_H_
 
 #include "types.h"
+#include "renderer.h"
 
 typedef struct _opaque_Game_t* Game;
-typedef struct Graphics_Internal* Graphics;
+
+typedef struct _opaque_Graphics_t {
+  span_renderer_t renderers;
+}* Graphics;
 
 Graphics gfx_new(void);
 void gfx_delete(Graphics* gfx);
+void gfx_render(Graphics, Game);
+void gfx_clear_instances(Graphics);
 
 #endif

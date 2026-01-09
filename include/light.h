@@ -47,10 +47,10 @@ typedef struct light_t {
 #undef con_prefix
 #undef con_type
 
-slotkey_t     light_add(light_t light);
-light_t*      light_ref(slotkey_t id);
-void          light_remove(slotkey_t id);
-void          light_clear(void);
+slotkey_t light_add(light_t light);
+light_t*  light_ref(slotkey_t id);
+void      light_remove(slotkey_t id);
+void      light_clear(void);
 
 #ifdef WASP_TEXTURE_H_
 #include "texture.h"

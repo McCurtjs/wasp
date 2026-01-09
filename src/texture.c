@@ -158,6 +158,7 @@ texture_t tex_from_data(
 #endif
 
   glBindTexture(GL_TEXTURE_2D, texture.handle);
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
   glTexImage2D
   ( GL_TEXTURE_2D
   , 0
@@ -193,6 +194,7 @@ texture_t tex_generate(texture_format_t format, vec2i size) {
   glGenTextures(1, &texture.handle);
 
   glBindTexture(GL_TEXTURE_2D, texture.handle);
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
   glTexImage2D
   ( GL_TEXTURE_2D
   , 0

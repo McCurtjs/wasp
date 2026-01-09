@@ -7,7 +7,7 @@ layout(location = 2) in vec2 uv;
 layout(location = 3) in vec4 tangent;
 layout(location = 4) in vec3 color;
 
-layout(location = 5) in mat4 model;
+layout(location = 5) in mat4 model_matrix;
 layout(location = 9) in vec3 tint;
 
 uniform mat4 in_pv_matrix;
@@ -19,13 +19,13 @@ out vec3 vColor;
 out mat3 vTangentTransform;
 
 void main() {
-  mat4 pvm = in_pv_matrix * model;
+  mat4 pvm = in_pv_matrix * model_matrix;
   gl_Position = pvm * position;
   vUV = uv;
   vColor = vec3(1.0) - color;
 
   // Calculate tangent space transform
-  mat4 normal_matrix = in_view_matrix * model;
+  mat4 normal_matrix = in_view_matrix * model_matrix;
   normal_matrix = transpose(inverse(in_view_matrix));
   vec3 tbn_normal = normalize(mat3(normal_matrix) * normal.xyz);
   vec3 tbn_tangent = normalize(mat3(normal_matrix) * tangent.xyz);

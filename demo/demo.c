@@ -29,6 +29,9 @@
 #include "SDL3/SDL.h"
 #include "gl.h"
 
+#include "graphics.h"
+#include "renderer.h"
+
 static File file_model_gear = NULL;
 
 #ifdef __clang__
@@ -47,10 +50,15 @@ static renderer_t _renderer_basic = {
 renderer_t* renderer_basic = &_renderer_basic;
 
 static renderer_t _renderer_pbr = {
+  /*
   .register_entity = render_pbr_register,
   .unregister_entity = render_pbr_unregister,
-  .render_entity = render_pbr2,
   .render = render_pbr3,
+  /*/
+  .register_entity = renderer_callback_register,
+  .unregister_entity = renderer_callback_unregister,
+  .render = renderer_callback_render,
+  //*/
 };
 renderer_t* renderer_pbr = &_renderer_pbr;
 
@@ -239,7 +247,7 @@ bool wasp_load (Game game, int await_count, float dt) {
 
   game->input.keymap = span_keymap(input_map, ARRAY_COUNT(input_map));
   game->scenes = span_scene(demo_scenes, ARRAY_COUNT(demo_scenes));
-  game->renderers = span_renderer(renderers, ARRAY_COUNT(renderers));
+  game->graphics->renderers = span_renderer(renderers, ARRAY_COUNT(renderers));
 
   shader_build_all();
   material_build_all();

@@ -54,6 +54,7 @@ target_sources(Wasp PRIVATE
   src/material.c
   src/model.c
   src/render_target.c
+  src/renderer.c
   src/shader.c
   src/system_events.c
   src/texture.c
@@ -71,6 +72,7 @@ target_sources(Wasp PRIVATE
   include/material.h
   include/model.h
   include/render_target.h
+  include/renderer.h
   include/shader.h
   include/system_events.h
   include/texture.h

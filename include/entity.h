@@ -25,6 +25,12 @@
 #ifndef WASP_ENTITY_H_
 #define WASP_ENTITY_H_
 
+#include "types.h"
+
+typedef struct _opaque_Game_t* Game;
+typedef struct entity_t entity_t;
+typedef struct renderer_t renderer_t;
+
 #include "mat.h"
 #include "model.h"
 #include "texture.h"
@@ -33,92 +39,10 @@
 #include "material.h"
 #include "slotkey.h"
 
-typedef struct _opaque_Game_t* Game;
-typedef struct entity_t entity_t;
-
 typedef void (*entity_update_fn_t)(Game game, entity_t* e, float dt);
 typedef void (*entity_render_fn_t)(Game game, entity_t* e);
 typedef void (*entity_create_fn_t)(Game game, entity_t* e);
 typedef void (*entity_delete_fn_t)(Game game, entity_t* e);
-
-typedef enum renderer_type_t {
-  R_BASIC,
-  R_PBR,
-  R_BASIC_DEFERRED,
-  R_PBR_DEFERRED,
-  R_CUSTOM_START,
-} renderer_type_t;
-
-typedef struct renderer_t renderer_t;
-
-// Called once for each entity that's flagged for update
-typedef void (*renderer_entity_update_fn_t)(renderer_t*, entity_t*);
-
-typedef void (*renderer_entity_register_fn_t)(entity_t*, Game);
-typedef void (*renderer_entity_unregister_fn_t)(entity_t*);
-
-// Called once for each entity before the final render function
-typedef void (*renderer_entity_render_fn_t)(renderer_t*, Game, entity_t*);
-
-// Called once per frame after the entities are processed 
-typedef void (*renderer_render_fn_t)(renderer_t*, Game);
-
-// Called when the renderer is destroyed
-typedef void (*renderer_delete_fn_t)(renderer_t**);
-
-typedef struct renderer_basic_t {
-  renderer_type_t type;
-} renderer_basic_t;
-
-typedef struct render_group_key_t {
-  Model* model;
-  Material material;
-  bool is_static;
-} render_group_key_t;
-
-#include "packedmap.h"
-
-typedef struct render_group_t {
-  union {
-    render_group_key_t key;
-    struct {
-      Model* model;
-      Material material;
-      bool is_static;
-    };
-  };
-  PackedMap instances;
-  uint vao;
-  uint instance_buffer;
-  index_t update_range_low;
-  index_t update_range_high;
-  bool needs_update;
-} render_group_t;
-
-
-#define con_type render_group_t
-#define key_type render_group_key_t
-#define con_prefix rg
-#include "map.h"
-#undef con_prefix
-#undef key_type
-#undef con_type
-
-typedef struct renderer_t {
-  renderer_entity_register_fn_t register_entity;
-  renderer_entity_unregister_fn_t unregister_entity;
-  renderer_entity_update_fn_t update_entity;
-  renderer_entity_render_fn_t render_entity;
-  renderer_render_fn_t render;
-  HMap_rg groups;
-  Shader shader;
-} renderer_t;
-
-#define con_type renderer_t*
-#define con_prefix renderer
-#include "span.h"
-#undef con_prefix
-#undef con_type
 
 typedef struct entity_t {
   slotkey_t id;
@@ -150,6 +74,15 @@ typedef struct entity_t {
   entity_delete_fn_t ondelete;
 
 } entity_t;
+
+slotkey_t entity_add(Game game, const entity_t* entity);
+void      entity_remove(Game game, slotkey_t entity_id);
+entity_t* entity_ref(Game game, slotkey_t entity_id);
+
+void      entity_set_behavior(entity_t*, entity_update_fn_t bh);
+void      entity_set_renderer(entity_t*, renderer_t*);
+
+void      entity_apply_transform(slotkey_t entity_id);
 
 /*
 typedef struct Entity2 {

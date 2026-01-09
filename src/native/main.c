@@ -46,12 +46,81 @@ static struct {
 } app = { 0 };
 
 ////////////////////////////////////////////////////////////////////////////////
+// Debug callback function for OpenGL
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _DEBUG
+void APIENTRY glDebugOutput
+( GLenum source
+, GLenum type
+, uint id
+, GLenum severity
+, GLsizei length
+, const char* message
+, const void* userParam
+) {
+  UNUSED(userParam);
+
+  switch (id) {
+    case 0x20071: return; // buffer video memory allocation note
+    case 0x20084: return; // "bound texture has no defined base level" - glClear
+    case 0x20092: return; // shader compilation performance warning
+    default: break;
+  }
+
+  slice_t source_str;
+  slice_t type_str;
+  slice_t severity_str;
+  slice_t message_str = slice_build(message, length);
+
+  switch (source) {
+    case GL_DEBUG_SOURCE_API:             source_str = S("API"); break;
+    case GL_DEBUG_SOURCE_WINDOW_SYSTEM:   source_str = S("Window System"); break;
+    case GL_DEBUG_SOURCE_SHADER_COMPILER: source_str = S("Shader Compiler"); break;
+    case GL_DEBUG_SOURCE_THIRD_PARTY:     source_str = S("Third Party"); break;
+    case GL_DEBUG_SOURCE_APPLICATION:     source_str = S("Application"); break;
+    case GL_DEBUG_SOURCE_OTHER:           source_str = S("Other"); break;
+    default: source_str = S("Unknown"); break;
+  }
+
+  switch (type) {
+    case GL_DEBUG_TYPE_ERROR:               type_str = S("Error"); break;
+    case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: type_str = S("Deprecated Behaviour"); break;
+    case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:  type_str = S("Undefined Behaviour"); break;
+    case GL_DEBUG_TYPE_PORTABILITY:         type_str = S("Portability"); break;
+    case GL_DEBUG_TYPE_PERFORMANCE:         type_str = S("Performance"); break;
+    case GL_DEBUG_TYPE_MARKER:              type_str = S("Marker"); break;
+    case GL_DEBUG_TYPE_PUSH_GROUP:          type_str = S("Push Group"); break;
+    case GL_DEBUG_TYPE_POP_GROUP:           type_str = S("Pop Group"); break;
+    case GL_DEBUG_TYPE_OTHER:               type_str = S("Other"); break;
+    default: type_str = S("Unknown"); break;
+  }
+
+  switch (severity) {
+    case GL_DEBUG_SEVERITY_HIGH:         severity_str = S("error"); break;
+    case GL_DEBUG_SEVERITY_MEDIUM:       severity_str = S("warning"); break;
+    case GL_DEBUG_SEVERITY_LOW:          severity_str = S("message"); break;
+    case GL_DEBUG_SEVERITY_NOTIFICATION: severity_str = S("note"); break;
+    default: severity_str = S("?"); break;
+  }
+
+  String debug_str = str_format(
+    "[OpenGL.{}] 0x{!x:04}, Source: {}, Type: {}\n  {}",
+    severity_str, id, source_str, type_str, message_str);
+  str_write(debug_str);
+  str_delete(&debug_str);
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 
 static int SDLCALL _loading_thread_fn(void* data) {
   game_set_local(data);
   return wasp_preload(data);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// SDL Callbacks
 ////////////////////////////////////////////////////////////////////////////////
 
 SDL_AppResult SDL_AppInit(void** app_state, int argc, char* argv[]) {
@@ -75,8 +144,25 @@ SDL_AppResult SDL_AppInit(void** app_state, int argc, char* argv[]) {
 
   if (!app.window) return SDL_APP_FAILURE;
 
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+  SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+
+#ifdef _DEBUG
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
+#endif
+
   app.gl_context = SDL_GL_CreateContext(app.window);
   SDL_GL_SetSwapInterval(0);
+
+#ifdef _DEBUG
+  glEnable(GL_DEBUG_OUTPUT);
+  glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+  glDebugMessageCallback(glDebugOutput, NULL);
+  glDebugMessageControl(
+    GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, true);
+#endif
 
   if (!app.gl_context) return SDL_APP_FAILURE;
 
