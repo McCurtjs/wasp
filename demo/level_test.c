@@ -193,7 +193,7 @@ scene_unload_fn_t scene_load_gears(Game game) {
       }
 
       entity_add(game, &(entity_t) {
-        .model = &demo->models.box,
+        .model2 = demo->models.box2,
         .material = material,
         .transform = m4trs(pos, axis, angle, 19),
         .renderer = renderer_pbr,
@@ -372,7 +372,7 @@ static scene_unload_fn_t _scene_load_monument(Game game) {
         }
 
         entity_add(game, &(entity_t) {
-          .model = &demo->models.box,
+          .model2 = demo->models.box2,
           .material = demo->materials.mudds,
           .transform = m4ts(pos, 120.f - 2.f * (y + ext)),
           .renderer = renderer_pbr,

@@ -29,6 +29,7 @@
 #include "mat.h"
 #include "array.h"
 #include "file.h"
+#include "texture.h"
 
 typedef enum model_type_t {
   MODEL_NONE = 0,
@@ -120,6 +121,45 @@ typedef union Model {
   Model_Sprites sprites;
   Model_Mesh mesh;
 } Model;
+
+typedef struct model_grid_t {
+  const int extent;
+  const vec3 basis[3];
+  const byte primary[2];
+} model_grid_t;
+
+typedef struct model_box_t {
+  const vec3 dim;
+  const vec3i subdivs;
+} model_box_t;
+
+typedef struct model_mesh_t {
+  const bool has_vertex_color;
+} model_mesh_t;
+
+typedef struct _opaque_Model_base {
+  const model_type_t type;
+  const index_t vert_count;
+  const index_t index_count;
+  const bool ready;
+
+  union {
+    model_grid_t grid;
+    model_mesh_t mesh;
+  };
+}* Model2;
+
+Model2  model_new_primitive(model_type_t type);
+Model2  model_new_cube_color(void);
+Model2  model_new_frame(void);
+Model2  model_new_sprites(texture_t sheet, vec2i dim);
+//Model2 model_new_grid(static vec3 basis[3], static byte primary[2]);
+Model2  model_new_from_obj(slice_t file);
+
+void    model2_bind(Model2 model);
+void    model2_render_instanced(Model2 model, index_t count);
+
+void    model_delete(Model2* model);
 
 int  model_build(Model* model);
 void model_bind(const Model* model);

@@ -276,6 +276,8 @@ bool wasp_load (Game game, int await_count, float dt) {
 
   demo.models.box_inst.type = MODEL_CUBE;
 
+  demo.models.box2 = model_new_primitive(MODEL_CUBE);
+
   model_build(&demo.models.player);
   model_build(&demo.models.level_test);
   //model_build(&game.models.level_1);
@@ -320,10 +322,7 @@ void wasp_render(Game game) {
   texture_t lights = tex_from_lights();
 
   rt_bind_default();
-  /*
-  shader_program_use(&shader_frame);
-  tex_apply(game.textures.render_target->textures[0], 0, 0);
-  /*/
+
   Shader shader = demo.shaders.warhol;
   if (active_shader == 1) {
     shader = demo.shaders.frame;

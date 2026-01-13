@@ -33,6 +33,7 @@
 
 typedef struct _opaque_Game_t* Game;
 typedef struct renderer_t renderer_t;
+typedef struct render_group_t render_group_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Callback types to define renderer functionality
@@ -56,6 +57,8 @@ typedef void (*renderer_render_fn_t)(renderer_t*, Game);
 // Called when the renderer is destroyed
 typedef void (*renderer_delete_fn_t)(renderer_t**);
 
+typedef void (*renderer_bind_attributes_fn_t)(Shader, render_group_t*);
+
 ////////////////////////////////////////////////////////////////////////////////
 // Key type for distinguishing each render by model/material set
 ////////////////////////////////////////////////////////////////////////////////
@@ -76,7 +79,10 @@ typedef struct render_group_t {
   union {
     render_group_key_t key;
     struct {
-      Model* model;
+      union {
+        Model* model;
+        Model2 model2;
+      };
       Material material;
       bool is_static;
     };
@@ -107,8 +113,10 @@ typedef struct renderer_t {
   renderer_entity_update_fn_t update_entity;
   renderer_entity_render_fn_t render_entity;
   renderer_render_fn_t render;
+  renderer_bind_attributes_fn_t bind_attributes;
   HMap_rg groups;
   Shader shader;
+  index_t instance_size;
 } renderer_t;
 
 void      renderer_entity_register(entity_t*, renderer_t*);

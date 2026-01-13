@@ -125,13 +125,10 @@ static void _renderer_bind_default_attributes(Shader s, render_group_t* group) {
   assert(!group->instance_buffer);
   assert(group->instances);
 
-  GLenum err = glGetError();
-
   glGenVertexArrays(1, &group->vao);
   glBindVertexArray(group->vao);
 
-  // TODO: need to pass the static/dynamic flag to vertex level attributes
-  model_bind(group->model);
+  model2_bind(group->model2);
 
   glGenBuffers(1, &group->instance_buffer);
   glBindBuffer(GL_ARRAY_BUFFER, group->instance_buffer);
@@ -204,6 +201,10 @@ void renderer_callback_render(renderer_t* renderer, Game game) {
     // if the group's VAO hasn't been set, create it
     if (!group->vao) {
       _renderer_bind_default_attributes(shader, group);
+
+      if (renderer->bind_attributes) {
+        renderer->bind_attributes(shader, group);
+      }
     }
 
     // if the instance data has updated since creation, upload it to the GPU

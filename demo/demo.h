@@ -47,6 +47,7 @@ typedef struct demo_models_t {
   Model gizmo;
   Model grid;
   Model box;
+  Model2 box2;
   Model box_inst;
   Model gear;
   Model player;

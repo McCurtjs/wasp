@@ -13,6 +13,39 @@
 // inlined static data declarations for model primitives
 #include "data/inline_primitives.h"
 
+////////////////////////////////////////////////////////////////////////////////
+// Internal model types
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct Model_Internal_Primitive {
+  model_type_t type;
+  index_t vert_count;
+  index_t index_count;
+  bool ready;
+
+  // Hidden
+  GLuint vbo;
+  GLuint vao;
+} Model_Internal_Primitive;
+
+typedef struct Model_Internal_Grid {
+  model_type_t type;
+  index_t vert_count;
+  index_t index_count;
+  bool ready;
+  union {
+    model_grid_t grid;
+    struct {
+      int extent;
+      vec3 basis[3];
+      byte primary[2];
+    };
+  };
+
+  // Secrets
+
+} Model_Internal_Grid;
+
 // Shared bindings for primitives
 
 static GLuint cube_pos_buffer = 0;
@@ -212,6 +245,70 @@ static void model_render_cube(const Model_Cube* cube) {
   glDrawArrays(GL_TRIANGLES, 0, 36);
   glBindVertexArray(0);
 }
+////////////////////////////////////////////////////////////////////////////////
+
+Model2 model_new_primitive(model_type_t type) {
+  assert(type == MODEL_CUBE);
+
+  Model_Internal_Primitive* model = malloc(sizeof(Model_Internal_Primitive));
+  assert(model);
+
+  GLsizeiptr size = sizeof(cube2_verts);
+  GLuint vbo;
+  glGenBuffers(1, &vbo);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  glBufferData(GL_ARRAY_BUFFER, size, cube2_verts, GL_STATIC_DRAW);
+
+  *model = (Model_Internal_Primitive) {
+    .type = type,
+    .vert_count = 36,
+    .index_count = 0,
+    .ready = true,
+    .vbo = vbo,
+    .vao = 0,
+  };
+
+  return (Model2)model;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void model2_bind(Model2 _model) {
+  assert(_model->type == MODEL_CUBE);
+  assert(_model->ready);
+
+  Model_Internal_Primitive* model = (Model_Internal_Primitive*)_model;
+
+  GLsizei stride = 12 * sizeof(float);
+
+  glBindBuffer(GL_ARRAY_BUFFER, model->vbo);
+
+  // position
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0, v3floats, GL_FLOAT, GL_FALSE, stride, 0);
+
+  // normal
+  glEnableVertexAttribArray(1);
+  const void* offset = (void*)12;
+  glVertexAttribPointer(1, v3floats, GL_FLOAT, GL_FALSE, stride, offset);
+
+  // uv
+  glEnableVertexAttribArray(2);
+  offset = (void*)24;
+  glVertexAttribPointer(2, v2floats, GL_FLOAT, GL_FALSE, stride, offset);
+
+  // tangent
+  glEnableVertexAttribArray(3);
+  offset = (void*)32;
+  glVertexAttribPointer(3, v4floats, GL_FLOAT, GL_FALSE, stride, offset);
+}
+
+void model2_render_instanced(Model2 model, index_t count) {
+  UNUSED(model);
+  UNUSED(count);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 
 // Model_CubeColor
 
@@ -468,8 +565,8 @@ static void model_render_mesh(Model_Mesh* mesh) {
 // Exported functions
 
 typedef int  (*model_build_pfn)(void* model);
-typedef void (*model_bind_fn_t)(const void* model);
 typedef void (*model_render_pfn)(const void* model);
+typedef void (*model_bind_fn_t)(const void* model);
 typedef void (*model_render_instanced_pfn)(const void* model, GLsizei count);
 
 static model_build_pfn model_build_fns[MODEL_TYPES_COUNT] = {
