@@ -226,7 +226,7 @@ static void _wizard_projectile(Game game, entity_t* e, float dt) {
       slotkey_t eid = entity_add(game, &(entity_t) {
         .pos = v3dir(click_pos, launch_point),
         .transform = m4ts(launch_point, 0.4f),
-        .model = &demo->models.color_cube,
+        .model = demo->models.color_cube,
         .render = render_basic,
         .behavior = behavior_projectile,
         .ondelete = ondelete_projectile,
@@ -282,7 +282,7 @@ static void _wizard_baddies(Game game, entity_t* e, float dt) {
     pos.y = 1.f;
     entity_add(game, &(entity_t) {
       .pos = pos,
-      .model = &game->demo->models.box,
+      .model = game->demo->models.box,
       .material = game->demo->materials.crate,
       .transform = m4ts(pos, 2.f),
       .tint = v3f(1.0f, 0.6f, 0.6f),
@@ -489,7 +489,7 @@ void behavior_attach_to_camera_target(Game game, entity_t* e, float dt) {
     };
 
     entity_add(game, &(entity_t) {
-      .model = &game->demo->models.box,
+      .model = game->demo->models.box,
       .material = mats[(uint)e->transform.f[12] % 6],
       .transform = m4mul(e->transform, m4scalar(10.0f)),
       .render = render_pbr,

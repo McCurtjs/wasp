@@ -1,7 +1,8 @@
-#ifndef LOADER_OBJ
-#define LOADER_OBJ
+#ifndef WASP_LOADER_OBJ_H_
+#define WASP_LOADER_OBJ_H_
 
 #include "file.h"
+#include "array.h"
 #include "model.h"
 
 typedef struct {
@@ -19,6 +20,12 @@ typedef struct {
   vec3 color;
 } obj_vertex_color_t;
 
-void file_load_obj(Model_Mesh* model, File file);
+typedef struct model_obj_t {
+  Array verts;
+  Array indices;
+  bool has_vertex_color;
+} model_obj_t;
+
+model_obj_t file_load_obj(File file);
 
 #endif

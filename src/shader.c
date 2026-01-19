@@ -331,7 +331,7 @@ void shader_build(Shader s_in) {
       _gl_shader_build(vert, vert->file->str);
       file_delete(&vert->file);
     } else {
-      str_write("[Shader.build] Vertex shader broke");
+      str_log("[Shader.build] Vertex shader broke: {}", vert->filename);
     }
   }
 
@@ -340,12 +340,12 @@ void shader_build(Shader s_in) {
       _gl_shader_build(frag, frag->file->str);
       file_delete(&frag->file);
     } else {
-      str_write("[Shader.build] Fragment shader broken");
+      str_log("[Shader.build] Fragment shader broken: {}", frag->filename);
     }
   }
 
   if (!vert->ready || !frag->ready) {
-    str_log("[Shader.build] Shader component not ready: {} for {}",
+    str_log("[Shader.build] Failed component not ready: {} for {}",
       vert->ready ? "vertex" : "fragment", s->name
     );
     return;
@@ -355,6 +355,10 @@ void shader_build(Shader s_in) {
     str_log("[Shader.build] Failed to link shader: {}", s->name);
     return;
   }
+
+  str_log("[Shader.build] Built \"{}\" using\n  vert: {}\n  frag: {}"
+  , s->name, vert->filename, frag->filename
+  );
 
   s->ready = true;
 }
@@ -508,7 +512,7 @@ void _gl_shader_update(gl_shader_t* part) {
     _gl_shader_update_programs(part);
   }
   else {
-    str_write("[Shader.write] Reload failed.");
+    str_write("[Shader.watch] Reload failed.");
   }
 
   file_delete(&temp.file);

@@ -14,19 +14,8 @@
 #include "data/inline_primitives.h"
 
 ////////////////////////////////////////////////////////////////////////////////
-// Internal model types
+// Model Grid
 ////////////////////////////////////////////////////////////////////////////////
-
-typedef struct Model_Internal_Primitive {
-  model_type_t type;
-  index_t vert_count;
-  index_t index_count;
-  bool ready;
-
-  // Hidden
-  GLuint vbo;
-  GLuint vao;
-} Model_Internal_Primitive;
 
 typedef struct Model_Internal_Grid {
   model_type_t type;
@@ -35,6 +24,7 @@ typedef struct Model_Internal_Grid {
   bool ready;
   union {
     model_grid_t grid;
+    model_grid_param_t params;
     struct {
       int extent;
       vec3 basis[3];
@@ -43,93 +33,30 @@ typedef struct Model_Internal_Grid {
   };
 
   // Secrets
+  union {
+    GLuint buffers[2];
+    struct {
+      GLuint vbo; // buffer for verts
+      GLuint colors; // buffer for vertex colors
+    };
+  };
+  GLuint vao;
 
 } Model_Internal_Grid;
 
-// Shared bindings for primitives
+////////////////////////////////////////////////////////////////////////////////
 
-static GLuint cube_pos_buffer = 0;
-static void prim_bind_cube(void) {
-  if (!cube_pos_buffer) {
-    glGenBuffers(1, &cube_pos_buffer);
-    glBindBuffer(GL_ARRAY_BUFFER, cube_pos_buffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(cube_pos), cube_pos, GL_STATIC_DRAW);
-  } else {
-    glBindBuffer(GL_ARRAY_BUFFER, cube_pos_buffer);
-  }
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, sizeof(*cube_pos) / 4, GL_FLOAT, GL_FALSE, 0, 0);
-}
+Model model_new_grid(model_grid_param_t param) {
+  Model_Internal_Grid* grid = malloc(sizeof(Model_Internal_Grid));
+  assert(grid);
 
-static GLuint cube_color_buffer = 0;
-static GLuint cube_color_vao = 0;
-static void prim_bind_cube_color(void) {
-  if (!cube_color_buffer) {
-    GLsizeiptr size = sizeof(cube_color);
-    glGenBuffers(1, &cube_color_buffer);
-    glBindBuffer(GL_ARRAY_BUFFER, cube_color_buffer);
-    glBufferData(GL_ARRAY_BUFFER, size, cube_color, GL_STATIC_DRAW);
-  } else {
-    glBindBuffer(GL_ARRAY_BUFFER, cube_color_buffer);
-  }
-  glEnableVertexAttribArray(1);
-  glVertexAttribPointer(1, sizeof(*cube_color) / 4, GL_FLOAT, GL_FALSE, 0, 0);
-}
+  *grid = (Model_Internal_Grid){
+    .type = MODEL_GRID,
+    .ready = false,
+    .params = param
+  };
 
-static GLuint cube_vertex_buffer = 0;
-static GLuint cube_vao = 0;
-static void prim_bind_cube_2(void) {
-  if (!cube_vertex_buffer) {
-    GLsizeiptr size = sizeof(cube2_verts);
-    glGenBuffers(1, &cube_vertex_buffer);
-    glBindBuffer(GL_ARRAY_BUFFER, cube_vertex_buffer);
-    glBufferData(GL_ARRAY_BUFFER, size, cube2_verts, GL_STATIC_DRAW);
-  } else {
-    glBindBuffer(GL_ARRAY_BUFFER, cube_vertex_buffer);
-  }
-
-  GLsizei stride = 12 * sizeof(float);
-
-  // position
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, v3floats, GL_FLOAT, GL_FALSE, stride, 0);
-
-  // normal
-  glEnableVertexAttribArray(1);
-  const void* offset = (void*)12;
-  glVertexAttribPointer(1, v3floats, GL_FLOAT, GL_FALSE, stride, offset);
-
-  // uv
-  glEnableVertexAttribArray(2);
-  offset = (void*)24;
-  glVertexAttribPointer(2, v2floats, GL_FLOAT, GL_FALSE, stride, offset);
-
-  // tangent
-  glEnableVertexAttribArray(3);
-  offset = (void*)32;
-  glVertexAttribPointer(3, v4floats, GL_FLOAT, GL_FALSE, stride, offset);
-}
-
-static GLuint frame_verts_buffer = 0;
-static GLuint frame_vao = 0;
-static void prim_bind_frame(void) {
-  if (!frame_verts_buffer) {
-    GLsizeiptr size = sizeof(frame_verts);
-    glGenBuffers(1, &frame_verts_buffer);
-    glBindBuffer(GL_ARRAY_BUFFER, frame_verts_buffer);
-    glBufferData(GL_ARRAY_BUFFER, size, frame_verts, GL_STATIC_DRAW);
-  } else {
-    glBindBuffer(GL_ARRAY_BUFFER, frame_verts_buffer);
-  }
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, v3floats, GL_FLOAT, GL_FALSE, 0, 0);
-}
-
-// Model_Grid
-
-static int model_build_grid(Model_Grid* grid) {
-  if (grid->ready) return 1;
-  grid->index_count = 0;
+  assert(grid->extent == param.extent);
 
   glGenVertexArrays(1, &grid->vao);
   glBindVertexArray(grid->vao);
@@ -143,6 +70,8 @@ static int model_build_grid(Model_Grid* grid) {
   } else {
     grid->vert_count = 12 + 8 * ext;
   }
+
+
 
   float exf = (float)ext;
 
@@ -195,61 +124,65 @@ static int model_build_grid(Model_Grid* grid) {
 
   GLsizeiptr points_size = sizeof(*points) * grid->vert_count;
   glGenBuffers(2, grid->buffers);
-  glBindBuffer(GL_ARRAY_BUFFER, grid->buffers[0]);
+  glBindBuffer(GL_ARRAY_BUFFER, grid->vbo);
   glBufferData(GL_ARRAY_BUFFER, points_size, points, GL_STATIC_DRAW);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
   glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
   GLsizeiptr colors_size = sizeof(*colors) * grid->vert_count;
-  glBindBuffer(GL_ARRAY_BUFFER, grid->buffers[1]);
+  glBindBuffer(GL_ARRAY_BUFFER, grid->colors);
   glBufferData(GL_ARRAY_BUFFER, colors_size, colors, GL_STATIC_DRAW);
-  glVertexAttribPointer(1, sizeof(*colors), GL_UNSIGNED_BYTE, GL_TRUE, 0, 0);
   glEnableVertexAttribArray(1);
+  glVertexAttribPointer(1, sizeof(*colors), GL_UNSIGNED_BYTE, GL_TRUE, 0, 0);
 
   free(points);
   free(colors);
 
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
+
   grid->ready = TRUE;
-  return 1;
+
+  return (Model)grid;
 }
 
-static void model_render_grid(const Model_Grid* grid) {
+////////////////////////////////////////////////////////////////////////////////
+
+Model model_new_grid_default(int extent) {
+  model_grid_param_t params = {
+    .basis = {v3x, v3y, v3z},
+    .primary = {0, 2},
+    .extent = extent,
+  };
+  return model_new_grid(params);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static void _model_render_grid(Model_Internal_Grid* grid) {
   glBindVertexArray(grid->vao);
   glDrawArrays(GL_LINES, 0, (GLsizei)grid->vert_count);
   glBindVertexArray(0);
 }
 
-// Model_Cube
-
-static int model_build_cube(Model_Cube* cube) {
-  if (cube_vao) return 1;
-  glGenVertexArrays(1, &cube_vao);
-  glBindVertexArray(cube_vao);
-  prim_bind_cube_2();
-  glBindVertexArray(0);
-  cube->ready = TRUE;
-  cube->vert_count = 36;
-  cube->index_count = 0;
-  return 1;
-}
-
-static void model_bind_cube(const Model_Cube* cube) {
-  UNUSED(cube);
-  prim_bind_cube_2();
-}
-
-static void model_render_cube(const Model_Cube* cube) {
-  UNUSED(cube);
-  glBindVertexArray(cube_vao);
-  glDrawArrays(GL_TRIANGLES, 0, 36);
-  glBindVertexArray(0);
-}
+////////////////////////////////////////////////////////////////////////////////
+// Primitives
 ////////////////////////////////////////////////////////////////////////////////
 
-Model2 model_new_primitive(model_type_t type) {
-  assert(type == MODEL_CUBE);
+typedef struct Model_Internal_Primitive {
+  model_type_t type;
+  index_t vert_count;
+  index_t index_count;
+  bool ready;
 
+  // Hidden
+  GLuint vbo;
+  GLuint vao;
+} Model_Internal_Primitive;
+
+////////////////////////////////////////////////////////////////////////////////
+
+static Model _model_new_cube(void) {
   Model_Internal_Primitive* model = malloc(sizeof(Model_Internal_Primitive));
   assert(model);
 
@@ -260,7 +193,7 @@ Model2 model_new_primitive(model_type_t type) {
   glBufferData(GL_ARRAY_BUFFER, size, cube2_verts, GL_STATIC_DRAW);
 
   *model = (Model_Internal_Primitive) {
-    .type = type,
+    .type = MODEL_CUBE,
     .vert_count = 36,
     .index_count = 0,
     .ready = true,
@@ -268,16 +201,14 @@ Model2 model_new_primitive(model_type_t type) {
     .vao = 0,
   };
 
-  return (Model2)model;
+  return (Model)model;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
-void model2_bind(Model2 _model) {
-  assert(_model->type == MODEL_CUBE);
-  assert(_model->ready);
-
+static void _model_bind_prim_cube(Model _model) {
   Model_Internal_Primitive* model = (Model_Internal_Primitive*)_model;
+  assert(model->type == MODEL_CUBE);
+  assert(model->ready);
+  assert(model->vbo);
 
   GLsizei stride = 12 * sizeof(float);
 
@@ -301,130 +232,317 @@ void model2_bind(Model2 _model) {
   glEnableVertexAttribArray(3);
   offset = (void*)32;
   glVertexAttribPointer(3, v4floats, GL_FLOAT, GL_FALSE, stride, offset);
-}
 
-void model2_render_instanced(Model2 model, index_t count) {
-  UNUSED(model);
-  UNUSED(count);
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// Model_CubeColor
+static Model _model_new_cube_color(void) {
+  Model_Internal_Primitive* model = malloc(sizeof(Model_Internal_Primitive));
+  assert(model);
 
-static int model_build_cube_color(Model_CubeColor* cube) {
-  if (cube_color_vao) return 1;
-  glGenVertexArrays(1, &cube_color_vao);
-  glBindVertexArray(cube_color_vao);
-  prim_bind_cube();
-  prim_bind_cube_color();
-  glBindVertexArray(0);
-  cube->ready = TRUE;
-  cube->vert_count = 14;
-  cube->index_count = 0;
-  return 1;
+  size_t size = sizeof(cube_pos) + sizeof(cube_color);
+  byte* temp = malloc(size);
+  assert(temp);
+
+  memcpy(temp, cube_pos, sizeof(cube_pos));
+  memcpy(temp + sizeof(cube_pos), cube_color, sizeof(cube_color));
+
+  GLuint vbo;
+  glGenBuffers(1, &vbo);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  glBufferData(GL_ARRAY_BUFFER, size, temp, GL_STATIC_DRAW);
+
+  free(temp);
+
+  *model = (Model_Internal_Primitive) {
+    .type = MODEL_CUBE_COLOR,
+    .vert_count = 14,
+    .index_count = 0,
+    .ready = true,
+    .vbo = vbo,
+    .vao = 0,
+  };
+
+  return (Model)model;
 }
 
-static void model_render_cube_color(const Model_CubeColor* cube) {
-  UNUSED(cube);
+static void _model_bind_prim_cube_color(Model _model) {
+  Model_Internal_Primitive* model = (Model_Internal_Primitive*)_model;
+  assert(model->type == MODEL_CUBE_COLOR);
+  assert(model->ready);
+  assert(model->vbo);
 
-  glBindVertexArray(cube_color_vao);
-  glDrawArrays(GL_TRIANGLE_STRIP, 0, 14);
+  glBindBuffer(GL_ARRAY_BUFFER, model->vbo);
+
+  // position
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0, v3floats, GL_FLOAT, GL_FALSE, v3bytes, 0);
+
+  // vertex colors
+  void* offset = (void*)sizeof(cube_pos);
+  glEnableVertexAttribArray(1);
+  glVertexAttribPointer(1, v4floats, GL_FLOAT, GL_FALSE, v4bytes, offset);
+
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static Model _model_new_frame(void) {
+  Model_Internal_Primitive* model = malloc(sizeof(Model_Internal_Primitive));
+  assert(model);
+
+  GLsizeiptr size = sizeof(frame_verts);
+  GLuint vbo;
+  glGenBuffers(1, &vbo);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  glBufferData(GL_ARRAY_BUFFER, size, frame_verts, GL_STATIC_DRAW);
+
+  *model = (Model_Internal_Primitive) {
+    .type = MODEL_FRAME,
+    .vert_count = 3,
+    .index_count = 0,
+    .ready = true,
+    .vbo = vbo,
+    .vao = 0,
+  };
+
+  return (Model)model;
+}
+
+static void _model_bind_prim_frame(Model _model) {
+  Model_Internal_Primitive* model = (Model_Internal_Primitive*)_model;
+  assert(model->type == MODEL_FRAME);
+  assert(model->ready);
+  assert(model->vbo);
+
+  glBindBuffer(GL_ARRAY_BUFFER, model->vbo);
+
+  // position
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0, v3floats, GL_FLOAT, GL_FALSE, v3bytes, 0);
+
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+Model model_new_primitive(model_type_t type) {
+  switch (type) {
+
+    case MODEL_CUBE:
+      return _model_new_cube();
+
+    case MODEL_CUBE_COLOR:
+      return _model_new_cube_color();
+
+    case MODEL_FRAME:
+      return _model_new_frame();
+
+    default:
+      str_log("[Model.new_primitive] Not a primitive type: {}", (int)type);
+      assert(0);
+      break;
+  }
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Primitive and basic render functions
+////////////////////////////////////////////////////////////////////////////////
+
+static void _model_render_prim(Model_Internal_Primitive* prim) {
+  if (!prim->vao) {
+    glGenVertexArrays(1, &prim->vao);
+    glBindVertexArray(prim->vao);
+    model_bind((Model)prim);
+  }
+  else {
+    glBindVertexArray(prim->vao);
+  }
+
+  if (prim->index_count) {
+    glDrawElements
+    ( GL_TRIANGLES
+    , (GLsizei)prim->index_count
+    , GL_UNSIGNED_INT
+    , 0
+    );
+  }
+  else {
+    glDrawArrays
+    ( GL_TRIANGLES
+    , 0
+    , (GLsizei)prim->vert_count
+    );
+  }
   glBindVertexArray(0);
 }
 
-// Model_Frame
+////////////////////////////////////////////////////////////////////////////////
 
-static int model_build_frame(Model_Frame* frame) {
-  if (frame_vao) return 1;
-  glGenVertexArrays(1, &frame_vao);
-  glBindVertexArray(frame_vao);
-  prim_bind_frame();
-  glBindVertexArray(0);
-  frame->ready = TRUE;
-  frame->vert_count = 3;
-  frame->index_count = 0;
-  return 1;
+static void _model_render_instanced(const Model model, index_t count) {
+  UNUSED(model);
+  UNUSED(count);
+
+  if (model->index_count) {
+    // indexed draw
+    glDrawElementsInstanced
+    ( GL_TRIANGLES
+    , (GLsizei)model->vert_count
+    , GL_UNSIGNED_INT
+    , 0
+    , (GLsizei)count
+    );
+  }
+  else {
+    // non-indexed draw
+    glDrawArraysInstanced
+    ( GL_TRIANGLES
+    , 0
+    , (GLsizei)model->vert_count
+    , (GLsizei)count
+    );
+  }
 }
 
-static void model_render_frame(const Model_Frame* frame) {
-  UNUSED(frame);
+////////////////////////////////////////////////////////////////////////////////
 
-  glBindVertexArray(frame_vao);
-  glDrawArrays(GL_TRIANGLES, 0, 3);
+static void _model_render_prim_strip(Model_Internal_Primitive* prim) {
+  assert(prim->type == MODEL_CUBE_COLOR);
+
+  if (!prim->vao) {
+    glGenVertexArrays(1, &prim->vao);
+    glBindVertexArray(prim->vao);
+    model_bind((Model)prim);
+  }
+  else {
+    glBindVertexArray(prim->vao);
+  }
+
+  glDrawArrays(GL_TRIANGLE_STRIP, 0, (GLsizei)prim->vert_count);
   glBindVertexArray(0);
 }
 
-// Model_Sprites
+////////////////////////////////////////////////////////////////////////////////
+// Sprites
+////////////////////////////////////////////////////////////////////////////////
 
-typedef struct SpriteVertex {
+typedef struct sprite_vertex_t {
   vec2 pos;
   vec2 uv;
   vec3 norm;
   color3b tint;
-} SpriteVertex;
+} sprite_vertex_t;
 
-static int model_build_sprites(Model_Sprites* sprites) {
-  sprites->verts = arr_new(SpriteVertex);
+typedef struct Model_Internal_Sprites {
+  model_type_t type;
+  index_t vert_count;
+  index_t index_count;
+  bool ready;
 
-  glGenVertexArrays(1, &sprites->vao);
-  glBindVertexArray(sprites->vao);
+  // Hidden
+  vec2i grid;
+  Array verts;
+  GLuint vbo;
+  GLuint vao;
+} Model_Internal_Sprites;
 
-  glGenBuffers(1, &sprites->buffer);
-  glBindBuffer(GL_ARRAY_BUFFER, sprites->buffer);
+Model model_new_sprites(vec2i grid) {
+  Model_Internal_Sprites* sprites = malloc(sizeof(Model_Internal_Sprites));
+  assert(sprites);
 
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, v2floats, GL_FLOAT, GL_FALSE,
-    sizeof(SpriteVertex), &((SpriteVertex*)0)->pos);
+  GLuint vbo;
+  glGenBuffers(1, &vbo);
 
-  glEnableVertexAttribArray(1);
-  glVertexAttribPointer(1, v3floats, GL_FLOAT, GL_FALSE,
-    sizeof(SpriteVertex), &((SpriteVertex*)0)->norm);
+  *sprites = (Model_Internal_Sprites) {
+    .type = MODEL_SPRITES,
+    .vert_count = 0,
+    .index_count = 0,
+    .ready = true,
+    .grid = grid,
+    .verts = arr_new(sprite_vertex_t),
+    .vbo = vbo,
+    .vao = 0,
+  };
 
-  glEnableVertexAttribArray(2);
-  glVertexAttribPointer(2, v2floats, GL_FLOAT, GL_FALSE,
-    sizeof(SpriteVertex), &((SpriteVertex*)0)->uv);
-
-  glEnableVertexAttribArray(3);
-  glVertexAttribPointer(3, b3bytes, GL_UNSIGNED_BYTE, GL_TRUE,
-    sizeof(SpriteVertex), &((SpriteVertex*)0)->tint);
-
-  glBindVertexArray(0);
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-  sprites->ready = TRUE;
-  return 1;
+  return (Model)sprites;
 }
 
-static void model_render_sprites(Model_Sprites* sprites) {
-  glBindVertexArray(sprites->vao);
-  glBindBuffer(GL_ARRAY_BUFFER, sprites->buffer);
+static void _model_bind_sprites(Model_Internal_Sprites* sprites) {
+  sprites->verts = arr_new(sprite_vertex_t);
+  assert(sprites->type == MODEL_SPRITES);
+  assert(sprites->ready);
+  assert(sprites->vbo);
+  assert(sprites->verts);
+
+  glBindBuffer(GL_ARRAY_BUFFER, sprites->vbo);
+
+  GLsizei stride = (GLsizei)sizeof(sprite_vertex_t);
+
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(
+    0, v2floats, GL_FLOAT, GL_FALSE, stride, &((sprite_vertex_t*)0)->pos
+  );
+
+  glEnableVertexAttribArray(1);
+  glVertexAttribPointer(
+    1, v3floats, GL_FLOAT, GL_FALSE, stride, &((sprite_vertex_t*)0)->norm
+  );
+
+  glEnableVertexAttribArray(2);
+  glVertexAttribPointer(
+    2, v2floats, GL_FLOAT, GL_FALSE, stride, &((sprite_vertex_t*)0)->uv
+  );
+
+  glEnableVertexAttribArray(3);
+  glVertexAttribPointer(
+    3, b3bytes, GL_UNSIGNED_BYTE, GL_TRUE, stride, &((sprite_vertex_t*)0)->tint
+  );
+}
+
+static void _model_render_sprites(Model_Internal_Sprites* sprites) {
+  if (!sprites->vao) {
+    glGenVertexArrays(1, &sprites->vao);
+    glBindVertexArray(sprites->vao);
+    model_bind((Model)sprites);
+  }
+  else {
+    glBindVertexArray(sprites->vao);
+  }
 
   index_t size_bytes = sprites->verts->size_bytes;
   void* data_start = arr_ref_front(sprites->verts);
+  glBindBuffer(GL_ARRAY_BUFFER, sprites->vbo);
   glBufferData(GL_ARRAY_BUFFER, size_bytes, data_start, GL_DYNAMIC_DRAW);
 
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  glDrawArrays(GL_TRIANGLES, 0, (int)sprites->verts->size);
+  glDrawArrays(GL_TRIANGLES, 0, (GLsizei)sprites->verts->size);
   glDisable(GL_BLEND);
 
   glBindVertexArray(0);
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
 
   arr_clear(sprites->verts);
 }
 
-void model_sprites_draw(
-  const Model_Sprites* sprites, vec2 pos, vec2 scale, index_t frame, bool mirror
+void model_sprites_add(
+  Model _sprites, vec2 pos, vec2 scale, index_t frame, bool mirror
 ) {
-  Model_Sprites* spr = (Model_Sprites*)sprites;
+  Model_Internal_Sprites* spr = (Model_Internal_Sprites*)_sprites;
+  assert(spr);
+  assert(spr->ready);
+  assert(spr->verts);
 
   frame = frame % (spr->grid.w * spr->grid.h);
 
   vec2 extent = v2f( 1.f / spr->grid.w, -1.f / spr->grid.h );
-  vec2 corner = v2f(
-    (frame % spr->grid.w) / (float)spr->grid.w,
-    1 - (frame / spr->grid.w) / (float)spr->grid.h
+  vec2 corner = v2f
+  ( (frame % spr->grid.w) / (float)spr->grid.w
+  , 1 - (frame / spr->grid.w) / (float)spr->grid.h
   );
 
   if (mirror) {
@@ -433,30 +551,30 @@ void model_sprites_draw(
   }
 
   scale = v2scale(scale, 0.5);
-  SpriteVertex BL, TL, TR, BR;
+  sprite_vertex_t BL, TL, TR, BR;
 
-  BL = (SpriteVertex) {
+  BL = (sprite_vertex_t) {
     .pos  = v2add(pos, v2neg(scale)),
     .uv   = v2f(corner.x, corner.y + extent.y),
     .norm = v3z,
     .tint = b4white.rgb,
   };
 
-  TR = (SpriteVertex) {
+  TR = (sprite_vertex_t) {
     .pos  = v2add(pos, scale),
     .uv   = v2f(corner.x + extent.x, corner.y),
     .norm = v3z,
     .tint = b4white.rgb,
   };
 
-  TL = (SpriteVertex) {
+  TL = (sprite_vertex_t) {
     .pos  = v2add(pos, v2f(-scale.x, scale.y)),
     .uv   = corner,
     .norm = v3z,
     .tint = b4white.rgb,
   };
 
-  BR = (SpriteVertex) {
+  BR = (sprite_vertex_t) {
     .pos  = v2add(pos, v2f(scale.x, -scale.y)),
     .uv   = v2add(corner, extent),
     .norm = v3z,
@@ -471,35 +589,104 @@ void model_sprites_draw(
   arr_write_back(spr->verts, &BR);
 }
 
+////////////////////////////////////////////////////////////////////////////////
 // Model OBJ
+////////////////////////////////////////////////////////////////////////////////
 
 #include "loaders/obj.h"
 
-void model_load_obj(Model* model, File file) {
+typedef struct Model_Internal_Mesh {
+  model_type_t type;
+  index_t vert_count;
+  index_t index_count;
+  bool ready;
+
+  union {
+    model_mesh_t mesh;
+    struct {
+      bool use_color;
+    };
+  };
+
+  // Secrets
+
+  union {
+    GLuint buffers[2];
+    struct {
+      GLuint vbo; // buffer for verts
+      GLuint ebo; // buffer for indices/"elements"
+    };
+  };
+  GLuint vao;
+
+} Model_Internal_Mesh;
+
+////////////////////////////////////////////////////////////////////////////////
+
+Model model_new_from_obj(File file) {
+  assert(file);
   if (!file_read(file)) {
-    model->type = MODEL_NONE;
-    return;
+    str_log("[Model.new_from_obj] Can't read file: {}", file->name);
+    return NULL;
   }
 
+  Model_Internal_Mesh* model = calloc(1, sizeof(Model_Internal_Mesh));
+  assert(model);
+
   model->type = MODEL_OBJ;
-  model->mesh.use_color = false;
-  file_load_obj(&model->mesh, file);
-}
+  model_obj_t obj = file_load_obj(file);
+  model->use_color = obj.has_vertex_color;
 
-static int model_build_mesh(Model_Mesh* mesh) {
-  glGenVertexArrays(1, &mesh->vao);
-  glBindVertexArray(mesh->vao);
+  if (!obj.verts || !obj.verts->size) {
+    assert(0);
+    goto new_obj_cleanup;
+  }
 
-  glGenBuffers(2, mesh->buffers);
+  model->vert_count = obj.verts->size;
+  model->index_count = obj.indices->size;
 
-  glBindBuffer(GL_ARRAY_BUFFER, mesh->vert_buffer);
+  glGenBuffers(2, model->buffers);
+
+  glBindBuffer(GL_ARRAY_BUFFER, model->vbo);
   glBufferData(GL_ARRAY_BUFFER
-  , mesh->verts->size_bytes
-  , arr_ref_front(mesh->verts)
+  , obj.verts->size_bytes
+  , obj.verts->begin
   , GL_STATIC_DRAW
   );
 
-  GLsizei vert_size = mesh->use_color
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model->ebo);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER
+  , obj.indices->size_bytes
+  , obj.indices->begin
+  , GL_STATIC_DRAW
+  );
+
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+  model->ready = true;
+
+new_obj_cleanup:
+
+  arr_delete(&obj.verts);
+  arr_delete(&obj.indices);
+
+  return (Model)model;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static void _model_bind_mesh(Model _model) {
+  Model_Internal_Mesh* model = (Model_Internal_Mesh*)_model;
+  assert(model->type == MODEL_OBJ);
+  assert(model->ready);
+  assert(model->vbo);
+  assert(model->ebo);
+
+  glBindBuffer(GL_ARRAY_BUFFER, model->vbo);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model->ebo);
+
+  GLsizei vert_size = model->use_color
     ? sizeof(obj_vertex_color_t)
     : sizeof(obj_vertex_t);
 
@@ -523,97 +710,181 @@ static int model_build_mesh(Model_Mesh* mesh) {
     3, v4floats, GL_FLOAT, GL_FALSE, vert_size, &((obj_vertex_t*)0)->tangent
   );
 
-  if (mesh->use_color) {
+  if (model->use_color) {
     glEnableVertexAttribArray(4);
-    glVertexAttribPointer(
-      3, v3floats, GL_FLOAT, GL_FALSE, vert_size,
-      &((obj_vertex_color_t*)0)->color
+    glVertexAttribPointer(3, v3floats, GL_FLOAT, GL_FALSE, vert_size
+    , &((obj_vertex_color_t*)0)->color
     );
   }
 
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
-  glBufferData(
-    GL_ELEMENT_ARRAY_BUFFER, mesh->indices->size_bytes,
-    arr_ref_front(mesh->indices), GL_STATIC_DRAW
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model->ebo);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static void _model_render_mesh(Model_Internal_Mesh* mesh) {
+  assert(mesh->index_count);
+
+  if (!mesh->vao) {
+    glGenVertexArrays(1, &mesh->vao);
+    glBindVertexArray(mesh->vao);
+    model_bind((Model)mesh);
+  }
+  else {
+    glBindVertexArray(mesh->vao);
+  }
+
+  glDrawElements
+  ( GL_TRIANGLES
+  , (GLsizei)mesh->index_count
+  , GL_UNSIGNED_INT
+  , 0
   );
 
   glBindVertexArray(0);
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-  mesh->vert_count = mesh->verts->size;
-  mesh->index_count = mesh->indices->size;
-
-  arr_delete(&mesh->verts);
-  arr_delete(&mesh->indices);
-
-  mesh->ready = TRUE;
-  return 1;
 }
 
-static void model_render_mesh(Model_Mesh* mesh) {
-  glBindVertexArray(mesh->vao);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
-  glDrawElements(GL_TRIANGLES
-  , (GLsizei)mesh->index_count
-  , GL_UNSIGNED_INT
-  , 0);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-  glBindVertexArray(0);
-}
+////////////////////////////////////////////////////////////////////////////////
+// Function routing based on object types
+////////////////////////////////////////////////////////////////////////////////
 
-// Exported functions
-
-typedef int  (*model_build_pfn)(void* model);
-typedef void (*model_render_pfn)(const void* model);
+typedef void (*model_render_fn_t)(void* model);
 typedef void (*model_bind_fn_t)(const void* model);
-typedef void (*model_render_instanced_pfn)(const void* model, GLsizei count);
+typedef void (*model_render_inst_fn_t)(const void* model, index_t count);
 
-static model_build_pfn model_build_fns[MODEL_TYPES_COUNT] = {
-  (model_build_pfn)model_build_grid,
-  (model_build_pfn)model_build_cube,
-  (model_build_pfn)model_build_cube_color,
-  (model_build_pfn)model_build_frame,
-  (model_build_pfn)model_build_sprites,
-  (model_build_pfn)model_build_mesh,
+typedef struct model_management_fns_t {
+  model_bind_fn_t bind;
+  model_render_fn_t render_single;
+  model_render_inst_fn_t render_inst;
+} model_management_fns_t;
+
+static model_management_fns_t model_management_fns[MODEL_TYPES_COUNT] = {
+  // MODEL_NONE - No model type selected
+  { 0 },
+
+  // MODEL_GRID - Grid rendering
+  { .render_single = (model_render_fn_t)_model_render_grid,
+  },
+
+  // MODEL_CUBE - Basic cube primitive (with normals and tangents)
+  { .bind = (model_bind_fn_t)_model_bind_prim_cube
+  , .render_single = (model_render_fn_t)_model_render_prim
+  , .render_inst = (model_render_inst_fn_t)_model_render_instanced
+  },
+
+  // MODEL_CUBE_COLOR - Debug-cube object with vertex color, no normals
+  { .bind = (model_bind_fn_t)_model_bind_prim_cube_color
+  , .render_single = (model_render_fn_t)_model_render_prim_strip
+  },
+
+  // MODEL_FRAME - Full-screen frame model for deferred rendering
+  { .bind = (model_bind_fn_t)_model_bind_prim_frame
+  , .render_single = (model_render_fn_t)_model_render_prim
+  },
+
+  // MODEL_SPRITES - Accumulated collection of sprites
+  { .bind = (model_bind_fn_t)_model_bind_sprites
+  , .render_single = (model_render_fn_t)_model_render_sprites
+  },
+
+  // MODEL_OBJ - Basic mesh type loaded from .obj file
+  { .bind = (model_bind_fn_t)_model_bind_mesh
+  , .render_single = (model_render_fn_t)_model_render_mesh
+  , .render_inst = (model_render_inst_fn_t)_model_render_instanced
+  }
 };
 
-int model_build(Model* model) {
-  if (!model || !model->type || model->ready) return 0;
-  return model_build_fns[model->type - 1](model);
+////////////////////////////////////////////////////////////////////////////////
+
+void model_bind(const Model model) {
+  if (!model) {
+    str_write("[Model.bind] Model is null");
+    return;
+  }
+
+  int model_type = model->type;
+  if (model_type < 0 || model_type >= MODEL_TYPES_COUNT) {
+    str_log("[Model.bind] Invalid model type: {}", model_type);
+    return;
+  }
+
+  if (!model->ready) {
+    str_write("[Model.bind] Model not flagged as ready");
+    return;
+  }
+
+  model_bind_fn_t bind_fn = model_management_fns[model_type].bind;
+
+  if (!bind_fn) {
+    str_log("[Model.bind] No binding function for model type: ", model_type);
+    return;
+  }
+
+  bind_fn(model);
 }
 
-static model_render_pfn model_render_fns[MODEL_TYPES_COUNT] = {
-  (model_render_pfn)model_render_grid,
-  (model_render_pfn)model_render_cube,
-  (model_render_pfn)model_render_cube_color,
-  (model_render_pfn)model_render_frame,
-  (model_render_pfn)model_render_sprites,
-  (model_render_pfn)model_render_mesh
-};
+////////////////////////////////////////////////////////////////////////////////
 
-void model_render(const Model* model) {
-  if (!model || !model->type || !model->ready) return;
-  model_render_fns[model->type - 1](model);
+void model_render(Model model) {
+  if (!model) {
+    str_write("[Model.render] Model is null");
+    return;
+  }
+
+  int model_type = model->type;
+  if (model_type <= 0 || model_type >= MODEL_TYPES_COUNT) {
+    str_log("[Model.render] Invalid model type: {}", model_type);
+    return;
+  }
+
+  if (!model->ready) {
+    str_write("[Model.render] Model not flagged as ready");
+    return;
+  }
+
+  model_render_fn_t render_fn = model_management_fns[model_type].render_single;
+
+  if (!render_fn) {
+    str_log("[Model.render] No basic renderer for type: {}", model_type);
+    return;
+  }
+
+  render_fn(model);
 }
 
-static model_bind_fn_t model_bind_fns[MODEL_TYPES_COUNT] = {
-  NULL,
-  (model_bind_fn_t)model_bind_cube,
-  NULL,
-  NULL,
-  NULL,
-  NULL
-};
+////////////////////////////////////////////////////////////////////////////////
 
-void model_bind(const Model* model) {
-  if (!model || !model->type || !model->ready) return;
-  model_bind_fns[model->type - 1](model);
-}
+void model_render_instanced(const Model model, index_t count) {
+  if (!model) {
+    str_write("[Model.render_inst] Model is null");
+    return;
+  }
 
-void model_grid_set_default(Model* model, int extent) {
-  model->grid = (Model_Grid) {
-    .type = MODEL_GRID, .ready = FALSE, .extent = extent,
-    .basis = {v3x, v3y, v3z}, .primary = {0, 2}
-  };
+  if (count <= 0) {
+    str_log("[Model.render_inst] Non-positive instance count: {}", count);
+    return;
+  }
+
+  int model_type = model->type;
+  if (model_type <= 0 || model_type >= MODEL_TYPES_COUNT) {
+    str_log("[Model.render_inst] Invalid model type: {}", model_type);
+    return;
+  }
+
+  if (!model->ready) {
+    str_write("[Model.render_inst] Model not flagged as ready");
+    return;
+  }
+
+  model_render_inst_fn_t inst_fn = model_management_fns[model_type].render_inst;
+
+  if (!inst_fn) {
+    str_log
+    ( "[Model.render_inst] No instanced renderer for type: {}"
+    , model_type
+    );
+    return;
+  }
+
+  inst_fn(model, count);
 }

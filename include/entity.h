@@ -58,10 +58,7 @@ typedef struct entity_t {
   };
 
   mat4 transform;
-  union {
-    Model* model;
-    Model2 model2;
-  };
+  Model model;
   Material material;
   vec3 tint;
 

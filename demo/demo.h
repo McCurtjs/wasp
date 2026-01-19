@@ -47,8 +47,7 @@ typedef struct demo_models_t {
   Model gizmo;
   Model grid;
   Model box;
-  Model2 box2;
-  Model box_inst;
+  Model frame;
   Model gear;
   Model player;
   Model level_test;
@@ -159,9 +158,6 @@ enum demo_key_t {
 ////////////////////////////////////////////////////////////////////////////////
 // Level loading functions
 ////////////////////////////////////////////////////////////////////////////////
-
-void level_switch_check(Game game);
-void level_switch(Game game, index_t scene);
 
 scene_unload_fn_t scene_load_gears(Game game);
 scene_unload_fn_t scene_load_wizard(Game game);

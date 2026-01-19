@@ -128,7 +128,7 @@ static void _renderer_bind_default_attributes(Shader s, render_group_t* group) {
   glGenVertexArrays(1, &group->vao);
   glBindVertexArray(group->vao);
 
-  model2_bind(group->model2);
+  model_bind(group->model);
 
   glGenBuffers(1, &group->instance_buffer);
   glBindBuffer(GL_ARRAY_BUFFER, group->instance_buffer);
@@ -221,27 +221,7 @@ void renderer_callback_render(renderer_t* renderer, Game game) {
     group->needs_update = false;
 
     glBindVertexArray(group->vao);
-
-    if (group->model->index_count) {
-      // indexed draw
-      glDrawElementsInstanced
-      ( GL_TRIANGLES
-      , (GLsizei)group->model->vert_count
-      , GL_UNSIGNED_INT
-      , 0
-      , (GLsizei)group->instances->size
-      );
-    }
-    else {
-      // non-indexed draw
-      glDrawArraysInstanced
-      ( GL_TRIANGLES
-      , 0
-      , (GLsizei)group->model->vert_count
-      , (GLsizei)group->instances->size
-      );
-    }
-
+    model_render_instanced(group->model, group->instances->size);
     glBindVertexArray(0);
   }
 }

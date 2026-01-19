@@ -64,7 +64,7 @@ typedef void (*renderer_bind_attributes_fn_t)(Shader, render_group_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct render_group_key_t {
-  Model* model;
+  Model model;
   Material material;
   bool is_static;
 } render_group_key_t;
@@ -80,8 +80,7 @@ typedef struct render_group_t {
     render_group_key_t key;
     struct {
       union {
-        Model* model;
-        Model2 model2;
+        Model model;
       };
       Material material;
       bool is_static;

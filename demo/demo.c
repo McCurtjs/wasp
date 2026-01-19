@@ -42,8 +42,6 @@ static demo_t demo;
 
 static int active_shader = 1;
 
-static Model model_frame = { .type = MODEL_FRAME };// { .type = MODEL_FRAME };
-
 static renderer_t _renderer_basic = {
   .render_entity = render_basic2,
 };
@@ -155,7 +153,7 @@ static void cheesy_loading_animation(Game game, float dt) {
   model = m4mul(model, m4rotation(v3norm(v3f(-4.f, 1.5f, 1.f)), cubespin / 3.6f));
 
   glUniformMatrix4fv(loc_pvm, 1, 0, m4mul(projview, model).f);
-  model_render(&demo.models.color_cube);
+  model_render(demo.models.color_cube);
   cubespin += 2 * dt;
 
   GLenum err = glGetError();
@@ -225,9 +223,7 @@ bool wasp_load (Game game, int await_count, float dt) {
   // load this first since it's the loading screen spinner
   if (!demo.shaders.loading) {
     demo.shaders.loading = shader_new(S("basic"));
-    demo.models.color_cube.type = MODEL_CUBE_COLOR;
-    model_build(&demo.models.color_cube);
-    model_build(&model_frame);
+    demo.models.color_cube = model_new_primitive(MODEL_CUBE_COLOR);
   }
 
   if (await_count) {
@@ -237,7 +233,7 @@ bool wasp_load (Game game, int await_count, float dt) {
 
   str_write("[Demo.Load] Async load finished");
 
-  game->camera.perspective.far = 3000.0f;
+  game->camera.perspective.far = 10000.0f;
   game->on_window_resize = demo_callback_window_resize;
 
   game->demo->render_target = rt_new(
@@ -245,48 +241,27 @@ bool wasp_load (Game game, int await_count, float dt) {
   );
   rt_build(game->demo->render_target, game->window);
 
+  shader_build_all();
+  material_build_all();
+
+  // Set params for PBR render group
+  _renderer_pbr.shader = game->demo->shaders.light_inst;
+  _renderer_pbr.groups = map_rg_new();
+
+  // Assign static sets of game params
   game->input.keymap = span_keymap(input_map, ARRAY_COUNT(input_map));
   game->scenes = span_scene(demo_scenes, ARRAY_COUNT(demo_scenes));
   game->graphics->renderers = span_renderer(renderers, ARRAY_COUNT(renderers));
 
-  shader_build_all();
-  material_build_all();
-  model_load_obj(&demo.models.gear, file_model_gear);
-
-  _renderer_pbr.shader = game->demo->shaders.light_inst;
-  _renderer_pbr.groups = map_rg_new();
+  // Load scene models...
+  demo.models.gear = model_new_from_obj(file_model_gear);
+  demo.models.box = model_new_primitive(MODEL_CUBE);
+  demo.models.frame = model_new_primitive(MODEL_FRAME);
+  demo.models.grid = model_new_grid_default(100);
+  demo.models.gizmo = model_new_grid_default(0);
 
   // Delete async loaded resources
   file_delete(&file_model_gear);
-
-  // Set up game models
-  demo.models.grid.grid = (Model_Grid) {
-    .type = MODEL_GRID,
-    .basis = {v3x, v3y, v3z},
-    .primary = {0, 2},
-    .extent = 100
-  };
-
-  demo.models.player.sprites = (Model_Sprites) {
-    .type = MODEL_SPRITES,
-    .grid = {.w = 16, .h = 16},
-  };
-
-  demo.models.box.type = MODEL_CUBE;
-
-  demo.models.box_inst.type = MODEL_CUBE;
-
-  demo.models.box2 = model_new_primitive(MODEL_CUBE);
-
-  model_build(&demo.models.player);
-  model_build(&demo.models.level_test);
-  //model_build(&game.models.level_1);
-  model_build(&demo.models.gear);
-  model_grid_set_default(&demo.models.gizmo, -2);
-  model_build(&demo.models.box);
-  model_build(&demo.models.box_inst);
-  model_build(&demo.models.grid);
-  model_build(&demo.models.gizmo);
 
   str_write("[Demo.Load] Loading complete!");
 
@@ -344,7 +319,7 @@ void wasp_render(Game game) {
   glUniformMatrix4fv(loc_invproj, 1, 0, m4inverse(game->camera.projection).f);
   glUniform4fv(loc_light_pos, 1, mv4mul(game->camera.view, demo.light_pos).f);
 
-  model_render(&model_frame);
+  model_render(game->demo->models.frame);
 
   tex_free(&lights);
 }
