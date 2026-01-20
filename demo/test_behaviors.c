@@ -573,7 +573,7 @@ void render_pbr(Game game, entity_t* e) {
   //glUniform4fv(loc_camera_pos, 1, game->camera.pos.f);
 
   //GLint use_color = false;
-  //if (e->model->type == MODEL_OBJ) use_color = e->model->mesh.use_color;
+  //if (e->model->type == MODEL_MESH) use_color = e->model->mesh.use_color;
   //glUniform1i(loc_use_vert_color, use_color);
 
   tex_apply(e->material->map_diffuse, 0, loc_sampler_tex);

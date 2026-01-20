@@ -59,6 +59,12 @@ target_sources(Wasp PRIVATE
   src/system_events.c
   src/texture.c
   src/wasm.c # rename to bridge.c?
+  src/data/inline_primitives.h
+  src/data/inline_shaders.h
+  src/model/grid.c
+  src/model/mesh.c
+  src/model/primitive.c
+  src/model/sprites.c
   include/camera.h
   include/draw.h
   include/entity.h
@@ -84,8 +90,9 @@ compile_opts(Wasp)
 
 # Project source filters for Visual Studio
 source_group("Source Files\\Loaders" src/loaders/.*\.c)
-source_group("Source Files\\Inline" src/data/.*\.h)
+source_group("Source Files\\Model" src/model/.*\.c)
 source_group("Header Files\\Loaders" src/loaders/.*\.h)
+source_group("Header Files\\Inline" src/data/.*\.h)
 
 # Include Galogen library for OpenGL function loading
 add_library(Galogen)

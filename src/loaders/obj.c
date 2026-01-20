@@ -96,22 +96,34 @@ model_obj_t file_load_obj(File file) {
 
         // Read a face
         case 'f': {
-          obj_face_elem_t elem;
+          obj_face_elem_t elem0;
+          slice_to_int(slice_token_char(line, S("/"), &i).token, &elem0.vert);
+          slice_to_int(slice_token_char(line, S("/"), &i).token, &elem0.uv);
+          slice_to_int(slice_token_space(line, &i).token, &elem0.norm);
+          arr_write_back(faces, &elem0);
 
-          slice_to_int(slice_token_char(line, S("/"), &i).token, &elem.vert);
-          slice_to_int(slice_token_char(line, S("/"), &i).token, &elem.uv);
-          slice_to_int(slice_token_space(line, &i).token, &elem.norm);
-          arr_write_back(faces, &elem);
+          obj_face_elem_t elem1;
+          slice_to_int(slice_token_char(line, S("/"), &i).token, &elem1.vert);
+          slice_to_int(slice_token_char(line, S("/"), &i).token, &elem1.uv);
+          slice_to_int(slice_token_space(line, &i).token, &elem1.norm);
+          arr_write_back(faces, &elem1);
 
-          slice_to_int(slice_token_char(line, S("/"), &i).token, &elem.vert);
-          slice_to_int(slice_token_char(line, S("/"), &i).token, &elem.uv);
-          slice_to_int(slice_token_space(line, &i).token, &elem.norm);
-          arr_write_back(faces, &elem);
+          obj_face_elem_t elem2;
+          slice_to_int(slice_token_char(line, S("/"), &i).token, &elem2.vert);
+          slice_to_int(slice_token_char(line, S("/"), &i).token, &elem2.uv);
+          slice_to_int(slice_token_space(line, &i).token, &elem2.norm);
+          arr_write_back(faces, &elem2);
 
-          slice_to_int(slice_token_char(line, S("/"), &i).token, &elem.vert);
-          slice_to_int(slice_token_char(line, S("/"), &i).token, &elem.uv);
-          slice_to_int(slice_token_space(line, &i).token, &elem.norm);
-          arr_write_back(faces, &elem);
+          while (i < line.length) {
+            slice_to_int(slice_token_char(line, S("/"), &i).token, &elem0.vert);
+            slice_to_int(slice_token_char(line, S("/"), &i).token, &elem0.uv);
+            slice_to_int(slice_token_space(line, &i).token, &elem0.norm);
+            arr_write_back(faces, &elem1);
+            arr_write_back(faces, &elem2);
+            arr_write_back(faces, &elem0);
+            elem1 = elem2;
+            elem2 = elem0;
+          }
         } break;
 
         // Skip past the line if it's a comment, object name, or whatever 's' is

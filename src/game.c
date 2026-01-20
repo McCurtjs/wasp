@@ -265,9 +265,10 @@ Game game_get_active(void) {
   return _game_instance_primary;
 }
 
-static Game_Internal* game_get_active_internal(void) {
-  return (Game_Internal*)game_get_active();
-}
+// Commented out for now because it's unused (mingw doesn't like that)
+//static Game_Internal* game_get_active_internal(void) {
+//  return (Game_Internal*)game_get_active();
+//}
 
 ////////////////////////////////////////////////////////////////////////////////
 

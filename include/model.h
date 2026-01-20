@@ -38,7 +38,7 @@ typedef enum model_type_t {
   MODEL_CUBE_COLOR,
   MODEL_FRAME,
   MODEL_SPRITES,
-  MODEL_OBJ,
+  MODEL_MESH,
   MODEL_TYPES_COUNT
 } model_type_t;
 
