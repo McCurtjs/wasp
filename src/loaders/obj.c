@@ -97,26 +97,26 @@ model_obj_t file_load_obj(File file) {
         // Read a face
         case 'f': {
           obj_face_elem_t elem0;
-          slice_to_int(slice_token_char(line, S("/"), &i).token, &elem0.vert);
-          slice_to_int(slice_token_char(line, S("/"), &i).token, &elem0.uv);
+          slice_to_int(str_token_char(line, "/", &i).token, &elem0.vert);
+          slice_to_int(str_token_char(line, "/", &i).token, &elem0.uv);
           slice_to_int(slice_token_space(line, &i).token, &elem0.norm);
           arr_write_back(faces, &elem0);
 
           obj_face_elem_t elem1;
-          slice_to_int(slice_token_char(line, S("/"), &i).token, &elem1.vert);
-          slice_to_int(slice_token_char(line, S("/"), &i).token, &elem1.uv);
+          slice_to_int(str_token_char(line, "/", &i).token, &elem1.vert);
+          slice_to_int(str_token_char(line, "/", &i).token, &elem1.uv);
           slice_to_int(slice_token_space(line, &i).token, &elem1.norm);
           arr_write_back(faces, &elem1);
 
           obj_face_elem_t elem2;
-          slice_to_int(slice_token_char(line, S("/"), &i).token, &elem2.vert);
-          slice_to_int(slice_token_char(line, S("/"), &i).token, &elem2.uv);
+          slice_to_int(str_token_char(line, "/", &i).token, &elem2.vert);
+          slice_to_int(str_token_char(line, "/", &i).token, &elem2.uv);
           slice_to_int(slice_token_space(line, &i).token, &elem2.norm);
           arr_write_back(faces, &elem2);
 
           while (i < line.length) {
-            slice_to_int(slice_token_char(line, S("/"), &i).token, &elem0.vert);
-            slice_to_int(slice_token_char(line, S("/"), &i).token, &elem0.uv);
+            slice_to_int(str_token_char(line, "/", &i).token, &elem0.vert);
+            slice_to_int(str_token_char(line, "/", &i).token, &elem0.uv);
             slice_to_int(slice_token_space(line, &i).token, &elem0.norm);
             arr_write_back(faces, &elem1);
             arr_write_back(faces, &elem2);
