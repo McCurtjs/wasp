@@ -175,10 +175,10 @@ void renderer_callback_render(renderer_t* renderer, Game game) {
   shader_bind(renderer->shader);
 
   // get uniform/attribute locations for active material
-  int loc_sampler_tex = shader_uniform_loc(shader, "texSamp");
-  int loc_sampler_norm = shader_uniform_loc(shader, "normSamp");
-  int loc_sampler_rough = shader_uniform_loc(shader, "roughSamp");
-  int loc_sampler_metal = shader_uniform_loc(shader, "metalSamp");
+  int loc_sampler_tex = shader_uniform_loc(shader, "samp_tex");
+  int loc_sampler_norm = shader_uniform_loc(shader, "samp_norm");
+  int loc_sampler_rough = shader_uniform_loc(shader, "samp_rough");
+  int loc_sampler_metal = shader_uniform_loc(shader, "samp_metal");
   int loc_props = shader_uniform_loc(shader, "in_weights");
 
   // apply globally shared uniforms

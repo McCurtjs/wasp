@@ -4,12 +4,12 @@ precision highp float;
 in vec4 vColor;
 in float vDepth;
 
-layout(location = 0) out vec4 fragColor;
-layout(location = 1) out vec4 fragNormal;
-layout(location = 2) out float depthValue;
+layout(location = 0) out vec4 frag_color;
+layout(location = 1) out vec4 frag_norm;
+layout(location = 2) out float frag_depth;
 
 void main() {
-  fragColor = vColor;
-  fragNormal = vec4(0.0);
-  depthValue = vDepth;
+  frag_color = vColor;
+  frag_norm = vec4(0.0);
+  frag_depth = vDepth;
 }

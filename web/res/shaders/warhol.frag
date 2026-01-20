@@ -3,14 +3,14 @@ precision highp float;
 
 in lowp vec2 vUV;
 
-out lowp vec4 fragColor;
+out lowp vec4 frag_color;
 
 uniform mat4 in_proj_inverse;
 
-uniform sampler2D texSamp;
-uniform sampler2D normSamp;
-uniform sampler2D depthSamp;
-uniform sampler2D propSamp;
+uniform sampler2D samp_tex;
+uniform sampler2D samp_norm;
+uniform sampler2D samp_depth;
+uniform sampler2D samp_prop;
 
 void main() {
   vec2 uv = vUV;
@@ -18,15 +18,15 @@ void main() {
   // Bottom Left
   if (uv.x <= 0.5 && uv.y <= 0.5) {
     uv *= 2.0;
-    fragColor = vec4(normalize(texture(normSamp, uv).xyz), 1.0);
+    frag_color = vec4(normalize(texture(samp_norm, uv).xyz), 1.0);
   }
 
   // Top Left
   else if (uv.x <= 0.5 && uv.y > 0.5) {
     uv *= 2.0;
     uv.y -= 1.0;
-    vec4 c = texture(texSamp, uv);
-    fragColor = vec4(vec3(c), 1.0);
+    vec4 c = texture(samp_tex, uv);
+    frag_color = vec4(vec3(c), 1.0);
   }
 
   // Top Right
@@ -34,12 +34,12 @@ void main() {
     uv *= 2.0;
     uv.y -= 1.0;
     uv.x -= 1.0;
-    vec3 ndc = vec3(uv.x, uv.y, texture(depthSamp, uv).r);
+    vec3 ndc = vec3(uv.x, uv.y, texture(samp_depth, uv).r);
     vec4 clip = vec4(ndc * 2.0 - 1.0, 1.0);
     vec4 view = in_proj_inverse * clip;
     view /= view.w;
     vec3 pos = view.xyz;
-    fragColor = vec4(vec3(length(pos)/75.0), 1.0); //vec4(uv.x, uv.y, 0.0, 1.0);
+    frag_color = vec4(vec3(length(pos)/75.0), 1.0); //vec4(uv.x, uv.y, 0.0, 1.0);
   }
 
   // Bottom Right
@@ -47,19 +47,19 @@ void main() {
     uv *= 2.0;
     uv.x -= 1.0;
     //*
-    fragColor = vec4(texture(propSamp, uv).xxy, 1.0);
+    frag_color = vec4(texture(samp_prop, uv).xxy, 1.0);
     /*/
-    vec3 ndc = vec3(uv.x, uv.y, texture(depthSamp, uv).r);
+    vec3 ndc = vec3(uv.x, uv.y, texture(samp_depth, uv).r);
     vec4 clip = vec4(ndc * 2.0 - 1.0, 1.0);
     vec4 view = in_proj_inverse * clip;
     view /= view.w;
     vec3 pos = view.xyz;
-    fragColor = vec4(pos / 8.0, 1.0);//view;//vec4(d, d, d, 1.0); //vec4(uv.x, uv.y, 0.0, 1.0);
+    frag_color = vec4(pos / 8.0, 1.0);//view;//vec4(d, d, d, 1.0); //vec4(uv.x, uv.y, 0.0, 1.0);
     //*/
   }
 
   // Cross?
   else {
-    fragColor = vec4(0.0, 0.0, 0.0, 1.0);
+    frag_color = vec4(0.0, 0.0, 0.0, 1.0);
   }
 }

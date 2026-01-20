@@ -48,15 +48,9 @@ static renderer_t _renderer_basic = {
 renderer_t* renderer_basic = &_renderer_basic;
 
 static renderer_t _renderer_pbr = {
-  /*
-  .register_entity = render_pbr_register,
-  .unregister_entity = render_pbr_unregister,
-  .render = render_pbr3,
-  /*/
   .register_entity = renderer_callback_register,
   .unregister_entity = renderer_callback_unregister,
   .render = renderer_callback_render,
-  //*/
 };
 renderer_t* renderer_pbr = &_renderer_pbr;
 
@@ -304,13 +298,13 @@ void wasp_render(Game game) {
   }
 
   shader_bind(shader);
-  int tex_sampler = shader_uniform_loc(shader, "texSamp");
-  int norm_sampler = shader_uniform_loc(shader, "normSamp");
-  int prop_sampler = shader_uniform_loc(shader, "propSamp");
-  int depth_sampler = shader_uniform_loc(shader, "depthSamp");
-  int light_sampler = shader_uniform_loc(shader, "lightSamp");
+  int tex_sampler = shader_uniform_loc(shader, "samp_tex");
+  int norm_sampler = shader_uniform_loc(shader, "samp_norm");
+  int prop_sampler = shader_uniform_loc(shader, "samp_prop");
+  int depth_sampler = shader_uniform_loc(shader, "samp_depth");
+  int light_sampler = shader_uniform_loc(shader, "samp_light");
   int loc_invproj = shader_uniform_loc(shader, "in_proj_inverse");
-  int loc_light_pos = shader_uniform_loc(shader, "lightPos");
+  int loc_light_pos = shader_uniform_loc(shader, "in_light_pos");
   tex_apply(game->demo->render_target->textures[0], 0, tex_sampler);
   tex_apply(game->demo->render_target->textures[1], 1, norm_sampler);
   tex_apply(game->demo->render_target->textures[2], 2, prop_sampler);

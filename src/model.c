@@ -218,15 +218,15 @@ static void _model_bind_prim_cube(Model _model) {
   glEnableVertexAttribArray(0);
   glVertexAttribPointer(0, v3floats, GL_FLOAT, GL_FALSE, stride, 0);
 
-  // normal
-  glEnableVertexAttribArray(1);
-  const void* offset = (void*)12;
-  glVertexAttribPointer(1, v3floats, GL_FLOAT, GL_FALSE, stride, offset);
-
   // uv
+  glEnableVertexAttribArray(1);
+  const void* offset = (void*)24;
+  glVertexAttribPointer(1, v2floats, GL_FLOAT, GL_FALSE, stride, offset);
+
+  // normal
   glEnableVertexAttribArray(2);
-  offset = (void*)24;
-  glVertexAttribPointer(2, v2floats, GL_FLOAT, GL_FALSE, stride, offset);
+  offset = (void*)12;
+  glVertexAttribPointer(2, v3floats, GL_FLOAT, GL_FALSE, stride, offset);
 
   // tangent
   glEnableVertexAttribArray(3);
@@ -489,12 +489,12 @@ static void _model_bind_sprites(Model_Internal_Sprites* sprites) {
 
   glEnableVertexAttribArray(1);
   glVertexAttribPointer(
-    1, v3floats, GL_FLOAT, GL_FALSE, stride, &((sprite_vertex_t*)0)->norm
+    1, v2floats, GL_FLOAT, GL_FALSE, stride, &((sprite_vertex_t*)0)->uv
   );
 
   glEnableVertexAttribArray(2);
   glVertexAttribPointer(
-    2, v2floats, GL_FLOAT, GL_FALSE, stride, &((sprite_vertex_t*)0)->uv
+    2, v3floats, GL_FLOAT, GL_FALSE, stride, &((sprite_vertex_t*)0)->norm
   );
 
   glEnableVertexAttribArray(3);
@@ -697,12 +697,12 @@ static void _model_bind_mesh(Model _model) {
 
   glEnableVertexAttribArray(1);
   glVertexAttribPointer(
-    1, v3floats, GL_FLOAT, GL_FALSE, vert_size, &((obj_vertex_t*)0)->norm
+    1, v2floats, GL_FLOAT, GL_FALSE, vert_size, &((obj_vertex_t*)0)->uv
   );
 
   glEnableVertexAttribArray(2);
   glVertexAttribPointer(
-    2, v2floats, GL_FLOAT, GL_FALSE, vert_size, &((obj_vertex_t*)0)->uv
+    2, v3floats, GL_FLOAT, GL_FALSE, vert_size, &((obj_vertex_t*)0)->norm
   );
 
   glEnableVertexAttribArray(3);

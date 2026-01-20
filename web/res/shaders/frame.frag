@@ -3,15 +3,15 @@ precision highp float;
 
 in lowp vec2 vUV;
 
-out lowp vec4 fragColor;
+out lowp vec4 frag_color;
 
 uniform mat4 in_proj_inverse;
 
-uniform sampler2D texSamp;
-uniform sampler2D normSamp;
-uniform sampler2D propSamp;
-uniform sampler2D depthSamp;
-uniform sampler2D lightSamp;
+uniform sampler2D samp_tex;
+uniform sampler2D samp_norm;
+uniform sampler2D samp_prop;
+uniform sampler2D samp_depth;
+uniform sampler2D samp_light;
 
 #define PI 3.141592653589
 
@@ -75,12 +75,12 @@ struct Light {
 };
 
 LightPos get_light_transform(int i) {
-  vec4 T = texelFetch(lightSamp, ivec2(0, i), 0);
+  vec4 T = texelFetch(samp_light, ivec2(0, i), 0);
   return LightPos(T.xyz, T.w);
 }
 
 LightSpot get_light_spot(int i) {
-  vec4 T = texelFetch(lightSamp, ivec2(1, i), 0);
+  vec4 T = texelFetch(samp_light, ivec2(1, i), 0);
   bool use = !(T.x == 0.0 && T.y == 0.0);
   if (!use || any(isnan(T))) {
     return LightSpot(vec3(0.0), 0.0, 0.0, false);
@@ -89,7 +89,7 @@ LightSpot get_light_spot(int i) {
 }
 
 LightColor get_light_color(int i) {
-  vec4 T = texelFetch(lightSamp, ivec2(2, i), 0);
+  vec4 T = texelFetch(samp_light, ivec2(2, i), 0);
   return LightColor(T.xyz, T.w);
 }
 
@@ -113,24 +113,24 @@ vec3 snap_to_circle_3d(
 void main() {
   // Get UV coordinates and basic color values from textures
   vec2 uv = vUV;
-  vec4 albedo = texture(texSamp, uv);
-  vec4 props = texture(propSamp, uv);
+  vec4 albedo = texture(samp_tex, uv);
+  vec4 props = texture(samp_prop, uv);
 
   // Material properties
   vec3  metallic = albedo.xyz * props.g;
   float roughness = props.r;
 
   // Reconstruct fragment position in view space (camera at <0, 0, 0>)
-  vec3 ndc = vec3(uv.x, uv.y, texture(depthSamp, uv).r);
+  vec3 ndc = vec3(uv.x, uv.y, texture(samp_depth, uv).r);
   vec4 clip = vec4(ndc * 2.0 - 1.0, 1.0);
   vec4 view = in_proj_inverse * clip;
   view /= view.w;
   vec3 frag_pos = view.xyz;
 
   // Unpack octahedral encoded normal
-  vec3 norm = texture(normSamp, uv).xyz;
+  vec3 norm = texture(samp_norm, uv).xyz;
   if (norm.x == norm.y && norm.y == 0.0) {
-    fragColor = albedo;
+    frag_color = albedo;
     return;
   }
   norm = oct_decode(norm.xy * 2.0 - 1.0);
@@ -142,7 +142,7 @@ void main() {
   vec3 result = vec3(0.0);
 
   // Run PBR lighting calaculations for each light in the scene
-  int light_buffer_size = textureSize(lightSamp, 0).y;
+  int light_buffer_size = textureSize(samp_light, 0).y;
   for (int i = 0; i < light_buffer_size; ++i) {
     Light light;
     light.transform = get_light_transform(i);
@@ -240,28 +240,28 @@ void main() {
   result = color;
   //*/
 
-  fragColor = vec4(result, 1.0);
+  frag_color = vec4(result, 1.0);
 
   // ambient color (IBL approx) (TODO)
   //vec3 irradiance_map = vec3(0.2, 0.1, 0.2);
   //vec3 ambient_diffuse = irradiance_map * albedo.xyz * kD;
   //vec3 ambient_specular = env * (F * brdf.x + brdf.y);
-  //fragColor.xyz += ambient_diffuse;// + ambient_specular;
+  //frag_color.xyz += ambient_diffuse;// + ambient_specular;
 
   /* // Test render the metallicness map
-  fragColor = vec4(vec3(metallic), 1.0);
+  frag_color = vec4(vec3(metallic), 1.0);
   //*/
 
   /* // Test render the roughness map
-  fragColor = vec4(vec3(roughness), 1.0);
+  frag_color = vec4(vec3(roughness), 1.0);
   //*/
 
   /* // Test render the view-space normal map
-  fragColor = vec4(norm, 1.0);
+  frag_color = vec4(norm, 1.0);
   //*/
 
   /* // Test render the lights texture
   ivec2 test = ivec2(int(uv.x * 3.0), int(uv.y * float(light_buffer_size)));
-  fragColor = texelFetch(lightSamp, test, 0);
+  frag_color = texelFetch(samp_light, test, 0);
   //*/
 }
