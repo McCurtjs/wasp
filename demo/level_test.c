@@ -322,14 +322,11 @@ void scene_unload_monument(Game game) {
   input_pointer_unlock();
 }
 
-static float ext = 10.f;
-static float size = 200.f;
-
 slotkey_t monument_light_left;
 slotkey_t monument_light_right;
 slotkey_t monument_light_spot;
 
-static scene_unload_fn_t _scene_load_monument(Game game) {
+scene_unload_fn_t scene_load_monument(Game game) {
 
   demo_t* demo = game->demo;
 
@@ -360,6 +357,8 @@ static scene_unload_fn_t _scene_load_monument(Game game) {
   float offset = 400.f;
 
   // Big monumental cubes (they give you flying and indestructible)
+  float ext = (float)demo->monument_extent;
+  float size = (float)demo->monument_size;
   for (float z = -ext; z < ext; ++z) {
     for (float y = -ext; y < ext; ++y) {
       for (float x = -ext; x < ext; ++x) {
@@ -439,29 +438,4 @@ static scene_unload_fn_t _scene_load_monument(Game game) {
   });
 
   return scene_unload_monument;
-}
-
-scene_unload_fn_t scene_load_monument(Game game) {
-  ext = 7.0f;
-  return _scene_load_monument(game);
-}
-
-scene_unload_fn_t scene_load_monument2(Game game) {
-  ext = 15.0f;
-  return _scene_load_monument(game);
-}
-
-scene_unload_fn_t scene_load_monument3(Game game) {
-  ext = 30.0f;
-  return _scene_load_monument(game);
-}
-
-scene_unload_fn_t scene_load_monument4(Game game) {
-  ext = 40.0f;
-  return _scene_load_monument(game);
-}
-
-scene_unload_fn_t scene_load_monument5(Game game) {
-  ext = 55.0f;
-  return _scene_load_monument(game);
 }

@@ -66,6 +66,8 @@ typedef struct demo_materials_t {
 typedef struct demo_t {
   vec3              target;
   vec4              light_pos;
+  int               monument_extent;
+  int               monument_size;
 
   RenderTarget      render_target;
 
@@ -152,7 +154,10 @@ enum demo_key_t {
   IN_SHIFT,
   IN_RELOAD,
   IN_TOGGLE_SHADER,
-  IN_TOGGLE_GRID
+  IN_TOGGLE_GRID,
+  IN_TOGGLE_LOCK,
+  IN_INCREASE,
+  IN_DECREASE
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -162,10 +167,6 @@ enum demo_key_t {
 scene_unload_fn_t scene_load_gears(Game game);
 scene_unload_fn_t scene_load_wizard(Game game);
 scene_unload_fn_t scene_load_monument(Game game);
-scene_unload_fn_t scene_load_monument2(Game game);
-scene_unload_fn_t scene_load_monument3(Game game);
-scene_unload_fn_t scene_load_monument4(Game game);
-scene_unload_fn_t scene_load_monument5(Game game);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Specialized event handlers

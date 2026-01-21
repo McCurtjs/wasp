@@ -103,7 +103,22 @@ target_sources(Galogen PRIVATE
   lib/galogen/galogen.h
 )
 
+# Link to Galogen (for OpenGL bindings)
 target_link_libraries(Wasp PUBLIC Galogen)
+
+# Bring in McLib
+add_subdirectory(lib/mclib)
+
+# Definitions and import for SDL
+set(SDL_TESTS OFF)
+set(SDL_SHARED OFF)
+set(SDL_STATIC ON)
+set(ONLY_LIBS ON)
+add_subdirectory(lib/sdl)
+
+# Link in libraries
+target_link_libraries(Wasp PUBLIC McLib)
+target_link_libraries(Wasp PUBLIC SDL3::SDL3)
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 
@@ -140,28 +155,29 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 
     target_sources(Wasp_demo PRIVATE
       src/native/main.c
+      src/native/ui.h
       demo/demo.c
       demo/level_test.c
       demo/test_behaviors.c
       demo/demo.h
+      lib/cimgui/cimgui.h
+    )
+    target_include_directories(Wasp_demo PRIVATE
+      src/native
     )
 
-    target_link_libraries(Wasp_demo PRIVATE Wasp Galogen)
+    set(IMGUI_STATIC "yes")
+    add_subdirectory(lib/cimgui)
+
+    add_library(imgui_backend)
+    target_sources(imgui_backend PRIVATE
+      lib/cimgui/imgui/backends/imgui_impl_sdl3.cpp
+      lib/cimgui/imgui/backends/imgui_impl_opengl3.cpp
+    )
+    set_target_properties(imgui_backend PROPERTIES LINKER_LANGUAGE CXX)
+    target_link_libraries(imgui_backend PRIVATE cimgui SDL3::SDL3)
+
+    target_link_libraries(Wasp_demo PRIVATE Wasp cimgui imgui_backend)
     compile_opts(Wasp_demo)
   endif()
 endif()
-
-# Bring in McLib
-add_subdirectory(lib/mclib)
-
-# Definitions and import for SDL
-set(SDL_TESTS OFF)
-set(SDL_SHARED OFF)
-set(SDL_STATIC ON)
-set(ONLY_LIBS ON)
-
-add_subdirectory(lib/sdl)
-
-# Link in libraries
-target_link_libraries(Wasp PUBLIC McLib)
-target_link_libraries(Wasp PUBLIC SDL3::SDL3)

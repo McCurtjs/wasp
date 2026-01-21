@@ -62,6 +62,7 @@ typedef struct Game_Internal {
   String title;
   index_t scene;
   float scene_time;
+  float frame_time;
 
   // systems
   Graphics graphics;
@@ -123,7 +124,8 @@ static void _game_scene_close(Game_Internal* game) {
     }
   }
 
-  smap_entity_clear(game->entities);
+  //smap_entity_clear(game->entities);
+  smap_entity_free(game->entities);
   light_clear();
   arr_bk_clear(game->entity_actors);
   arr_id_clear(game->entity_removals);
@@ -326,6 +328,7 @@ void game_update(Game _game, float dt) {
     _game_scene_switch(game);
   }
   else {
+    game->frame_time = dt;
     game->scene_time += dt;
   }
 

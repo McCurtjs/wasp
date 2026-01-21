@@ -69,7 +69,7 @@ static renderer_t* renderers[] = {
 ////////////////////////////////////////////////////////////////////////////////
 
 static keybind_t input_map[] = {
-  { .name = IN_CLOSE, .key = SDLK_ESCAPE },
+  { .name = IN_CLOSE, .key = SDLK_F4 },
   { .name = IN_JUMP, .key = 'w' },
   { .name = IN_LEFT, .key = 'a' },
   { .name = IN_DOWN, .key = 's' },
@@ -92,16 +92,15 @@ static keybind_t input_map[] = {
   { .name = IN_LEVEL_3_5, .key = '7' },
   { .name = IN_TOGGLE_SHADER, .key = 'm' },
   { .name = IN_TOGGLE_GRID, .key = 'g' },
+  { .name = IN_TOGGLE_LOCK, .key = SDLK_ESCAPE },
+  { .name = IN_INCREASE, .key = SDLK_UP },
+  { .name = IN_DECREASE, .key = SDLK_DOWN },
 };
 
 static scene_load_fn_t demo_scenes[] =
 { scene_load_gears
 , scene_load_wizard
 , scene_load_monument
-, scene_load_monument2
-, scene_load_monument3
-, scene_load_monument4
-, scene_load_monument5
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -115,6 +114,8 @@ void wasp_init(app_defaults_t* game) {
   demo = (demo_t) {
     .target = v3origin,
     .light_pos = v4f(4, 3, 5, 1),
+    .monument_extent = 10,
+    .monument_size = 200,
   };
 
   game->demo = &demo;

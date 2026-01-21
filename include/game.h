@@ -75,6 +75,7 @@ typedef struct _opaque_Game_t {
   const String    title;
   const index_t   scene;
   const float     scene_time;
+  const float     frame_time;
 
   // systems
   const Graphics  graphics;

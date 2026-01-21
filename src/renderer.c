@@ -229,6 +229,7 @@ void renderer_callback_render(renderer_t* renderer, Game game) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void renderer_callback_update(renderer_t* renderer, entity_t* e) {
+  UNUSED(renderer);
   assert(renderer);
   assert(e);
   assert(renderer == e->renderer);

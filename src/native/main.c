@@ -35,11 +35,13 @@
 #include "SDL3/SDL.h"
 #include "gl.h"
 #include "stdio.h" // fflush
+#include "ui.h"
 
 static struct {
   SDL_Window* window;
   SDL_GLContext gl_context;
   SDL_Thread* loading_thread;
+  ImGuiContext* imgui;
   bool loading_done;
   uint64_t previous_time;
   Game game;
@@ -156,6 +158,18 @@ SDL_AppResult SDL_AppInit(void** app_state, int argc, char* argv[]) {
   app.gl_context = SDL_GL_CreateContext(app.window);
   SDL_GL_SetSwapInterval(0);
 
+  if (!app.gl_context) return SDL_APP_FAILURE;
+
+  app.imgui = igCreateContext(NULL);
+  app.imgui->IO.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+  //app.imgui->IO.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+  //app.imgui->IO.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+  ImGui_ImplSDL3_InitForOpenGL(app.window, app.gl_context);
+  ImGui_ImplOpenGL3_Init("#version 300 es");
+  //app.imgui->Style.FontScaleDpi = 12.0f;
+  assert(&app.imgui->Style == igGetStyle());
+  igStyleColorsDark(NULL);
+
 #ifdef _DEBUG
   glEnable(GL_DEBUG_OUTPUT);
   glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
@@ -163,8 +177,6 @@ SDL_AppResult SDL_AppInit(void** app_state, int argc, char* argv[]) {
   glDebugMessageControl(
     GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, true);
 #endif
-
-  if (!app.gl_context) return SDL_APP_FAILURE;
 
   glClearColor(0.2f, 0.2f, 0.2f, 1);
   glClearDepth(1);
@@ -178,7 +190,6 @@ SDL_AppResult SDL_AppInit(void** app_state, int argc, char* argv[]) {
   glViewport(0, 0, app.game->window.x, app.game->window.y);
 
   app.previous_time = SDL_GetTicks();
-
   app.loading_thread = SDL_CreateThread(_loading_thread_fn, "load", &app.game);
 
   if (!app.loading_thread) {
@@ -197,6 +208,10 @@ SDL_AppResult SDL_AppIterate(void* app_state) {
   uint64_t current_time = SDL_GetTicks();
   float dt = (float)(current_time - app.previous_time) / 1000.f;
   app.previous_time = current_time;
+
+  ImGui_ImplOpenGL3_NewFrame();
+  ImGui_ImplSDL3_NewFrame();
+  igNewFrame();
 
   if (!app.loading_done) {
     float load_time = (float)current_time / 1000.f;
@@ -222,8 +237,7 @@ SDL_AppResult SDL_AppIterate(void* app_state) {
       str_log("[App.Load] Loaded - time elapsed: {}", load_time);
     }
     else {
-      SDL_GL_SwapWindow(app.window);
-      return SDL_APP_CONTINUE;
+      goto swap_frames;
     }
   }
 
@@ -237,6 +251,11 @@ SDL_AppResult SDL_AppIterate(void* app_state) {
 
   wasp_render(app.game);
 
+swap_frames:
+
+  igRender();
+  ImGui_ImplOpenGL3_RenderDrawData(igGetDrawData());
+
   SDL_GL_SwapWindow(app.window);
 
   if (app.game->should_exit)
@@ -248,7 +267,11 @@ SDL_AppResult SDL_AppIterate(void* app_state) {
 
 SDL_AppResult SDL_AppEvent(void* app_state, SDL_Event* event) {
   UNUSED(app_state);
-  return event_process_system(app.game, event);
+  ImGui_ImplSDL3_ProcessEvent(event);
+  if (!app.imgui->IO.WantCaptureMouse) {
+    return event_process_system(app.game, event);
+  }
+  return SDL_APP_CONTINUE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

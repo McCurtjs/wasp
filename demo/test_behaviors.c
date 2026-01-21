@@ -311,16 +311,17 @@ void behavior_camera_monument(Game game, entity_t* e, float dt) {
 
   float xrot = d2r(-game->input.mouse.move.y * 180.f / (float)game->window.h);
   float yrot = d2r(-game->input.mouse.move.x * 180.f / (float)game->window.x);
+  float epsilon = 0.000001f;
 
   vec2 rotation = v2f(xrot, yrot);
-  if (v2mag(rotation) > 0.01f) {
+  if (v2mag(rotation) > epsilon) {
     rotation = v2norm(rotation);
     rotation = v2scale(rotation, dt * 1.8f);
     rotation.x *= -1.f;
     e->pos = v3add(e->pos, v23xz(rotation));
   }
 
-  if (v3mag(e->pos) > 0.01f) {
+  if (v3mag(e->pos) > epsilon) {
     vec3 half = v3scale(e->pos, 0.6f * dt);
     camera_rotate_local(&game->camera, half);
     e->pos = v3sub(e->pos, half);
@@ -365,6 +366,10 @@ void behavior_camera_monument(Game game, entity_t* e, float dt) {
 // Toggles the visibility of the grid
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef __WASM__
+#include "ui.h"
+#endif
+
 void behavior_grid_toggle(Game game, entity_t* e, float dt) {
   UNUSED(dt);
   if (input_triggered(IN_TOGGLE_GRID)) {
@@ -387,21 +392,53 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
     game->next_scene = 2;
   }
 
-  if (input_triggered(IN_LEVEL_3_2)) {
-    game->next_scene = 3;
+  if (input_triggered(IN_TOGGLE_LOCK) && game->scene == 2) {
+    input_pointer_unlock();
   }
 
-  if (input_triggered(IN_LEVEL_3_3)) {
-    game->next_scene = 4;
-  }
+#ifndef __WASM__
+  ImVec2_c v2imzero = { 0 };
 
-  if (input_triggered(IN_LEVEL_3_4)) {
-    game->next_scene = 5;
-  }
+  ImGuiWindowFlags flags
+    = ImGuiWindowFlags_NoMove
+    | ImGuiWindowFlags_NoResize
+    | ImGuiWindowFlags_AlwaysAutoResize;
+  igSetNextWindowPos(v2imzero, ImGuiCond_Appearing, v2imzero);
+  igSetNextWindowSize((ImVec2_c) { 150, 50 }, ImGuiCond_Appearing);
 
-  if (input_triggered(IN_LEVEL_3_5)) {
-    game->next_scene = 6;
-  }
+  if (igBegin("Information", NULL, flags)) {
+    igText("FPS: %.3f", 1.0f / game->frame_time);
+
+    const char* scenes[] = { "1 - Editor", "2 - Magicks", "3 - Flight" };
+    if (igBeginCombo("Combo box?", scenes[game->scene], 0)) {
+      for (int i = 0; i < ARRAY_COUNT(scenes); ++i) {
+        if (igSelectable_Bool(scenes[i], i == game->scene, 0, v2imzero)) {
+          game->next_scene = i;
+        }
+      } igEndCombo();
+    }
+
+    if (game->scene == 2) {
+      igBeginGroup();
+      igSliderInt(
+        "Instance extent", &game->demo->monument_extent, 0, 100, NULL, 0);
+
+      igSliderInt(
+        "Instance spacing", &game->demo->monument_size, 0, 500, NULL, 0);
+
+      if (igButton("Apply", v2imzero)) {
+        game->next_scene = 2;
+      }
+      igSameLine(0, 5);
+      if (igButton("Reset", v2imzero)) {
+        game->demo->monument_extent = 10;
+        game->demo->monument_size = 200;
+        game->next_scene = 2;
+      }
+      igEndGroup();
+    }
+  } igEnd();
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -22,7 +22,8 @@ while [ "$1" != "" ]; do
       echo ":   rebuild                              : cleans files for target before building"
       echo ": r release                              : release build (default is debug)"
       echo ": s spec                                 : unit-test/spec build"
-      echo ": u update                               : update submodules"
+      echo ": m modules                              : update submodules to current versions"
+      echo ":   modules-update                       : update submodules to latest versions"
       echo ": p pull                                 : pull with submodules"
       echo ": l library                              : builds as a library"
       echo ": o open                                 : opens the IDE for msvc target"
@@ -44,15 +45,20 @@ while [ "$1" != "" ]; do
     --rebuild)
       clean=true
       ;;
-    -u | --update)
-      echo ": Updating with submodules"
-      git submodule update --init --remote --recursive
-      build_target="none"
+    -m | --modules)
+      echo ": Getting submodules at current specified versions"
+      git submodule update --init --recursive
+      build_target="done"
+      ;;
+    --modules-update)
+      echo ": Updating submodules to latest versions"
+      git submodule update --init --recursive --remote
+      build_target="done"
       ;;
     -p | --pull)
       echo ": Pulling with submodules"
       git pull --recurse-submodules
-      build_target="none"
+      build_target="done"
       ;;
     -r | --release)
       build_type="Release"
@@ -70,6 +76,11 @@ while [ "$1" != "" ]; do
   esac
   shift 1
 done
+
+# Early-exit if no further operations needed
+if [ "$build_target" == "done" ]; then
+  exit
+fi
 
 # Clean files from build target
 if [ $clean = true ]; then
