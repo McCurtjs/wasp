@@ -55,6 +55,7 @@ typedef struct input_t {
 
 void input_update(input_t* input);
 void input_pointer_lock(void);
+bool input_pointer_locked(void);
 void input_pointer_unlock(void);
 
 bool input_triggered(int input_name);

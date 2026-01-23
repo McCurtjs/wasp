@@ -267,10 +267,19 @@ swap_frames:
 
 SDL_AppResult SDL_AppEvent(void* app_state, SDL_Event* event) {
   UNUSED(app_state);
-  ImGui_ImplSDL3_ProcessEvent(event);
-  if (!app.imgui->IO.WantCaptureMouse) {
+
+  if (!input_pointer_locked()) {
+    ImGui_ImplSDL3_ProcessEvent(event);
+  }
+
+  if (input_pointer_locked()
+  || !app.imgui->IO.WantCaptureMouse
+  || event->type == SDL_EVENT_MOUSE_BUTTON_UP
+  || event->type == SDL_EVENT_KEY_UP
+  ) {
     return event_process_system(app.game, event);
   }
+
   return SDL_APP_CONTINUE;
 }
 

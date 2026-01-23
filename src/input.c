@@ -49,6 +49,7 @@ void input_update(input_t* input) {
 // Locks the cursor position and hides it
 ////////////////////////////////////////////////////////////////////////////////
 
+static bool lazy_lock_check = false;
 void input_pointer_lock(void) {
 #ifdef __WASM__
   js_pointer_lock();
@@ -58,7 +59,12 @@ void input_pointer_lock(void) {
   if (!success) {
     str_write(SDL_GetError());
   }
+  lazy_lock_check = true;
 #endif
+}
+
+bool input_pointer_locked(void) {
+  return lazy_lock_check;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,6 +84,7 @@ void input_pointer_unlock(void) {
     vec2i window = game_get_active()->window;
     vec2 center = v2scale(v2vi(window), 0.5f);
     SDL_WarpMouseInWindow(sdl_window, center.x, center.y);
+    lazy_lock_check = false;
   }
 #endif
 }

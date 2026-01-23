@@ -42,7 +42,8 @@ scene_unload_fn_t scene_load_gears(Game game) {
   camera_look_at(&game->camera, game->demo->target);
 
   // Debug Renderer
-  entity_add(game, &(entity_t) {
+  entity_add(&(entity_desc_t) {
+    .name = S("Grid"),
     .model = demo->models.grid,
     .transform = m4identity,
     .render = render_debug,
@@ -50,22 +51,25 @@ scene_unload_fn_t scene_load_gears(Game game) {
   });
 
   // Camera Controller
-  entity_add(game, &(entity_t) {
+  entity_add(&(entity_desc_t) {
+    .name = S("Camera controller"),
     .behavior = behavior_camera_test,
   });
 
   //* Spinny Cube
-  entity_add(game, &(entity_t) {
+  entity_add(&(entity_desc_t) {
+    .name = S("Spinny-cube"),
     .model = demo->models.color_cube,
     .pos = v3f(-2, 0, 0),
     .angle = 0,
     .transform = m4identity,
-    //.renderer = renderer_basic,
+    .render = render_basic,
     .behavior = behavior_cubespin,
   }); //*/
 
   //* Staring Cube
-  entity_add(game, &(entity_t) {
+  entity_add(&(entity_desc_t) {
+    .name = S("Staring Cube"),
     .model = demo->models.color_cube,
     .pos = v3f(0, 0, 2),
     .render = render_basic,
@@ -73,20 +77,23 @@ scene_unload_fn_t scene_load_gears(Game game) {
   }); //*/
 
   //* Gizmos
-  entity_add(game, &(entity_t) {
+  entity_add(&(entity_desc_t) {
+    .name = S("Target Gizmo"),
     .model = demo->models.gizmo,
     .render = render_basic,
     .behavior = behavior_attach_to_camera_target,
   }); //*/
 
-  entity_add(game, &(entity_t) {
+  entity_add(&(entity_desc_t) {
+    .name = S("Light Gizmo"),
     .model = demo->models.gizmo,
     .render = render_basic,
     .behavior = behavior_attach_to_light,
   }); //*/
 
   //* Gear 1
-  entity_add(game, &(entity_t) {
+  entity_add(&(entity_desc_t) {
+    .name = S("Gear 1"),
     .model = demo->models.gear,
     .material = demo->materials.grass,
     .transform = m4translation(v3f(0, 7, -12)),
@@ -95,7 +102,8 @@ scene_unload_fn_t scene_load_gears(Game game) {
   }); //*/
 
   //* Gear 2
-  entity_add(game, &(entity_t) {
+  entity_add(&(entity_desc_t) {
+    .name = S("Gear 2"),
     .model = demo->models.gear,
     .material = demo->materials.sands,
     .transform = m4translation(v3f(20.5f, -1.5f, -12)),
@@ -104,7 +112,8 @@ scene_unload_fn_t scene_load_gears(Game game) {
   }); //*/
 
   //* Gear 3
-  entity_add(game, &(entity_t) {
+  entity_add(&(entity_desc_t) {
+    .name = S("Gear 3"),
     .model = demo->models.gear,
     .material = demo->materials.mudds,
     .transform = m4translation(v3f(43.f, -1.5f, -12)),
@@ -113,7 +122,8 @@ scene_unload_fn_t scene_load_gears(Game game) {
   }); //*/
 
   //* Crate
-  entity_add(game, &(entity_t) {
+  entity_add(&(entity_desc_t) {
+    .name = S("Grass Block 1"),
     .model = demo->models.box,
     .material = demo->materials.grass,
     .transform = m4translation(v3f(0, -0.5, 0)),
@@ -121,7 +131,8 @@ scene_unload_fn_t scene_load_gears(Game game) {
   }); //*/
 
   //* Crate
-  entity_add(game, &(entity_t) {
+  entity_add(&(entity_desc_t) {
+    .name = S("Grass Block 2"),
     .model = demo->models.box,
     .material = demo->materials.grass,
     .transform = m4translation(v3f(1, -0.5, 0)),
@@ -129,7 +140,8 @@ scene_unload_fn_t scene_load_gears(Game game) {
   }); //*/
 
   //* Crate
-  entity_add(game, &(entity_t) {
+  entity_add(&(entity_desc_t) {
+    .name = S("Grass Block 3"),
     .model = demo->models.box,
     .material = demo->materials.grass,
     .transform = m4translation(v3f(0, -0.5, 1)),
@@ -137,7 +149,8 @@ scene_unload_fn_t scene_load_gears(Game game) {
   }); //*/
 
   //* Crate
-  entity_add(game, &(entity_t) {
+  entity_add(&(entity_desc_t) {
+    .name = S("Grass Block 4"),
     .model = demo->models.box,
     .material = demo->materials.grass,
     .transform = m4translation(v3f(1, -0.5, 1)),
@@ -145,7 +158,8 @@ scene_unload_fn_t scene_load_gears(Game game) {
   }); //*/
 
   //* Bigger Crate
-  entity_add(game, &(entity_t) {
+  entity_add(&(entity_desc_t) {
+    .name = S("Medium Crate"),
     .model = demo->models.box,
     .material = demo->materials.crate,
     .transform = m4ts(v3f(2, 0, 0), 2),
@@ -153,7 +167,8 @@ scene_unload_fn_t scene_load_gears(Game game) {
   }); //*/
 
   //* Even Bigger Crate
-  entity_add(game, &(entity_t) {
+  entity_add(&(entity_desc_t) {
+    .name = S("Big Crate"),
     .model = demo->models.box,
     .material = demo->materials.renderite,
     .tint = v3f(0.8f, 0.3f, 0.6f),
@@ -192,7 +207,8 @@ scene_unload_fn_t scene_load_gears(Game game) {
           demo->materials.renderite : demo->materials.mudds;
       }
 
-      entity_add(game, &(entity_t) {
+      entity_add(&(entity_desc_t) {
+        .name = S("Ground Cube"),
         .model = demo->models.box,
         .material = material,
         .transform = m4trs(pos, axis, angle, 19),
@@ -247,7 +263,7 @@ scene_unload_fn_t scene_load_wizard(Game game) {
   camera_look_at(&game->camera, game->demo->target);
 
   // Debug Renderer
-  entity_add(game, &(entity_t) {
+  entity_add(&(entity_desc_t) {
     .model = demo->models.grid,
     .transform = m4identity,
     .render = render_debug,
@@ -255,7 +271,7 @@ scene_unload_fn_t scene_load_wizard(Game game) {
   });
   
   // Target gizmo
-  entity_add(game, &(entity_t) {
+  entity_add(&(entity_desc_t) {
     .model = demo->models.gear,
     .render = render_pbr,
     .tint = c4black.rgb,
@@ -265,7 +281,7 @@ scene_unload_fn_t scene_load_wizard(Game game) {
   });
 
   // Wizard crate
-  entity_add(game, &(entity_t) {
+  entity_add(&(entity_desc_t) {
     .pos = v3f(0, 0.5, 0),
     .model = demo->models.box,
     .material = demo->materials.crate,
@@ -294,7 +310,7 @@ scene_unload_fn_t scene_load_wizard(Game game) {
       )
         material = demo->materials.mudds;
 
-      entity_add(game, &(entity_t) {
+      entity_add(&(entity_desc_t) {
         .model = demo->models.box,
         .material = material,
         .transform = m4tsv(pos, v3f(5, 2, 5)),
@@ -339,7 +355,7 @@ scene_unload_fn_t scene_load_monument(Game game) {
   camera_look_at(&game->camera, game->demo->target);
 
   // Debug Renderer
-  entity_add(game, &(entity_t) {
+  entity_add(&(entity_desc_t) {
     .model = demo->models.grid,
     .transform = m4identity,
     .render = render_debug,
@@ -348,7 +364,7 @@ scene_unload_fn_t scene_load_monument(Game game) {
   });
 
   // Camera Controller
-  entity_add(game, &(entity_t) {
+  entity_add(&(entity_desc_t) {
     .angle = 5.f, // actually speed
     .pos = v3zero, // accumulated rotation angles
     .behavior = behavior_camera_monument,
@@ -370,7 +386,7 @@ scene_unload_fn_t scene_load_monument(Game game) {
           continue;
         }
 
-        entity_add(game, &(entity_t) {
+        entity_add(&(entity_desc_t) {
           .model = demo->models.box,
           .material = demo->materials.mudds,
           .transform = m4ts(pos, 120.f - 2.f * (y + ext)),
@@ -383,7 +399,7 @@ scene_unload_fn_t scene_load_monument(Game game) {
   vec3 sun_pos = v3f(200, 1000, 600);
 
   // Gear sun
-  entity_add(game, &(entity_t) {
+  entity_add(&(entity_desc_t) {
     .model = demo->models.gear,
     .render = render_pbr,
     .tint = c4white.rgb,
@@ -394,7 +410,7 @@ scene_unload_fn_t scene_load_monument(Game game) {
 
   // Ground
   float ground_scale = 2500;
-  entity_add(game, &(entity_t) {
+  entity_add(&(entity_desc_t) {
     .model = demo->models.box,
     .material = demo->materials.grass,
     .transform = m4mul(

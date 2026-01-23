@@ -43,11 +43,13 @@ static demo_t demo;
 static int active_shader = 1;
 
 static renderer_t _renderer_basic = {
+  .name = "Basic",
   .render_entity = render_basic2,
 };
 renderer_t* renderer_basic = &_renderer_basic;
 
 static renderer_t _renderer_pbr = {
+  .name = "PBR",
   .register_entity = renderer_callback_register,
   .unregister_entity = renderer_callback_unregister,
   .render = renderer_callback_render,
@@ -55,6 +57,7 @@ static renderer_t _renderer_pbr = {
 renderer_t* renderer_pbr = &_renderer_pbr;
 
 static renderer_t _renderer_debug = {
+  .name = "Debug",
   .render_entity = render_basic2,
   .render = render_debug3,
 };

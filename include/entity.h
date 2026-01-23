@@ -44,9 +44,38 @@ typedef void (*entity_render_fn_t)(Game game, entity_t* e);
 typedef void (*entity_create_fn_t)(Game game, entity_t* e);
 typedef void (*entity_delete_fn_t)(Game game, entity_t* e);
 
+typedef struct entity_desc_t {
+  slice_t name;
+
+  mat4 transform;
+  Model model;
+  Material material;
+
+  // replace these ones
+  vec3 pos;
+
+  union {
+    quat rotation;
+    float angle;
+    slotkey_t tmp;
+  };
+
+  color3 tint;
+
+  renderer_t* renderer;
+
+  entity_update_fn_t behavior;
+  entity_render_fn_t render;
+  entity_create_fn_t oncreate;
+  entity_delete_fn_t ondelete;
+
+  bool is_static;
+  bool is_hidden;
+} entity_desc_t;
+
 typedef struct entity_t {
   slotkey_t id;
-  slice_t name;
+  String name;
   float create_time;
 
   vec3 pos;
@@ -75,14 +104,17 @@ typedef struct entity_t {
 
 } entity_t;
 
-slotkey_t entity_add(Game game, const entity_t* entity);
-void      entity_remove(Game game, slotkey_t entity_id);
-entity_t* entity_ref(Game game, slotkey_t entity_id);
+slotkey_t entity_add(const entity_desc_t* entity);
+void      entity_remove(slotkey_t entity_id);
+index_t   entity_count(void);
+entity_t* entity_ref(slotkey_t entity_id);
+entity_t* entity_next(slotkey_t* entity_id);
 
 void      entity_set_behavior(entity_t*, entity_update_fn_t bh);
 void      entity_set_renderer(entity_t*, renderer_t*);
 
 void      entity_apply_transform(slotkey_t entity_id);
+
 
 /*
 typedef struct Entity2 {

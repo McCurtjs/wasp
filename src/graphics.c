@@ -123,6 +123,13 @@ slotkey_t light_add(light_t light) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+index_t light_count(void) {
+  LIGHT_INTERNAL;
+  return graphics->lights->size;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 light_t* light_ref(slotkey_t light_id) {
   LIGHT_INTERNAL;
   return smap_light_ref(graphics->lights, light_id);

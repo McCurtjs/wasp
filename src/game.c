@@ -82,9 +82,10 @@ typedef struct Game_Internal {
   // secrets
   scene_unload_fn_t scene_unload;
   SlotMap_entity entities;
-  Array_bk entity_actors;
-  Array_id entity_removals;
-  Array_id entity_updates;
+
+  Array_bk entity_actors;   // entities with attached behaviors
+  Array_id entity_updates;  // entities that have transforms to update
+  Array_id entity_removals; // ids of entities to remove at end of frame
 
 } Game_Internal;
 
@@ -128,8 +129,8 @@ static void _game_scene_close(Game_Internal* game) {
   smap_entity_free(game->entities);
   light_clear();
   arr_bk_clear(game->entity_actors);
-  arr_id_clear(game->entity_removals);
   arr_id_clear(game->entity_updates);
+  arr_id_clear(game->entity_removals);
 
   // Clear out instance data from the renderers
   gfx_clear_instances(game->graphics);
@@ -215,8 +216,8 @@ Game game_new(String title, vec2i window_size) {
     .next_scene = 0,
     .entities = smap_entity_new(),
     .entity_actors = arr_bk_new(),
-    .entity_removals = arr_id_new(),
     .entity_updates = arr_id_new(),
+    .entity_removals = arr_id_new(),
   };
 
   Game p_ret = (Game)ret;
@@ -391,7 +392,7 @@ void game_render(Game _game) {
 
   gfx_render(game->graphics, _game);
 }
-
+  
 ////////////////////////////////////////////////////////////////////////////////
 // Entity management functions
 ////////////////////////////////////////////////////////////////////////////////
@@ -400,11 +401,11 @@ void game_render(Game _game) {
 // Adds a game entity
 ////////////////////////////////////////////////////////////////////////////////
 
-slotkey_t entity_add(Game _game, const entity_t* input_entity) {
-  GAME_INTERNAL;
-  assert(input_entity);
+slotkey_t entity_add(const entity_desc_t* proto) {
+  Game_Internal* game = game_get_local_internal();
+  assert(proto);
 
-  vec3 tint = input_entity->tint;
+  vec3 tint = proto->tint;
   if (tint.x == 0.0f
   &&  tint.y == 0.0f
   &&  tint.z == 0.0f
@@ -415,9 +416,30 @@ slotkey_t entity_add(Game _game, const entity_t* input_entity) {
   slotkey_t key;
   entity_t* entity = smap_entity_emplace(game->entities, &key);
 
-  *entity = *input_entity;
+  //*entity = *input_entity;
+  *entity = (entity_t) {
+    .id = key,
+    .name = proto->name.begin ? str_copy(proto->name) : str_empty,
+    .create_time = game->scene_time,
+    .transform = proto->transform,
+    .model = proto->model,
+    .material = proto->material,
+    .pos = proto->pos,
+    .rotation = proto->rotation,
+    .tint = proto->tint,
+    .render = proto->render,
+    .renderer = proto->renderer,
+    .behavior = proto->behavior,
+    .oncreate = proto->oncreate,
+    .ondelete = proto->ondelete,
+    .is_static = proto->is_static,
+    .is_hidden = proto->is_hidden,
+  };
+
+  entity->name = proto->name.begin ? str_copy(proto->name) : str_empty;
   entity->id = key;
   entity->tint = tint;
+
 
   // Register new entity's behavior function if it has one
   if (entity->behavior) {
@@ -430,31 +452,42 @@ slotkey_t entity_add(Game _game, const entity_t* input_entity) {
     renderer_entity_register(entity, entity->renderer);
   }
 
-  // Set create timestamp before initial create call
-  entity->create_time = game->scene_time;
-
   // Run on-create callback
   if (entity->oncreate) {
-    entity->oncreate(_game, entity);
+    entity->oncreate((Game)game, entity);
   }
 
   return key;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-
-entity_t* entity_ref(Game _game, slotkey_t id) {
-  GAME_INTERNAL;
-  return smap_entity_ref(game->entities, id);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // Don't delete entities right away, flag them for removal after updates.
 ////////////////////////////////////////////////////////////////////////////////
 
-void entity_remove(Game _game, slotkey_t id) {
-  GAME_INTERNAL;
+void entity_remove(slotkey_t id) {
+  Game_Internal* game = game_get_local_internal();
   arr_id_push_back(game->entity_removals, id);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+index_t entity_count(void) {
+  Game_Internal* game = game_get_local_internal();
+  return game->entities ? game->entities->size : 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+entity_t* entity_next(slotkey_t* entity_id) {
+  Game_Internal* game = game_get_local_internal();
+  return smap_next((SlotMap)game->entities, entity_id);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+entity_t* entity_ref(slotkey_t id) {
+  Game_Internal* game = game_get_local_internal();
+  return smap_entity_ref(game->entities, id);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -491,3 +524,8 @@ void entity_apply_transform(slotkey_t entity_id) {
   Game_Internal* game = (Game_Internal*)game_get_active();
   arr_id_push_back(game->entity_updates, entity_id);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// UI selector for available game entities
+////////////////////////////////////////////////////////////////////////////////
+

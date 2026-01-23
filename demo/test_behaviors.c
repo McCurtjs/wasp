@@ -180,7 +180,7 @@ static void behavior_projectile(Game game, entity_t* e, float dt) {
     light->pos = new_pos;
   }
   if (new_pos.y < 0) {
-    entity_remove(game, e->id);
+    entity_remove(e->id);
   }
 }
 
@@ -223,7 +223,7 @@ static void _wizard_projectile(Game game, entity_t* e, float dt) {
         .pos = launch_point
       });
 
-      slotkey_t eid = entity_add(game, &(entity_t) {
+      slotkey_t eid = entity_add(&(entity_desc_t) {
         .pos = v3dir(click_pos, launch_point),
         .transform = m4ts(launch_point, 0.4f),
         .model = demo->models.color_cube,
@@ -255,14 +255,14 @@ static void behavior_baddy(Game game, entity_t* e, float dt) {
 
   if (wizard_bullets) {
     slotkey_t* arr_foreach(bullet_id, wizard_bullets) {
-      entity_t* bullet = entity_ref(game, *bullet_id);
+      entity_t* bullet = entity_ref(*bullet_id);
       if (!bullet) continue;
       vec3 bullet_pos = bullet->transform.col[3].xyz;
       if (v3dist(pos, bullet_pos) < 2.f) {
-        entity_remove(game, *bullet_id);
+        entity_remove(*bullet_id);
         e->tint.r -= 0.025f;
         if (e->tint.r <= 0.0f) {
-          entity_remove(game, e->id);
+          entity_remove(e->id);
         }
         return;
       }
@@ -280,7 +280,7 @@ static void _wizard_baddies(Game game, entity_t* e, float dt) {
     offset = v3scale(offset, 40.f + (cosf(theta * 52.f) + 1) * 20.f);
     vec3 pos = v3add(e->pos, offset);
     pos.y = 1.f;
-    entity_add(game, &(entity_t) {
+    entity_add(&(entity_desc_t) {
       .pos = pos,
       .model = game->demo->models.box,
       .material = game->demo->materials.crate,
@@ -398,33 +398,75 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
 
 #ifndef __WASM__
   ImVec2_c v2imzero = { 0 };
+  ImVec2_c v2imwinsize = { 250, (float)game->window.h };
 
   ImGuiWindowFlags flags
     = ImGuiWindowFlags_NoMove
     | ImGuiWindowFlags_NoResize
-    | ImGuiWindowFlags_AlwaysAutoResize;
+    //| ImGuiWindowFlags_AlwaysAutoResize
+    ;
+
+  ImGuiChildFlags child_flags
+    = ImGuiChildFlags_AlwaysAutoResize
+    | ImGuiChildFlags_Borders
+    | ImGuiChildFlags_AutoResizeY
+    | ImGuiChildFlags_AutoResizeX
+    ;
+
+  static slotkey_t selected = { 0 };
   igSetNextWindowPos(v2imzero, ImGuiCond_Appearing, v2imzero);
-  igSetNextWindowSize((ImVec2_c) { 150, 50 }, ImGuiCond_Appearing);
+  igSetNextWindowSize(v2imwinsize, ImGuiCond_Always);
 
   if (igBegin("Information", NULL, flags)) {
     igText("FPS: %.3f", 1.0f / game->frame_time);
+    igText("Lights: %d", light_count());
 
+    igText("Scene");
+    igBeginChild_Str("panel_scene", v2imzero, child_flags, 0);
     const char* scenes[] = { "1 - Editor", "2 - Magicks", "3 - Flight" };
-    if (igBeginCombo("Combo box?", scenes[game->scene], 0)) {
+    if (igBeginCombo("##scene_select", scenes[game->scene], 0)) {
       for (int i = 0; i < ARRAY_COUNT(scenes); ++i) {
         if (igSelectable_Bool(scenes[i], i == game->scene, 0, v2imzero)) {
           game->next_scene = i;
         }
-      } igEndCombo();
+      }
+      igEndCombo();
+    }
+    igEndChild();
+
+    igText("Entities: %d", entity_count());
+    igBeginChild_Str("panel_entities", v2imzero, child_flags, 0);
+    entity_t* entity = entity_ref(selected);
+    const char* selected_str = entity ? entity->name->begin : "<None>";
+    //if (igBeginCombo("##entity_select", selected_str, 0)) {
+    if (igBeginListBox("##entity_select", v2imzero)) {
+      for (slotkey_t id = SK_NULL; entity = entity_next(&id), entity;) {
+        bool is_selected = entity->id.hash == selected.hash;
+        String label = str_format("{}##{}", entity->name, sk_unique(id));
+        if (igSelectable_Bool(label->begin, is_selected, 0, v2imzero)) {
+          selected = entity->id;
+        }
+        str_delete(&label);
+      }
+      //igEndCombo();
+      igEndListBox();
     }
 
-    if (game->scene == 2) {
-      igBeginGroup();
-      igSliderInt(
-        "Instance extent", &game->demo->monument_extent, 0, 100, NULL, 0);
+    igEndChild();
+  }
+  igEnd();
 
+  if (igBegin("Information", NULL, flags)) {
+    if (game->scene == 2) {
+      igText("Scene Info");
+      igBeginChild_Str("panel_monument", v2imzero, child_flags, 0);
+      igText("Extent");
       igSliderInt(
-        "Instance spacing", &game->demo->monument_size, 0, 500, NULL, 0);
+        "##mon_extent", &game->demo->monument_extent, 0, 100, NULL, 0);
+
+      igText("Spacing");
+      igSliderInt(
+        "##mon_spacing", &game->demo->monument_size, 0, 500, NULL, 0);
 
       if (igButton("Apply", v2imzero)) {
         game->next_scene = 2;
@@ -435,9 +477,48 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
         game->demo->monument_size = 200;
         game->next_scene = 2;
       }
-      igEndGroup();
+      igEndChild();
     }
-  } igEnd();
+  }
+  igEnd();
+
+  ImVec2_c top_right = (ImVec2_c){ (float)game->window.w, 0 };
+  entity_t* entity = entity_ref(selected);
+  igSetNextWindowPos(top_right, ImGuiCond_Always, (ImVec2_c) { 1, 0 });
+  igSetNextWindowSize(v2imwinsize, ImGuiCond_Always);
+
+  bool entity_panel_open = false;// entity != NULL;
+  if (igBegin("Entity", &entity_panel_open, flags)) {
+
+    if (entity) {
+      igText("Entity: %d - %llu", sk_index(entity->id), sk_unique(entity->id));
+      igCheckbox("Hidden", &entity->is_hidden);
+      bool fake_static = entity->is_static;
+      igCheckbox("Static", &fake_static);
+      igText("Position:");
+      igInputFloat3("##ety_position", entity->transform.col[3].xyz.f, "%.3f", ImGuiInputTextFlags_AlwaysOverwrite);
+
+      if (entity->renderer) {
+        igText("Renderer: %s", entity->renderer->name);
+        igText("Shader: %s", entity->renderer->shader->name.begin);
+        igText("Render id: %d - %llu", sk_index(entity->render_id), sk_unique(entity->render_id));
+      }
+      else if (entity->render) {
+        igText("Render: local fn");
+      }
+      else {
+        igText("Non-renderable");
+      }
+      if (entity->model) {
+        igText("Model type: %d", entity->model->type);
+      }
+    }
+    else {
+      igText("No entity selected");
+    }
+
+  }
+  igEnd();
 #endif
 }
 
@@ -525,7 +606,7 @@ void behavior_attach_to_camera_target(Game game, entity_t* e, float dt) {
       game->demo->materials.renderite,
     };
 
-    entity_add(game, &(entity_t) {
+    entity_add(&(entity_desc_t) {
       .model = game->demo->models.box,
       .material = mats[(uint)e->transform.f[12] % 6],
       .transform = m4mul(e->transform, m4scalar(10.0f)),

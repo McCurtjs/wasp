@@ -108,6 +108,7 @@ typedef struct render_group_t {
 #undef con_type
 
 typedef struct renderer_t {
+  const char* const name;
   renderer_entity_register_fn_t register_entity;
   renderer_entity_unregister_fn_t unregister_entity;
   renderer_entity_update_fn_t update_entity;

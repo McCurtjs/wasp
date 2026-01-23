@@ -48,6 +48,15 @@ typedef enum model_type_t {
 //    Mostly, this would probably be useful for primitives. Editable should also
 //    be convertable back into a Mesh (static draw, no stored data CPU side).
 
+// TODO: Remove binding code from the models and instead add a vertex 
+//    descriptor type that describes the format of the verts in a way that can
+//    be used to do the actual binding separately. Then models can be completely
+//    backend agnostic for binding (rendering maybe not?) and focus on just
+//    handling the geometry. The descriptor (vertex_desc_t?) could contain the
+//    actual data about the verts, or just be an id that maps to one of the
+//    actual vertex type structs. Or could just be statically defined next to
+//    the structs? Possibly do the same for instance data layouts?
+
 // A grid is defined by the basis axes provided, along the index primary axes
 // if extent is 0, render only a unit axis gizmo
 // use a negative extent to scale the gizmo by the absolute value
