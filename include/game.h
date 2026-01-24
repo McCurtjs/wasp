@@ -30,7 +30,7 @@
 #endif
 
 #ifndef CUSTOM_GAME_VAR
-#define CUSTOM_GAME_VAR game
+#define CUSTOM_GAME_VAR user_game
 #endif
 
 #include "vec.h"
@@ -70,24 +70,25 @@ typedef struct app_defaults_t {
 typedef struct _opaque_Game_t {
   CUSTOM_GAME_TYPE* CUSTOM_GAME_VAR;
 
-  // const properties
-  const vec2i     window;
-  const String    title;
-  const index_t   scene;
-  const float     scene_time;
-  const float     frame_time;
+  // Window properties
+  vec2i         const window;
+  String        const title;
+
+  index_t       const scene;      // index of current scene
+  float         const scene_time; // time since start of current scene
+  float         const frame_time; // delta time between current and prev frames
 
   // systems
-  const Graphics  graphics;
+  Graphics      const graphics;
 
   // game setup
-  input_t         input;
-  span_scene_t    scenes;
+  input_t             input;
+  span_scene_t        scenes;
 
   // reactive properties
-  camera_t        camera;
-  index_t         next_scene;
-  bool            should_exit;
+  camera_t            camera;
+  index_t             next_scene;
+  bool                should_exit;
 
   // settable events
   event_resize_window_fn_t on_window_resize;

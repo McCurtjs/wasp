@@ -40,16 +40,16 @@ typedef struct render_group_t render_group_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 // Called once for each entity that's flagged for update
-typedef void (*renderer_entity_update_fn_t)(renderer_t*, entity_t*);
+typedef slotkey_t (*renderer_entity_update_fn_t)(renderer_t*, Entity);
 
 // Called when entity is created/registered with the renderer
-typedef slotkey_t (*renderer_entity_register_fn_t)(entity_t*, Game);
+typedef slotkey_t (*renderer_entity_register_fn_t)(Entity, Game);
 
 // Called when entity is deleted/unregistered from the renderer
-typedef void (*renderer_entity_unregister_fn_t)(entity_t*);
+typedef void (*renderer_entity_unregister_fn_t)(Entity);
 
 // Called once for each entity before the final render function
-typedef void (*renderer_entity_render_fn_t)(renderer_t*, Game, entity_t*);
+typedef void (*renderer_entity_render_fn_t)(renderer_t*, Game, Entity);
 
 // Used in the default instanced render callback to bind shader attributes
 typedef void (*renderer_bind_attributes_fn_t)(Shader, render_group_t*);
@@ -120,13 +120,14 @@ typedef struct renderer_t {
   index_t instance_size;
 } renderer_t;
 
-void      renderer_entity_register(entity_t*, renderer_t*);
-void      renderer_entity_unregister(entity_t*);
+void      renderer_entity_register(renderer_t*, Entity);
+void      renderer_entity_update(Entity);
+void      renderer_entity_unregister(Entity);
 
-slotkey_t renderer_callback_register(entity_t*, Game);
-void      renderer_callback_unregister(entity_t*);
+slotkey_t renderer_callback_register(Entity, Game);
+slotkey_t renderer_callback_update(renderer_t*, Entity);
+void      renderer_callback_unregister(Entity);
 void      renderer_callback_render(renderer_t*, Game);
-void      renderer_callback_update(renderer_t*, entity_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Default layout used by provided registration callbacks

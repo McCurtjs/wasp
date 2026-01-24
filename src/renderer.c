@@ -22,6 +22,7 @@
 * SOFTWARE.
 */
 
+#define WASP_ENTITY_INTERNAL
 #include "renderer.h"
 #include "game.h"
 #include "gl.h"
@@ -30,7 +31,7 @@
 // Registers an entity with a renderer
 ////////////////////////////////////////////////////////////////////////////////
 
-void renderer_entity_register(entity_t* entity, renderer_t* renderer) {
+void renderer_entity_register(renderer_t* renderer, Entity entity) {
   assert(renderer);
   assert(entity);
 
@@ -49,22 +50,36 @@ void renderer_entity_register(entity_t* entity, renderer_t* renderer) {
   }
 
   if (!entity->render_id.hash) {
+    assert(false); // failed to register with the renderer
     entity->renderer = NULL;
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Updates the entity's instance data
+////////////////////////////////////////////////////////////////////////////////
+
+void renderer_entity_update(Entity entity) {
+  assert(entity);
+  renderer_t* renderer = entity->renderer;
+  assert(renderer || !entity->render_id.hash);
+  if (!renderer || !renderer->update_entity) return;
+  slotkey_t new_id = renderer->update_entity(renderer, entity);
+  if (new_id.hash != entity->render_id.hash) entity->render_id = new_id;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Removes an entity from its renderer
 ////////////////////////////////////////////////////////////////////////////////
 
-void renderer_entity_unregister(entity_t* entity) {
+void renderer_entity_unregister(Entity entity) {
+  assert(entity);
   renderer_t* renderer = entity->renderer;
   assert(renderer || !entity->render_id.hash);
   if (!renderer) return;
   if (renderer->unregister_entity) {
     renderer->unregister_entity(entity);
   }
-  renderer = NULL;
   entity->render_id = SK_NULL;
 }
 
@@ -72,7 +87,18 @@ void renderer_entity_unregister(entity_t* entity) {
 // "Default" callback functions to use for renderers (still need to assign)
 ////////////////////////////////////////////////////////////////////////////////
 
-slotkey_t renderer_callback_register(entity_t* e, Game game) {
+void _renderer_callback_unregister_internal(
+  Entity e, render_group_key_t key
+) {
+  render_group_t* group = map_rg_ref(e->renderer->groups, key);
+  if (!group) return;
+  pmap_remove(group->instances, e->render_id);
+  group->needs_update = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+slotkey_t renderer_callback_register(Entity e, Game game) {
   assert(e);
   assert(e->renderer);
   assert(e->renderer->groups);
@@ -97,9 +123,38 @@ slotkey_t renderer_callback_register(entity_t* e, Game game) {
   // add instance to the group and save its instance id
   return pmap_insert(group_slot.value->instances,
     &(instance_attribute_default_t) {
-      .transform = e->transform,
+      .transform = entity_transform(e),
     }
   );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+slotkey_t renderer_callback_update(renderer_t* renderer, entity_t* e) {
+  UNUSED(renderer);
+  assert(renderer);
+  assert(e);
+  assert(renderer == e->renderer);
+  assert(e->render_id.hash);
+
+  if (e->is_dirty_static) {
+    render_group_key_t key = { e->model, e->material, !e->is_static };
+    _renderer_callback_unregister_internal(e, key);
+    return renderer_callback_register(e, game_get_active());
+  }
+
+  render_group_key_t key = { e->model, e->material, e->is_static };
+  render_group_t* group = map_rg_ref(e->renderer->groups, key);
+  assert(group);
+  assert(group->instances);
+
+  instance_attribute_default_t* att = pmap_ref(group->instances, e->render_id);
+  assert(att);
+
+  // TODO: update to track range of updates for glBufferSubData
+  att->transform = entity_transform(e);
+  group->needs_update = true;
+  return e->render_id;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -107,12 +162,7 @@ slotkey_t renderer_callback_register(entity_t* e, Game game) {
 void renderer_callback_unregister(entity_t* e) {
   assert(e);
   render_group_key_t key = { e->model, e->material, e->is_static };
-  render_group_t* group = map_rg_ref(e->renderer->groups, key);
-  if (!group) return;
-  pmap_remove(group->instances, e->render_id);
-  group->needs_update = true;
-  e->renderer = NULL;
-  e->render_id = SK_NULL;
+  _renderer_callback_unregister_internal(e, key);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -224,26 +274,4 @@ void renderer_callback_render(renderer_t* renderer, Game game) {
     model_render_instanced(group->model, group->instances->size);
     glBindVertexArray(0);
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-void renderer_callback_update(renderer_t* renderer, entity_t* e) {
-  UNUSED(renderer);
-  assert(renderer);
-  assert(e);
-  assert(renderer == e->renderer);
-  assert(e->render_id.hash);
-
-  render_group_key_t key = { e->model, e->material, e->is_static };
-  render_group_t* group = map_rg_ref(e->renderer->groups, key);
-  assert(group);
-  assert(group->instances);
-
-  instance_attribute_default_t* att = pmap_ref(group->instances, e->render_id);
-  assert(att);
-
-  // TODO: update to track range of updates for glBufferSubData
-  att->transform = e->transform;
-  group->needs_update = true;
 }

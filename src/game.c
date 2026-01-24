@@ -1,7 +1,7 @@
 /*******************************************************************************
 * MIT License
 *
-* Copyright (c) 2025 Curtis McCoy
+* Copyright (c) 2026 Curtis McCoy
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -22,14 +22,16 @@
 * SOFTWARE.
 */
 
+#define WASP_ENTITY_INTERNAL
 #include "game.h"
 
+#include "quat.h"
 #include "wasm.h"
 #include "light.h"
 #include "graphics.h"
 #include "wasp.h"
 
-#define con_type entity_t
+#define con_type struct entity_t
 #define con_prefix entity
 #include "slotmap.h"
 #undef con_prefix
@@ -54,8 +56,14 @@ typedef struct behavior_key_t {
 
 #include <stdlib.h>
 
+////////////////////////////////////////////////////////////////////////////////
+// Internal Game struct
+////////////////////////////////////////////////////////////////////////////////
+
 typedef struct Game_Internal {
-  void* game;
+
+  // _opaque_Game_t pub;
+  void* user_game;
 
   // const properties
   vec2i window;
@@ -89,9 +97,11 @@ typedef struct Game_Internal {
 
 } Game_Internal;
 
-#define GAME_INTERNAL \
-  Game_Internal* game = (Game_Internal*)(_game); \
-  assert(game)
+////////////////////////////////////////////////////////////////////////////////
+
+#define GAME_INTERNAL                             \
+  Game_Internal* game = (Game_Internal*)(_game);  \
+  assert(game)                                    //
 
 static Game _game_instance_primary = NULL;
 static thread_local Game _game_instance_local = NULL;
@@ -175,7 +185,7 @@ Game export(game_init) (int x, int y) {
   app_defaults_t defaults = (app_defaults_t) {
     .window = v2i(x, y),
     .title = str_empty,
-    .game = NULL,
+    .user_game = NULL,
   };
 
   wasp_init(&defaults);
@@ -185,7 +195,7 @@ Game export(game_init) (int x, int y) {
 #endif
 
   Game game = game_new(defaults.title, defaults.window);
-  game->game = defaults.game;
+  game->user_game = defaults.user_game;
   return game;
 }
 
@@ -292,13 +302,12 @@ static Game_Internal* game_get_local_internal(void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-static void _game_entity_remove_execute(Game _game, slotkey_t key) {
-  GAME_INTERNAL;
+static void _game_entity_remove_execute(Game_Internal* game, slotkey_t key) {
   entity_t* entity = smap_entity_ref(game->entities, key);
 
   if (entity) {
     if (entity->ondelete) {
-      entity->ondelete(_game, entity);
+      entity->ondelete((Game)game, entity);
     }
 
     // remove registrations from renderer, physics, etc queues here
@@ -314,8 +323,24 @@ static void _game_entity_remove_execute(Game _game, slotkey_t key) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void _game_entity_update_execute(Game_Internal* game, slotkey_t key) {
-  UNUSED(game);
-  UNUSED(key);
+  Entity e = smap_entity_ref(game->entities, key);
+  if (!e || !e->renderer || !e->is_dirty_renderer) return;
+
+  if (e->render_id.hash) {
+    if (!e->is_hidden) {
+      renderer_entity_update(e);
+    }
+    else {
+      renderer_entity_unregister(e);
+    }
+  }
+  else if (!e->is_hidden) {
+    renderer_entity_register(e->renderer, e);
+  }
+  // if there is no render id and it's hidden, no action needed
+
+  e->is_dirty_renderer = false;
+  e->is_dirty_static = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -354,7 +379,7 @@ void game_update(Game _game, float dt) {
   // If an ondelete function causes more entities to be deleted, those entities
   //    should also be processed and removed on the same frame.
   slotkey_t* arr_foreach(key, game->entity_removals) {
-    _game_entity_remove_execute(_game, *key);
+    _game_entity_remove_execute(game, *key);
   }
   arr_id_clear(game->entity_removals);
 
@@ -416,17 +441,22 @@ slotkey_t entity_add(const entity_desc_t* proto) {
   slotkey_t key;
   entity_t* entity = smap_entity_emplace(game->entities, &key);
 
-  //*entity = *input_entity;
+  quat rotation;
+  if (memcmp(&proto->rot, &q4zero, sizeof(quat)) == 0) rotation = q4identity;
+  else rotation = proto->rot;
+
+  float scale = proto->scale ? proto->scale : 1.0f;
+
   *entity = (entity_t) {
     .id = key,
+    .parent_id = SK_NULL,
     .name = proto->name.begin ? str_copy(proto->name) : str_empty,
+    .pos = proto->pos,
+    .rot = rotation,
+    .scale = scale,
     .create_time = game->scene_time,
-    .transform = proto->transform,
     .model = proto->model,
     .material = proto->material,
-    .pos = proto->pos,
-    .rotation = proto->rotation,
-    .tint = proto->tint,
     .render = proto->render,
     .renderer = proto->renderer,
     .behavior = proto->behavior,
@@ -438,7 +468,6 @@ slotkey_t entity_add(const entity_desc_t* proto) {
 
   entity->name = proto->name.begin ? str_copy(proto->name) : str_empty;
   entity->id = key;
-  entity->tint = tint;
 
 
   // Register new entity's behavior function if it has one
@@ -449,7 +478,7 @@ slotkey_t entity_add(const entity_desc_t* proto) {
 
   // Register it with a renderer if it has one
   if (entity->renderer) {
-    renderer_entity_register(entity, entity->renderer);
+    renderer_entity_register(entity->renderer, entity);
   }
 
   // Run on-create callback
@@ -494,7 +523,7 @@ entity_t* entity_ref(slotkey_t id) {
 // Setters for entity properties
 ////////////////////////////////////////////////////////////////////////////////
 
-void entity_set_behavior(entity_t* entity, entity_update_fn_t behavior) {
+void entity_set_behavior(Entity entity, entity_update_fn_t behavior) {
   assert(entity);
   if (entity->behavior == behavior) return;
   entity->behavior = behavior;
@@ -506,26 +535,103 @@ void entity_set_behavior(entity_t* entity, entity_update_fn_t behavior) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void entity_set_renderer(entity_t* entity, renderer_t* renderer) {
+mat4 entity_transform(Entity entity) {
+  assert(entity);
+  return m4trs(entity->pos, entity->rot, entity->scale);
+}
+
+void entity_set_renderer(Entity entity, renderer_t* renderer) {
   assert(entity);
   if (!renderer) {
     renderer_entity_unregister(entity);
   }
   else {
-    renderer_entity_register(entity, renderer);
+    renderer_entity_register(renderer, entity);
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Renders visisble game objects
-////////////////////////////////////////////////////////////////////////////////
-
-void entity_apply_transform(slotkey_t entity_id) {
-  Game_Internal* game = (Game_Internal*)game_get_active();
-  arr_id_push_back(game->entity_updates, entity_id);
+static inline void _entity_set_dirty(Entity entity) {
+  if (!entity->is_dirty_renderer) {
+    Game_Internal* game = game_get_local_internal();
+    entity->is_dirty_renderer = true;
+    arr_id_add_back(game->entity_updates, entity->id);
+  }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// UI selector for available game entities
-////////////////////////////////////////////////////////////////////////////////
+void entity_set_hidden(Entity entity, bool is_hidden) {
+  assert(entity);
+  if (entity->is_hidden == is_hidden) return;
+  entity->is_hidden = is_hidden;
+  _entity_set_dirty(entity);
+}
+
+void entity_set_static(Entity entity, bool is_static) {
+  assert(entity);
+  if (entity->is_static == is_static) return;
+  // if the value is changed multiple times, make sure the "dirty" flag always
+  //    represents whether or not it's actually different from before. This is
+  //    important because we need to know the previous flag in order to index
+  //    into the correct render group table. This operation has to be handled
+  //    in the user-provided callbacks.
+  entity->is_static = is_static;
+  entity->is_dirty_static = !entity->is_dirty_static;
+  _entity_set_dirty(entity);
+}
+
+void entity_set_position(Entity entity, vec3 new_pos) {
+  assert(entity);
+  entity->pos = new_pos;
+  _entity_set_dirty(entity);
+}
+
+void entity_set_rotation(Entity entity, quat new_rotation) {
+  assert(entity);
+  entity->rot = new_rotation;
+  _entity_set_dirty(entity);
+}
+
+void entity_set_rotation_a(Entity entity, vec3 axis, float angle) {
+  assert(entity);
+  entity->rot = q4axis(axis, angle);
+  _entity_set_dirty(entity);
+}
+
+void entity_set_scale(Entity entity, float new_scale) {
+  assert(entity);
+  entity->scale = new_scale;
+  _entity_set_dirty(entity);
+}
+
+void entity_teleport(Entity entity, vec3 new_pos, quat new_rotation) {
+  assert(entity);
+  entity->pos = new_pos;
+  entity->rot = new_rotation;
+  _entity_set_dirty(entity);
+}
+
+void entity_teleport_a(Entity entity, vec3 new_pos, vec3 axis, float angle) {
+  assert(entity);
+  entity->pos = new_pos;
+  entity->rot = q4axis(axis, angle);
+  _entity_set_dirty(entity);
+}
+
+void entity_translate(Entity entity, vec3 dir) {
+  assert(entity);
+  entity->pos = v3add(entity->pos, dir);
+  _entity_set_dirty(entity);
+}
+
+void entity_rotate(Entity entity, quat rotation) {
+  assert(entity);
+  entity->rot = q4mul(entity->rot, rotation);
+  _entity_set_dirty(entity);
+}
+
+void entity_rotate_a(Entity entity, vec3 axis, float angle) {
+  assert(entity);
+  entity->rot = q4mul(entity->rot, q4axis(axis, angle));
+  _entity_set_dirty(entity);
+}
+
 

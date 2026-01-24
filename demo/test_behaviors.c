@@ -1,7 +1,7 @@
 /*******************************************************************************
 * MIT License
 *
-* Copyright (c) 2025 Curtis McCoy
+* Copyright (c) 2026 Curtis McCoy
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -110,9 +110,8 @@ void behavior_wizard_level(Game game, entity_t* e, float dt) {
       game->demo->target = v3add(game->camera.pos.xyz, v3scale(ray, t));
     }
   }
-  e->transform.col[3].xyz = v3zero;
-  e->transform = m4mul(e->transform, m4rotation(v3z, dt)),
-  e->transform.col[3].xyz = game->demo->target;
+  entity_set_position(e, game->demo->target);
+  entity_rotate_a(e, v3down, dt);
 }
 
 #define WIZARD_SPEED 8.0f
@@ -122,6 +121,8 @@ void behavior_wizard_level(Game game, entity_t* e, float dt) {
 
 static void _wizard_movement(Game game, entity_t* e, float dt) {
   static vec3 fake_target = svNzero;
+
+  if (game->scene_time == 0.0f) fake_target = v3zero;
 
   demo_t* demo = game->demo;
 
@@ -138,11 +139,11 @@ static void _wizard_movement(Game game, entity_t* e, float dt) {
     max_move /= 2.0f;
   }
   if (distance <= max_move) {
-    e->pos = target;
+    entity_set_position(e, target);
   }
   else {
     vec3 dir = v3norm(to_target);
-    e->pos = v3add(pos, v3scale(dir, max_move));
+    entity_translate(e, v3scale(dir, max_move));
   }
 
   to_target = v3sub(target, fake_target);
@@ -159,7 +160,6 @@ static void _wizard_movement(Game game, entity_t* e, float dt) {
     fake_target = v3add(fake_target, v3scale(dir, max_move));
   }
 
-  e->transform = m4translation(e->pos);
   game->camera.pos.xyz = v3add(e->pos, v3f(6, 12, 7));
 
   vec3 cam_to_target = v3dir(fake_target, game->camera.pos.xyz);
@@ -171,38 +171,47 @@ static void _wizard_movement(Game game, entity_t* e, float dt) {
   game->camera.front.xyz = cam_to_target;
 }
 
+typedef struct wizard_bullet_t {
+  slotkey_t parent_entity_id;
+  slotkey_t light_id;
+  vec3 pos;
+  vec3 velocity;
+} wizard_bullet_t;
+
+#define con_type wizard_bullet_t
+#define con_prefix bullet
+#include "slotmap.h"
+#undef con_type
+#undef con_prefix
+
+SlotMap_bullet wizard_bullets = NULL;
+
 static void behavior_projectile(Game game, entity_t* e, float dt) {
   UNUSED(game);
-  vec3 new_pos = v3add(e->transform.col[3].xyz, v3scale(e->pos, dt * 25.f));
-  e->transform.col[3].xyz = new_pos;
-  light_t* light = light_ref(e->tmp);
+  assert(e);
+
+  wizard_bullet_t* bullet = smap_bullet_ref(wizard_bullets, e->user_id);
+  if (!bullet) return;
+
+  entity_translate(e, v3scale(bullet->velocity, dt * 25.0f));
+
+  light_t* light = light_ref(bullet->light_id);
   if (light) {
-    light->pos = new_pos;
+    light->pos = e->pos;
   }
-  if (new_pos.y < 0) {
+
+  if (e->pos.y < 0) {
     entity_remove(e->id);
   }
 }
 
-#define con_type slotkey_t
-#define con_prefix id
-#include "span.h"
-#include "array.h"
-#undef con_type
-#undef con_prefix
-
-Array_id wizard_bullets = NULL;
-
 static void ondelete_projectile(Game game, entity_t* e) {
   UNUSED(game);
-  light_remove(e->tmp);
-  if (wizard_bullets) {
-    slotkey_t* arr_foreach_index(id, i, wizard_bullets) {
-      if (id->hash == e->id.hash) {
-        arr_id_remove_unstable(wizard_bullets, i);
-      }
-    }
-  }
+  wizard_bullet_t* bullet = smap_bullet_ref(wizard_bullets, e->user_id);
+  if (!bullet) return;
+
+  light_remove(bullet->light_id);
+  smap_bullet_remove(wizard_bullets, e->user_id);
 }
 
 static void _wizard_projectile(Game game, entity_t* e, float dt) {
@@ -217,27 +226,30 @@ static void _wizard_projectile(Game game, entity_t* e, float dt) {
       click_pos.y = 1.5f;
       vec3 launch_point = v3f(e->pos.x, 2, e->pos.z);
 
-      slotkey_t light_id = light_add((light_t) {
-        .color = v3f(1.0f, 0.7f, 0.8f),
-        .intensity = 8.f,
-        .pos = launch_point
-      });
+      if (!wizard_bullets) {
+        wizard_bullets = smap_bullet_new();
+      }
 
       slotkey_t eid = entity_add(&(entity_desc_t) {
-        .pos = v3dir(click_pos, launch_point),
-        .transform = m4ts(launch_point, 0.4f),
+        .pos = launch_point,
+        .scale = 0.4f,
         .model = demo->models.color_cube,
         .render = render_basic,
         .behavior = behavior_projectile,
         .ondelete = ondelete_projectile,
-        .tmp = light_id,
       });
+      Entity bullet = entity_ref(eid);
 
-      if (!wizard_bullets) {
-        wizard_bullets = arr_id_new();
-      }
-
-      arr_id_push_back(wizard_bullets, eid);
+      bullet->user_id = smap_bullet_add(wizard_bullets, (wizard_bullet_t) {
+        .parent_entity_id = bullet->id,
+        .light_id = light_add((light_t) {
+          .color = v3f(1.0f, 0.7f, 0.8f),
+          .intensity = 8.0f,
+          .pos = launch_point,
+        }),
+        .pos = launch_point,
+        .velocity = v3dir(click_pos, launch_point),
+      });
     }
   }
 }
@@ -247,21 +259,18 @@ static void _wizard_projectile(Game game, entity_t* e, float dt) {
 #define BADDY_SPEED 4.0f
 static void behavior_baddy(Game game, entity_t* e, float dt) {
   vec3 target = game->demo->target;
-  vec3 pos = e->transform.col[3].xyz;
-  vec3 dir = v3dir(target, pos);
-  pos = v3add(pos, v3scale(dir, BADDY_SPEED * dt));
-  pos.y = 1.0f;
-  e->transform.col[3].xyz = pos;
+  target.y = e->pos.y;
+  vec3 dir = v3dir(target, e->pos);
+  entity_translate(e, v3scale(dir, BADDY_SPEED * dt));
 
-  if (wizard_bullets) {
-    slotkey_t* arr_foreach(bullet_id, wizard_bullets) {
-      entity_t* bullet = entity_ref(*bullet_id);
+  if (wizard_bullets && wizard_bullets->size) {
+    wizard_bullet_t* smap_foreach(bullet_data, wizard_bullets) {
+      Entity bullet = entity_ref(bullet_data->parent_entity_id);
       if (!bullet) continue;
-      vec3 bullet_pos = bullet->transform.col[3].xyz;
-      if (v3dist(pos, bullet_pos) < 2.f) {
-        entity_remove(*bullet_id);
-        e->tint.r -= 0.025f;
-        if (e->tint.r <= 0.0f) {
+      if (v3dist(e->pos, bullet->pos) < 2.0f) {
+        entity_remove(bullet->id);
+        entity_translate(e, v3f(0, -0.025f, 0));
+        if (e->pos.y <= 0.0f) {
           entity_remove(e->id);
         }
         return;
@@ -281,10 +290,10 @@ static void _wizard_baddies(Game game, entity_t* e, float dt) {
     vec3 pos = v3add(e->pos, offset);
     pos.y = 1.f;
     entity_add(&(entity_desc_t) {
-      .pos = pos,
       .model = game->demo->models.box,
       .material = game->demo->materials.crate,
-      .transform = m4ts(pos, 2.f),
+      .pos = pos,
+      .scale = 2.0f,
       .tint = v3f(1.0f, 0.6f, 0.6f),
       .render = render_pbr,
       .behavior = behavior_baddy,
@@ -306,8 +315,13 @@ extern slotkey_t monument_light_left;
 extern slotkey_t monument_light_right;
 extern slotkey_t monument_light_spot;
 #define PLANE_SPEED_MIN 30.f
+static float plane_speed = PLANE_SPEED_MIN;
 void behavior_camera_monument(Game game, entity_t* e, float dt) {
   UNUSED(e);
+
+  if (game->scene_time == 0) {
+    plane_speed = PLANE_SPEED_MIN;
+  }
 
   float xrot = d2r(-game->input.mouse.move.y * 180.f / (float)game->window.h);
   float yrot = d2r(-game->input.mouse.move.x * 180.f / (float)game->window.x);
@@ -318,33 +332,31 @@ void behavior_camera_monument(Game game, entity_t* e, float dt) {
     rotation = v2norm(rotation);
     rotation = v2scale(rotation, dt * 1.8f);
     rotation.x *= -1.f;
-    e->pos = v3add(e->pos, v23xz(rotation));
+    entity_translate(e, v23xz(rotation));
   }
 
   if (v3mag(e->pos) > epsilon) {
     vec3 half = v3scale(e->pos, 0.6f * dt);
     camera_rotate_local(&game->camera, half);
-    e->pos = v3sub(e->pos, half);
+    entity_set_position(e, v3sub(e->pos, half));
   }
 
   if (input_triggered(IN_CLICK)) {
     input_pointer_lock();
   }
 
-  float speed = e->angle;
-
   vec3 direction = game->camera.front.xyz;
-  speed += v3dot(direction, v3down) * dt * 9.8f;
-  if (speed < PLANE_SPEED_MIN) {
-    speed = PLANE_SPEED_MIN;
+  plane_speed += v3dot(direction, v3down) * dt * 9.8f;
+  if (plane_speed < PLANE_SPEED_MIN) {
+    plane_speed = PLANE_SPEED_MIN;
   }
 
-  direction = v3scale(game->camera.front.xyz, speed * dt);
+  direction = v3scale(game->camera.front.xyz, plane_speed * dt);
   game->camera.pos.xyz = v3add(game->camera.pos.xyz, direction);
 
   vec3 left = v3cross(game->camera.up.xyz, game->camera.front.xyz);
   left = v3rescale(left, 18.f);
-  vec3 right = v3scale(left, -1.f);
+  vec3 right = v3neg(left);
   light_t* light_left = light_ref(monument_light_left);
   light_t* light_right = light_ref(monument_light_right);
   light_t* light_spot = light_ref(monument_light_spot);
@@ -358,8 +370,6 @@ void behavior_camera_monument(Game game, entity_t* e, float dt) {
     light_spot->pos = game->camera.pos.xyz;
     light_spot->dir = game->camera.front.xyz;
   }
-
-  e->angle = speed;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -373,7 +383,7 @@ void behavior_camera_monument(Game game, entity_t* e, float dt) {
 void behavior_grid_toggle(Game game, entity_t* e, float dt) {
   UNUSED(dt);
   if (input_triggered(IN_TOGGLE_GRID)) {
-    e->is_hidden = !e->is_hidden;
+    entity_set_hidden(e, !e->is_hidden);
   }
 
   if (input_pressed(IN_CLOSE)) {
@@ -492,11 +502,20 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
 
     if (entity) {
       igText("Entity: %d - %llu", sk_index(entity->id), sk_unique(entity->id));
-      igCheckbox("Hidden", &entity->is_hidden);
+
+      bool fake_hidden = entity->is_hidden;
+      if (igCheckbox("Hidden", &fake_hidden)) {
+        entity_set_hidden(entity, fake_hidden);
+      }
+
       bool fake_static = entity->is_static;
       igCheckbox("Static", &fake_static);
+
       igText("Position:");
-      igInputFloat3("##ety_position", entity->transform.col[3].xyz.f, "%.3f", ImGuiInputTextFlags_AlwaysOverwrite);
+      vec3 fake_pos = entity->pos;
+      if (igInputFloat3("##ety_position", fake_pos.f, "%.3f", ImGuiInputTextFlags_AlwaysOverwrite)) {
+        entity_set_position(entity, fake_pos);
+      }
 
       if (entity->renderer) {
         igText("Renderer: %s", entity->renderer->name);
@@ -527,21 +546,12 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void behavior_cubespin(Game game, entity_t* e, float dt) {
-  UNUSED(game);
+  UNUSED(dt);
 
-  e->transform = m4translation(e->pos);
-
-  e->transform = m4mul
-  ( e->transform
-  , m4rotation(v3norm(v3f(1.f, 1.5f, -.7f)), e->angle)
-  );
-
-  e->transform = m4mul
-  ( e->transform
-  , m4rotation(v3norm(v3f(-4.f, 1.5f, 1.f)), e->angle/3.6f)
-  );
-
-  e->angle += 2 * dt;
+  entity_set_rotation(e, q4mul(
+    q4axis(v3f(1.f, 1.5f, -.7f), game->scene_time),
+    q4axis(v3f(-4.f, 1.5f, 1.f), game->scene_time / 3.6f)
+  ));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -550,7 +560,7 @@ void behavior_cubespin(Game game, entity_t* e, float dt) {
 
 void behavior_gear_rotate_cw(Game game, entity_t* e, float dt) {
   UNUSED(game);
-  e->transform = m4mul(e->transform, m4rotation(v3front, dt));
+  entity_rotate_a(e, v3back, dt);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -559,7 +569,7 @@ void behavior_gear_rotate_cw(Game game, entity_t* e, float dt) {
 
 void behavior_gear_rotate_ccw(Game game, entity_t* e, float dt) {
   UNUSED(game);
-  e->transform = m4mul(e->transform, m4rotation(v3front, -dt));
+  entity_rotate_a(e, v3front, dt);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -568,7 +578,7 @@ void behavior_gear_rotate_ccw(Game game, entity_t* e, float dt) {
 
 void behavior_stare(Game game, entity_t* e, float dt) {
   UNUSED(dt);
-  e->transform = m4look(e->pos, game->camera.pos.xyz, v3y);
+  entity_set_rotation(e, q3look(v3sub(game->camera.pos.xyz, e->pos), v3up));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -579,7 +589,7 @@ extern slotkey_t editor_light_bright;
 extern slotkey_t editor_light_gizmo;
 void behavior_attach_to_light(Game game, entity_t* e, float dt) {
   UNUSED(dt);
-  e->transform = m4translation(game->demo->light_pos.xyz);
+  entity_set_position(e, game->demo->light_pos.xyz);
   light_t* light = light_ref(editor_light_bright);
   if (!light) return;
   light->pos = game->demo->light_pos.xyz;
@@ -594,7 +604,7 @@ void behavior_attach_to_light(Game game, entity_t* e, float dt) {
 
 void behavior_attach_to_camera_target(Game game, entity_t* e, float dt) {
   UNUSED(dt);
-  e->transform = m4translation(game->demo->target);
+  entity_set_position(e, game->demo->target);
 
   if (input_triggered(IN_CREATE_OBJECT)) {
     Material mats[] = {
@@ -608,8 +618,9 @@ void behavior_attach_to_camera_target(Game game, entity_t* e, float dt) {
 
     entity_add(&(entity_desc_t) {
       .model = game->demo->models.box,
-      .material = mats[(uint)e->transform.f[12] % 6],
-      .transform = m4mul(e->transform, m4scalar(10.0f)),
+      .material = mats[(uint)e->pos.x % 6],
+      .pos = e->pos,
+      .scale = 10.0f,
       .render = render_pbr,
     });
   }
@@ -625,7 +636,7 @@ void render_basic(Game game, entity_t* e) {
 
   int loc_pvm = shader_uniform_loc(shader, "in_pvm_matrix");
 
-  mat4 pvm = m4mul(game->camera.projview, e->transform);
+  mat4 pvm = m4mul(game->camera.projview, entity_transform(e));
   glUniformMatrix4fv(loc_pvm, 1, GL_FALSE, pvm.f);
 
   model_render(e->model);
@@ -678,10 +689,12 @@ void render_pbr(Game game, entity_t* e) {
   int loc_props = shader_uniform_loc(shader, "in_weights");
   int loc_tint = shader_uniform_loc(shader, "in_tint");
 
-  mat4 pvm = m4mul(game->camera.projview, e->transform);
-  mat4 norm = m4transpose(m4inverse(m4mul(game->camera.view, e->transform)));
+  mat4 transform = entity_transform(e);
+  mat4 pvm = m4mul(game->camera.projview, transform);
+  mat4 norm = m4transpose(m4inverse(m4mul(game->camera.view, transform)));
 
-  glUniform3fv(loc_tint, 1, e->tint.f);
+  //glUniform3fv(loc_tint, 1, e->tint.f);
+  glUniform3fv(loc_tint, 1, v3ones.f);
 
   glUniformMatrix4fv(loc_pvm, 1, 0, pvm.f);
   glUniformMatrix4fv(loc_norm, 1, 0, norm.f);
