@@ -211,7 +211,7 @@ scene_unload_fn_t scene_load_gears(Game game) {
         .model = demo->models.box,
         .material = material,
         .pos = pos,
-        .rot = q4axis(axis, angle),
+        .rot = q4axang(axis, angle),
         .scale = 19.0f,
         .renderer = renderer_pbr,
       });
@@ -276,7 +276,7 @@ scene_unload_fn_t scene_load_wizard(Game game) {
     .render = render_pbr,
     .tint = c4black.rgb,
     .material = demo->materials.renderite,
-    .rot = q4axis(v3x, d2r(90.f)),
+    .rot = q4axang(v3x, d2r(90.f)),
     .scale = 0.06f,
     .behavior = behavior_wizard_level,
   });
@@ -406,7 +406,7 @@ scene_unload_fn_t scene_load_monument(Game game) {
     .tint = c4white.rgb,
     .material = demo->materials.renderite,
     .pos = v3add(sun_pos, v3f(0, 30, 0)),
-    .rot = q4axis(v3x, d2r(90.f)),
+    .rot = q4axang(v3x, d2r(90.f)),
     .scale = 15.f,
     .behavior = behavior_gear_rotate_cw,
   });

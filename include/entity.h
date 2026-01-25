@@ -89,7 +89,7 @@ typedef struct entity_t {
   // Entity manager/identifier
   slotkey_t           CONST id;
   slotkey_t           CONST parent_id;
-  String              CONST name;
+  String                    name;
 
   // Transform
   union {

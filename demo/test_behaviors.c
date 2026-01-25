@@ -261,7 +261,13 @@ static void behavior_baddy(Game game, entity_t* e, float dt) {
   vec3 target = game->demo->target;
   target.y = e->pos.y;
   vec3 dir = v3dir(target, e->pos);
-  entity_translate(e, v3scale(dir, BADDY_SPEED * dt));
+  float move_speed = BADDY_SPEED * dt;
+  if (v3mag(dir) <= move_speed) {
+    entity_set_position(e, target);
+  }
+  else {
+    entity_translate(e, v3rescale(dir, move_speed));
+  }
 
   if (wizard_bullets && wizard_bullets->size) {
     wizard_bullet_t* smap_foreach(bullet_data, wizard_bullets) {
@@ -380,6 +386,40 @@ void behavior_camera_monument(Game game, entity_t* e, float dt) {
 #include "ui.h"
 #endif
 
+static void _normalize_floats_fixed(float* floats, int count, int fixed_ind) {
+  assert(count >= 0 && fixed_ind >= 0);
+  assert(fixed_ind < count);
+
+  float mag_sq = 0;
+  for (int i = 0; i < count; ++i) {
+    if (i == fixed_ind) continue;
+    mag_sq += floats[i] * floats[i];
+  }
+
+  float fixed = floats[fixed_ind];
+  float rem_sq = 1.0f - fixed * fixed;
+  if (rem_sq < 0.0f) rem_sq = 0.0f;
+
+  if (mag_sq <= 0.00001f) {
+    float rem = sqrtf(rem_sq);
+    for (int i = 0; i < count; ++i) {
+      if (i == fixed_ind) continue;
+      floats[i] = rem / 3.0f;
+    }
+    return;
+  }
+
+  float scale = sqrtf(rem_sq / mag_sq);
+  for (int i = 0; i < count; ++i) {
+    if (i == fixed_ind) continue;
+    floats[i] *= scale;
+  }
+}
+
+struct editor_state_t {
+  bool hide_scene_list;
+} editor_state;
+
 void behavior_grid_toggle(Game game, entity_t* e, float dt) {
   UNUSED(dt);
   if (input_triggered(IN_TOGGLE_GRID)) {
@@ -409,6 +449,7 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
 #ifndef __WASM__
   ImVec2_c v2imzero = { 0 };
   ImVec2_c v2imwinsize = { 250, (float)game->window.h };
+  ImVec2_c v2imsubmenu = { 234 };
 
   ImGuiWindowFlags flags
     = ImGuiWindowFlags_NoMove
@@ -432,7 +473,7 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
     igText("Lights: %d", light_count());
 
     igText("Scene");
-    igBeginChild_Str("panel_scene", v2imzero, child_flags, 0);
+    igBeginChild_Str("panel_scene", v2imsubmenu, child_flags, 0);
     const char* scenes[] = { "1 - Editor", "2 - Magicks", "3 - Flight" };
     if (igBeginCombo("##scene_select", scenes[game->scene], 0)) {
       for (int i = 0; i < ARRAY_COUNT(scenes); ++i) {
@@ -445,18 +486,21 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
     igEndChild();
 
     igText("Entities: %d", entity_count());
-    igBeginChild_Str("panel_entities", v2imzero, child_flags, 0);
+    igBeginChild_Str("panel_entities", v2imsubmenu, child_flags, 0);
+    igCheckbox("Pause scene list update", &editor_state.hide_scene_list);
     entity_t* entity = entity_ref(selected);
     const char* selected_str = entity ? entity->name->begin : "<None>";
     //if (igBeginCombo("##entity_select", selected_str, 0)) {
     if (igBeginListBox("##entity_select", v2imzero)) {
-      for (slotkey_t id = SK_NULL; entity = entity_next(&id), entity;) {
-        bool is_selected = entity->id.hash == selected.hash;
-        String label = str_format("{}##{}", entity->name, sk_unique(id));
-        if (igSelectable_Bool(label->begin, is_selected, 0, v2imzero)) {
-          selected = entity->id;
+      if (!editor_state.hide_scene_list) {
+        for (slotkey_t id = SK_NULL; entity = entity_next(&id), entity;) {
+          bool is_selected = entity->id.hash == selected.hash;
+          String label = str_format("{}##{}", entity->name, sk_unique(id));
+          if (igSelectable_Bool(label->begin, is_selected, 0, v2imzero)) {
+            selected = entity->id;
+          }
+          str_delete(&label);
         }
-        str_delete(&label);
       }
       //igEndCombo();
       igEndListBox();
@@ -469,7 +513,7 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
   if (igBegin("Information", NULL, flags)) {
     if (game->scene == 2) {
       igText("Scene Info");
-      igBeginChild_Str("panel_monument", v2imzero, child_flags, 0);
+      igBeginChild_Str("panel_monument", v2imsubmenu, child_flags, 0);
       igText("Extent");
       igSliderInt(
         "##mon_extent", &game->demo->monument_extent, 0, 100, NULL, 0);
@@ -497,11 +541,20 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
   igSetNextWindowPos(top_right, ImGuiCond_Always, (ImVec2_c) { 1, 0 });
   igSetNextWindowSize(v2imwinsize, ImGuiCond_Always);
 
-  bool entity_panel_open = false;// entity != NULL;
+  bool entity_panel_open = false;
   if (igBegin("Entity", &entity_panel_open, flags)) {
 
     if (entity) {
       igText("Entity: %d - %llu", sk_index(entity->id), sk_unique(entity->id));
+
+      {
+        char name_buffer[1000];
+        memcpy(name_buffer, entity->name->begin, MIN(1000, entity->name->size+1));
+        if (igInputText("Name", name_buffer, 1000, 0, NULL, NULL)) {
+          str_delete(&entity->name);
+          entity->name = str_copy(name_buffer);
+        }
+      }
 
       bool fake_hidden = entity->is_hidden;
       if (igCheckbox("Hidden", &fake_hidden)) {
@@ -511,12 +564,59 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
       bool fake_static = entity->is_static;
       igCheckbox("Static", &fake_static);
 
+      igText("Transform:");
+      igPushItemWidth(-1);
+      igBeginChild_Str("panel_transform", v2imsubmenu, child_flags, 0);
+
       igText("Position:");
       vec3 fake_pos = entity->pos;
-      if (igInputFloat3("##ety_position", fake_pos.f, "%.3f", ImGuiInputTextFlags_AlwaysOverwrite)) {
+      if (igInputFloat3("##ety_position",
+        fake_pos.f, "%.3f", ImGuiInputTextFlags_AlwaysOverwrite)
+      ) {
         entity_set_position(entity, fake_pos);
       }
 
+      igText("Rotation (quaternion):");
+      quat rotation = entity->rot;
+      if (igSliderFloat4("##ety_rotation", rotation.f, -1.f, 1.f, "%.3f", 0)) {
+        int changed = 0;
+        for (int i = 1; i < q4floats; ++i)
+          if (rotation.f[i] != entity->rot.f[i]) changed = i;
+        _normalize_floats_fixed(rotation.f, 4, changed);
+        entity_set_rotation(entity, rotation);
+      }
+
+      igText("Rotation (axis-angle):");
+      vec3 axis = v3norm(q4axis(entity->rot));
+      vec3 test = axis;
+      float angle = q4angle(entity->rot);
+      if (igSliderFloat3("##ety_rot_axis", axis.f, -1.f, 1.f, "%.2f", 0)) {
+        int changed = 0;
+        for (int i = 1; i < v3floats; ++i)
+          if (axis.f[i] != test.f[i]) changed = i;
+        _normalize_floats_fixed(axis.f, 3, changed);
+        entity_set_rotation_a(entity, axis, angle);
+      }
+
+      if (igSliderFloat("##ety_rot_angle", &angle, 0, TAU, "%.2f", 0)) {
+        entity_set_rotation_a(entity, axis, angle);
+      }
+
+
+      igText("Scale (uniform):");
+      float scale = entity->scale;
+      if (igInputFloat("##ety_scale", &scale, 0.1f, 1.0f, "%.2f", 0)) {
+        entity_set_scale(entity, scale);
+      }
+
+      igEndChild();
+      igPopItemWidth();
+
+
+      igText("Rendering:");
+      igPushItemWidth(-1);
+
+      igBeginChild_Str("panel_rendering", v2imsubmenu, child_flags, 0);
       if (entity->renderer) {
         igText("Renderer: %s", entity->renderer->name);
         igText("Shader: %s", entity->renderer->shader->name.begin);
@@ -528,9 +628,17 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
       else {
         igText("Non-renderable");
       }
+
       if (entity->model) {
         igText("Model type: %d", entity->model->type);
       }
+
+      if (entity->material) {
+        igText("Material: %s", entity->material->name.begin);
+      }
+
+      igEndChild();
+      igPopItemWidth();
     }
     else {
       igText("No entity selected");
@@ -549,8 +657,8 @@ void behavior_cubespin(Game game, entity_t* e, float dt) {
   UNUSED(dt);
 
   entity_set_rotation(e, q4mul(
-    q4axis(v3f(1.f, 1.5f, -.7f), game->scene_time),
-    q4axis(v3f(-4.f, 1.5f, 1.f), game->scene_time / 3.6f)
+    q4axang(v3f(1.f, 1.5f, -.7f), game->scene_time),
+    q4axang(v3f(-4.f, 1.5f, 1.f), game->scene_time / 3.6f)
   ));
 }
 

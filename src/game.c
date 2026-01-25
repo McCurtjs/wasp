@@ -592,7 +592,7 @@ void entity_set_rotation(Entity entity, quat new_rotation) {
 
 void entity_set_rotation_a(Entity entity, vec3 axis, float angle) {
   assert(entity);
-  entity->rot = q4axis(axis, angle);
+  entity->rot = q4axang(axis, angle);
   _entity_set_dirty(entity);
 }
 
@@ -612,7 +612,7 @@ void entity_teleport(Entity entity, vec3 new_pos, quat new_rotation) {
 void entity_teleport_a(Entity entity, vec3 new_pos, vec3 axis, float angle) {
   assert(entity);
   entity->pos = new_pos;
-  entity->rot = q4axis(axis, angle);
+  entity->rot = q4axang(axis, angle);
   _entity_set_dirty(entity);
 }
 
@@ -630,7 +630,7 @@ void entity_rotate(Entity entity, quat rotation) {
 
 void entity_rotate_a(Entity entity, vec3 axis, float angle) {
   assert(entity);
-  entity->rot = q4mul(entity->rot, q4axis(axis, angle));
+  entity->rot = q4mul(entity->rot, q4axang(axis, angle));
   _entity_set_dirty(entity);
 }
 
