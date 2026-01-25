@@ -67,19 +67,24 @@ typedef struct app_defaults_t {
   CUSTOM_GAME_TYPE* CUSTOM_GAME_VAR;
 } app_defaults_t;
 
+#ifdef WASP_GAME_INTERNAL
+#undef CONST
+#define CONST
+#endif
+
 typedef struct _opaque_Game_t {
   CUSTOM_GAME_TYPE* CUSTOM_GAME_VAR;
 
   // Window properties
-  vec2i         const window;
-  String        const title;
+  vec2i         CONST window;
+  String        CONST title;
 
-  index_t       const scene;      // index of current scene
-  float         const scene_time; // time since start of current scene
-  float         const frame_time; // delta time between current and prev frames
+  index_t       CONST scene;      // index of current scene
+  float         CONST scene_time; // time since start of current scene
+  float         CONST frame_time; // delta time between current and prev frames
 
   // systems
-  Graphics      const graphics;
+  Graphics      CONST graphics;
 
   // game setup
   input_t             input;
@@ -93,6 +98,11 @@ typedef struct _opaque_Game_t {
   // settable events
   event_resize_window_fn_t on_window_resize;
 }* Game;
+
+#ifdef WASP_GAME_INTERNAL
+#undef CONST
+#define CONST const
+#endif
 
 Game game_init(int window_width, int window_height);
 Game game_new(String title, vec2i window_size);

@@ -23,6 +23,7 @@
 */
 
 #define WASP_ENTITY_INTERNAL
+#define WASP_GAME_INTERNAL
 #include "game.h"
 
 #include "quat.h"
@@ -61,31 +62,7 @@ typedef struct behavior_key_t {
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct Game_Internal {
-
-  // _opaque_Game_t pub;
-  void* user_game;
-
-  // const properties
-  vec2i window;
-  String title;
-  index_t scene;
-  float scene_time;
-  float frame_time;
-
-  // systems
-  Graphics graphics;
-
-  // setup properties
-  input_t input;
-  span_scene_t scenes;
-
-  // reactive properties
-  camera_t camera;
-  index_t next_scene;
-  bool should_exit;
-
-  // settable events
-  event_resize_window_fn_t on_window_resize;
+  struct _opaque_Game_t pub;
 
   // secrets
   scene_unload_fn_t scene_unload;
@@ -143,7 +120,7 @@ static void _game_scene_close(Game_Internal* game) {
   arr_id_clear(game->entity_removals);
 
   // Clear out instance data from the renderers
-  gfx_clear_instances(game->graphics);
+  gfx_clear_instances(game->pub.graphics);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -151,30 +128,31 @@ static void _game_scene_close(Game_Internal* game) {
 static void _game_scene_switch(Game_Internal* game) {
 
   // A value of -1 means "continue playing current scene"
-  if (game->next_scene < 0) return;
+  if (game->pub.next_scene < 0) return;
 
   // Validate scene index is within count of available scenes
-  index_t scene_count = span_scene_size(game->scenes);
-  if (game->next_scene >= scene_count) {
-    str_log("[Scene.switch] Scene index out of range: {}", game->next_scene);
-    game->next_scene = -1;
+  index_t scene_count = span_scene_size(game->pub.scenes);
+  if (game->pub.next_scene >= scene_count) {
+    str_log("[Scene.switch] Scene index out of range: {}", game->pub.next_scene);
+    game->pub.next_scene = -1;
     return;
   }
 
   _game_scene_close(game);
 
   // Reset camera to the default
-  game->camera.up = v4up;
-  game->camera.front = v4front;
-  camera_build(&game->camera);
-  game->scene_time = 0.0f;
+  game->pub.camera.up = v4up;
+  game->pub.camera.front = v4front;
+  camera_build(&game->pub.camera);
+  game->pub.scene_time = 0.0f;
+  game->pub.frame_time = 0.016f;
 
   // Load the next scene
-  scene_load_fn_t load_scene = span_scene_get(game->scenes, game->next_scene);
+  scene_load_fn_t load_scene = span_scene_get(game->pub.scenes, game->pub.next_scene);
   assert(load_scene);
   game->scene_unload = load_scene((Game)game);
-  game->scene = game->next_scene;
-  game->next_scene = -1;
+  game->pub.scene = game->pub.next_scene;
+  game->pub.next_scene = -1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -204,26 +182,28 @@ Game export(game_init) (int x, int y) {
 Game game_new(String title, vec2i window_size) {
   Game_Internal* ret = malloc(sizeof(Game_Internal));
   assert(ret);
-  *ret = (Game_Internal){
-    .window = window_size,
-    .title = title,
-    .scene = 0,
-    .scene_time = 0,
-    .graphics = gfx_new(),
-    .camera = {
-      .type = CAMERA_PERSPECTIVE,
-      .pos = p4origin,//v4f(0, 0, 60, 1),
-      .front = v4front,
-      .up = v4y,
-      .perspective =
-      { CAMERA_DEFAULT_FOV
-      , i2aspect(window_size)
-      , CAMERA_DEFAULT_NEAR
-      , CAMERA_DEFAULT_FAR
-      }
-      //.ortho = {-6 * i2aspect(windim), 6 * i2aspect(windim), 6, -6, 0.1, 500}
+  *ret = (Game_Internal) {
+    .pub = {
+      .window = window_size,
+      .title = title,
+      .scene = 0,
+      .scene_time = 0,
+      .graphics = gfx_new(),
+      .camera = {
+        .type = CAMERA_PERSPECTIVE,
+        .pos = p4origin,//v4f(0, 0, 60, 1),
+        .front = v4front,
+        .up = v4y,
+        .perspective =
+        { CAMERA_DEFAULT_FOV
+        , i2aspect(window_size)
+        , CAMERA_DEFAULT_NEAR
+        , CAMERA_DEFAULT_FAR
+        }
+        //.ortho = {-6 * i2aspect(windim), 6 * i2aspect(windim), 6, -6, 0.1, 500}
+      },
+      .next_scene = 0,
     },
-    .next_scene = 0,
     .entities = smap_entity_new(),
     .entity_actors = arr_bk_new(),
     .entity_updates = arr_id_new(),
@@ -240,7 +220,7 @@ Game game_new(String title, vec2i window_size) {
     _game_instance_local = p_ret;
   }
 
-  camera_build(&ret->camera);
+  camera_build(&ret->pub.camera);
 
   return p_ret;
 }
@@ -350,12 +330,12 @@ static void _game_entity_update_execute(Game_Internal* game, slotkey_t key) {
 void game_update(Game _game, float dt) {
   GAME_INTERNAL;
   // If a scene change is requested, do that now
-  if (game->next_scene >= 0) {
+  if (game->pub.next_scene >= 0) {
     _game_scene_switch(game);
   }
   else {
-    game->frame_time = dt;
-    game->scene_time += dt;
+    game->pub.frame_time = dt;
+    game->pub.scene_time += dt;
   }
 
   // Go through the list of "acting" entities with behaviors and update.
@@ -392,7 +372,7 @@ void game_update(Game _game, float dt) {
   arr_id_clear(game->entity_updates);
 
   // Reset button triggers (only one frame on trigger/release)
-  input_update(&game->input);
+  input_update(&game->pub.input);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -401,8 +381,8 @@ void game_update(Game _game, float dt) {
 
 void game_render(Game _game) {
   GAME_INTERNAL;
-  game->camera.projview = camera_projection_view(&game->camera);
-  game->camera.view = camera_view(&game->camera);
+  game->pub.camera.projview = camera_projection_view(&game->pub.camera);
+  game->pub.camera.view = camera_view(&game->pub.camera);
 
   // TODO: remove, all drawable entities should have a renderer (there should be
   //    no "loop over all entities" tasks)
@@ -415,7 +395,7 @@ void game_render(Game _game) {
     }
   }
 
-  gfx_render(game->graphics, _game);
+  gfx_render(game->pub.graphics, _game);
 }
   
 ////////////////////////////////////////////////////////////////////////////////
@@ -454,7 +434,7 @@ slotkey_t entity_add(const entity_desc_t* proto) {
     .pos = proto->pos,
     .rot = rotation,
     .scale = scale,
-    .create_time = game->scene_time,
+    .create_time = game->pub.scene_time,
     .model = proto->model,
     .material = proto->material,
     .onrender = proto->onrender,
