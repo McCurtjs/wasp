@@ -44,7 +44,6 @@ static int active_shader = 1;
 
 static renderer_t _renderer_basic = {
   .name = "Basic",
-  .render_entity = render_basic2,
 };
 renderer_t* renderer_basic = &_renderer_basic;
 
@@ -58,7 +57,6 @@ renderer_t* renderer_pbr = &_renderer_pbr;
 
 static renderer_t _renderer_debug = {
   .name = "Debug",
-  .render_entity = render_basic2,
   .onrender = render_debug3,
 };
 renderer_t* renderer_debug = &_renderer_debug;

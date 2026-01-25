@@ -134,7 +134,8 @@ Entity    entity_ref(slotkey_t entity_id);
 Entity    entity_next(slotkey_t* entity_id);
 
 void      entity_set_parent(Entity, const Entity new_parent);
-void      entity_set_behavior(Entity, entity_update_fn_t bh);
+void      entity_set_behavior(Entity, entity_update_fn_t behavior);
+void      entity_set_onrender(Entity, entity_render_fn_t onrender);
 
 mat4      entity_transform(Entity);
 

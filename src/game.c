@@ -55,6 +55,17 @@ typedef struct behavior_key_t {
 #undef con_prefix
 #undef con_type
 
+typedef struct render_key_t {
+  slotkey_t entity_id;
+  entity_render_fn_t onrender;
+} render_key_t;
+
+#define con_type render_key_t
+#define con_prefix rk
+#include "array.h"
+#undef con_prefix
+#undef con_type
+
 #include <stdlib.h>
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -64,11 +75,11 @@ typedef struct behavior_key_t {
 typedef struct Game_Internal {
   struct _opaque_Game_t pub;
 
-  // secrets
   scene_unload_fn_t scene_unload;
   SlotMap_entity entities;
 
   Array_bk entity_actors;   // entities with attached behaviors
+  Array_rk entity_render_updates; // entities with an onrender to update
   Array_id entity_updates;  // entities that have transforms to update
   Array_id entity_removals; // ids of entities to remove at end of frame
 
@@ -206,6 +217,7 @@ Game game_new(String title, vec2i window_size) {
     },
     .entities = smap_entity_new(),
     .entity_actors = arr_bk_new(),
+    .entity_render_updates = arr_rk_new(),
     .entity_updates = arr_id_new(),
     .entity_removals = arr_id_new(),
   };
@@ -343,7 +355,7 @@ void game_update(Game _game, float dt) {
   //    entities that no longer have a behavior function.
   for (index_t i = 0; i < game->entity_actors->size; ) {
     behavior_key_t key = game->entity_actors->begin[i];
-    entity_t* entity = smap_entity_ref(game->entities, key.entity_id);
+    Entity entity = smap_entity_ref(game->entities, key.entity_id);
 
     if (!entity || !entity->behavior || entity->behavior != key.behavior) {
       arr_bk_remove_unstable(game->entity_actors, i);
@@ -384,15 +396,17 @@ void game_render(Game _game) {
   game->pub.camera.projview = camera_projection_view(&game->pub.camera);
   game->pub.camera.view = camera_view(&game->pub.camera);
 
-  // TODO: remove, all drawable entities should have a renderer (there should be
-  //    no "loop over all entities" tasks)
-  entity_t* smap_foreach(entity, game->entities) {
-    if (entity->onrender && !entity->is_hidden) {
-      entity->onrender(_game, entity);
+  for (index_t i = 0; i < game->entity_render_updates->size; ) {
+    render_key_t key = game->entity_render_updates->begin[i];
+    Entity entity = smap_entity_ref(game->entities, key.entity_id);
+
+    if (!entity || !entity->onrender || entity->onrender != key.onrender) {
+      arr_rk_remove_unstable(game->entity_render_updates, i);
+      continue;
     }
-    if (entity->renderer && entity->renderer->render_entity) {
-      entity->renderer->render_entity(entity->renderer, _game, entity);
-    }
+
+    entity->onrender(_game, entity);
+    ++i;
   }
 
   gfx_render(game->pub.graphics, _game);
@@ -456,6 +470,12 @@ slotkey_t entity_add(const entity_desc_t* proto) {
     arr_bk_push_back(game->entity_actors, bkey);
   }
 
+  // Register a new entity's onrender function if it has one
+  if (entity->onrender) {
+    render_key_t rkey = { .entity_id = key, .onrender = entity->onrender };
+    arr_rk_push_back(game->entity_render_updates, rkey);
+  }
+
   // Register it with a renderer if it has one
   if (entity->renderer) {
     renderer_entity_register(entity->renderer, entity);
@@ -511,6 +531,16 @@ void entity_set_behavior(Entity entity, entity_update_fn_t behavior) {
   Game_Internal* game = game_get_local_internal();
   behavior_key_t key = { .entity_id = entity->id, behavior };
   arr_bk_push_back(game->entity_actors, key);
+}
+
+void entity_set_onrender(Entity entity, entity_render_fn_t onrender) {
+  assert(entity);
+  if (entity->onrender == onrender) return;
+  entity->onrender = onrender;
+  if (!onrender) return;
+  Game_Internal* game = game_get_local_internal();
+  render_key_t key = { .entity_id = entity->id, onrender };
+  arr_rk_push_back(game->entity_render_updates, key);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

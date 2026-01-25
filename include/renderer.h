@@ -48,9 +48,6 @@ typedef slotkey_t (*renderer_entity_register_fn_t)(Entity, Game);
 // Called when entity is deleted/unregistered from the renderer
 typedef void (*renderer_entity_unregister_fn_t)(Entity);
 
-// Called once for each entity before the final render function
-typedef void (*renderer_entity_render_fn_t)(renderer_t*, Game, Entity);
-
 // Used in the default instanced render callback to bind shader attributes
 typedef void (*renderer_bind_attributes_fn_t)(Shader, render_group_t*);
 
@@ -112,7 +109,6 @@ typedef struct renderer_t {
   renderer_entity_register_fn_t register_entity;
   renderer_entity_unregister_fn_t unregister_entity;
   renderer_entity_update_fn_t update_entity;
-  renderer_entity_render_fn_t render_entity;
   renderer_bind_attributes_fn_t bind_attributes;
   renderer_render_fn_t onrender;
   HMap_rg groups;
