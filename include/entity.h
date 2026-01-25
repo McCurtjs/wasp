@@ -75,7 +75,7 @@ typedef struct entity_desc_t {
   renderer_t*         renderer;
 
   entity_update_fn_t  behavior;
-  entity_render_fn_t  render;
+  entity_render_fn_t  onrender;
   entity_create_fn_t  oncreate;
   entity_delete_fn_t  ondelete;
 } entity_desc_t;
@@ -86,10 +86,12 @@ typedef struct entity_desc_t {
 #endif
 
 typedef struct entity_t {
-  // Entity manager/identifier
+  // Entity basic attributes and identifiers
   slotkey_t           CONST id;
   slotkey_t           CONST parent_id;
+  slotkey_t                 user_id;
   String                    name;
+  float                     create_time;
 
   // Transform
   union {
@@ -113,13 +115,9 @@ typedef struct entity_t {
   bool                CONST is_dirty_renderer;
   bool                CONST is_dirty_static;
 
-  // Entity attributes
-  float                     create_time;
-  slotkey_t                 user_id;
-
   // Actions and event callbacks
   entity_update_fn_t        behavior;
-  entity_render_fn_t        render; // onrender, happens before renderer but
+  entity_render_fn_t        onrender; // onrender, happens before renderer but
   entity_create_fn_t        oncreate;         // after transform sync
   entity_delete_fn_t        ondelete;
 }* Entity;

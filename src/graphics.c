@@ -77,8 +77,8 @@ void gfx_render(Graphics _gfx, Game game) {
   GRAPHICS_INTERNAL;
   renderer_t** span_foreach(renderer_ptr, gfx->renderers) {
     renderer_t* renderer = *renderer_ptr;
-    if (renderer->render) {
-      renderer->render(renderer, game);
+    if (renderer->onrender) {
+      renderer->onrender(renderer, game);
     }
   }
 }

@@ -52,14 +52,14 @@ static renderer_t _renderer_pbr = {
   .name = "PBR",
   .register_entity = renderer_callback_register,
   .unregister_entity = renderer_callback_unregister,
-  .render = renderer_callback_render,
+  .onrender = renderer_callback_render,
 };
 renderer_t* renderer_pbr = &_renderer_pbr;
 
 static renderer_t _renderer_debug = {
   .name = "Debug",
   .render_entity = render_basic2,
-  .render = render_debug3,
+  .onrender = render_debug3,
 };
 renderer_t* renderer_debug = &_renderer_debug;
 

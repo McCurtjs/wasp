@@ -58,7 +58,7 @@ typedef struct scene_data_t {
   int load;
   int unload;
   int update;
-  int render;
+  int onrender;
 } scene_data_t;
 
 typedef struct app_defaults_t {

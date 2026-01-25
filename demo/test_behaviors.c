@@ -234,7 +234,7 @@ static void _wizard_projectile(Game game, entity_t* e, float dt) {
         .pos = launch_point,
         .scale = 0.4f,
         .model = demo->models.color_cube,
-        .render = render_basic,
+        .onrender = render_basic,
         .behavior = behavior_projectile,
         .ondelete = ondelete_projectile,
       });
@@ -301,7 +301,7 @@ static void _wizard_baddies(Game game, entity_t* e, float dt) {
       .pos = pos,
       .scale = 2.0f,
       .tint = v3f(1.0f, 0.6f, 0.6f),
-      .render = render_pbr,
+      .onrender = render_pbr,
       .behavior = behavior_baddy,
     });
   }
@@ -622,7 +622,7 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
         igText("Shader: %s", entity->renderer->shader->name.begin);
         igText("Render id: %d - %llu", sk_index(entity->render_id), sk_unique(entity->render_id));
       }
-      else if (entity->render) {
+      else if (entity->onrender) {
         igText("Render: local fn");
       }
       else {
@@ -729,7 +729,7 @@ void behavior_attach_to_camera_target(Game game, entity_t* e, float dt) {
       .material = mats[(uint)e->pos.x % 6],
       .pos = e->pos,
       .scale = 10.0f,
-      .render = render_pbr,
+      .onrender = render_pbr,
     });
   }
 }

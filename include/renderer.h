@@ -114,7 +114,7 @@ typedef struct renderer_t {
   renderer_entity_update_fn_t update_entity;
   renderer_entity_render_fn_t render_entity;
   renderer_bind_attributes_fn_t bind_attributes;
-  renderer_render_fn_t render;
+  renderer_render_fn_t onrender;
   HMap_rg groups;
   Shader shader;
   index_t instance_size;

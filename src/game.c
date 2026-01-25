@@ -407,8 +407,8 @@ void game_render(Game _game) {
   // TODO: remove, all drawable entities should have a renderer (there should be
   //    no "loop over all entities" tasks)
   entity_t* smap_foreach(entity, game->entities) {
-    if (entity->render && !entity->is_hidden) {
-      entity->render(_game, entity);
+    if (entity->onrender && !entity->is_hidden) {
+      entity->onrender(_game, entity);
     }
     if (entity->renderer && entity->renderer->render_entity) {
       entity->renderer->render_entity(entity->renderer, _game, entity);
@@ -457,7 +457,7 @@ slotkey_t entity_add(const entity_desc_t* proto) {
     .create_time = game->scene_time,
     .model = proto->model,
     .material = proto->material,
-    .render = proto->render,
+    .onrender = proto->onrender,
     .renderer = proto->renderer,
     .behavior = proto->behavior,
     .oncreate = proto->oncreate,

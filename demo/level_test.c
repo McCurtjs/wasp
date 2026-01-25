@@ -45,7 +45,7 @@ scene_unload_fn_t scene_load_gears(Game game) {
   entity_add(&(entity_desc_t) {
     .name = S("Grid"),
     .model = demo->models.grid,
-    .render = render_debug,
+    .onrender = render_debug,
     .behavior = behavior_grid_toggle,
   });
 
@@ -60,7 +60,7 @@ scene_unload_fn_t scene_load_gears(Game game) {
     .name = S("Spinny-cube"),
     .model = demo->models.color_cube,
     .pos = v3f(-2, 0, 0),
-    .render = render_basic,
+    .onrender = render_basic,
     .behavior = behavior_cubespin,
   }); //*/
 
@@ -69,7 +69,7 @@ scene_unload_fn_t scene_load_gears(Game game) {
     .name = S("Staring Cube"),
     .model = demo->models.color_cube,
     .pos = v3f(0, 0, 2),
-    .render = render_basic,
+    .onrender = render_basic,
     .behavior = behavior_stare,
   }); //*/
 
@@ -77,14 +77,14 @@ scene_unload_fn_t scene_load_gears(Game game) {
   entity_add(&(entity_desc_t) {
     .name = S("Target Gizmo"),
     .model = demo->models.gizmo,
-    .render = render_basic,
+    .onrender = render_basic,
     .behavior = behavior_attach_to_camera_target,
   }); //*/
 
   entity_add(&(entity_desc_t) {
     .name = S("Light Gizmo"),
     .model = demo->models.gizmo,
-    .render = render_basic,
+    .onrender = render_basic,
     .behavior = behavior_attach_to_light,
   }); //*/
 
@@ -94,7 +94,7 @@ scene_unload_fn_t scene_load_gears(Game game) {
     .model = demo->models.gear,
     .material = demo->materials.grass,
     .pos = v3f(0, 7, -12),
-    .render = render_pbr,
+    .onrender = render_pbr,
     .behavior = behavior_gear_rotate_cw,
   }); //*/
 
@@ -104,7 +104,7 @@ scene_unload_fn_t scene_load_gears(Game game) {
     .model = demo->models.gear,
     .material = demo->materials.sands,
     .pos = v3f(20.5f, -1.5f, -12),
-    .render = render_pbr,
+    .onrender = render_pbr,
     .behavior = behavior_gear_rotate_ccw,
   }); //*/
 
@@ -114,7 +114,7 @@ scene_unload_fn_t scene_load_gears(Game game) {
     .model = demo->models.gear,
     .material = demo->materials.mudds,
     .pos = v3f(43.f, -1.5f, -12),
-    .render = render_pbr,
+    .onrender = render_pbr,
     .behavior = behavior_gear_rotate_cw,
   }); //*/
 
@@ -124,7 +124,7 @@ scene_unload_fn_t scene_load_gears(Game game) {
     .model = demo->models.box,
     .material = demo->materials.grass,
     .pos = v3f(0, -0.5, 0),
-    .render = render_pbr,
+    .onrender = render_pbr,
   }); //*/
 
   //* Crate
@@ -133,7 +133,7 @@ scene_unload_fn_t scene_load_gears(Game game) {
     .model = demo->models.box,
     .material = demo->materials.grass,
     .pos = v3f(1, -0.5, 0),
-    .render = render_pbr,
+    .onrender = render_pbr,
   }); //*/
 
   //* Crate
@@ -142,7 +142,7 @@ scene_unload_fn_t scene_load_gears(Game game) {
     .model = demo->models.box,
     .material = demo->materials.grass,
     .pos = v3f(0, -0.5, 1),
-    .render = render_pbr,
+    .onrender = render_pbr,
   }); //*/
 
   //* Crate
@@ -151,7 +151,7 @@ scene_unload_fn_t scene_load_gears(Game game) {
     .model = demo->models.box,
     .material = demo->materials.grass,
     .pos = v3f(1, -0.5, 1),
-    .render = render_pbr,
+    .onrender = render_pbr,
   }); //*/
 
   //* Bigger Crate
@@ -161,7 +161,7 @@ scene_unload_fn_t scene_load_gears(Game game) {
     .material = demo->materials.crate,
     .pos = v3f(2, 0, 0),
     .scale = 2.0f,
-    .render = render_pbr,
+    .onrender = render_pbr,
   }); //*/
 
   //* Even Bigger Crate
@@ -172,7 +172,7 @@ scene_unload_fn_t scene_load_gears(Game game) {
     .tint = v3f(0.8f, 0.3f, 0.6f),
     .pos = v3f(5, 0.5f, 0),
     .scale = 3.f,
-    .render = render_pbr,
+    .onrender = render_pbr,
   }); //*/
 
   //* LORGE Cube(s)
@@ -266,14 +266,14 @@ scene_unload_fn_t scene_load_wizard(Game game) {
   // Debug Renderer
   entity_add(&(entity_desc_t) {
     .model = demo->models.grid,
-    .render = render_debug,
+    .onrender = render_debug,
     .behavior = behavior_grid_toggle,
   });
   
   // Target gizmo
   entity_add(&(entity_desc_t) {
     .model = demo->models.gear,
-    .render = render_pbr,
+    .onrender = render_pbr,
     .tint = c4black.rgb,
     .material = demo->materials.renderite,
     .rot = q4axang(v3x, d2r(90.f)),
@@ -287,7 +287,7 @@ scene_unload_fn_t scene_load_wizard(Game game) {
     .model = demo->models.box,
     .material = demo->materials.crate,
     .behavior = behavior_wizard,
-    .render = render_pbr,
+    .onrender = render_pbr,
   });
 
   // Ground tiles
@@ -316,7 +316,7 @@ scene_unload_fn_t scene_load_wizard(Game game) {
         .material = material,
         .pos = pos,
         .scale = 5.0f,
-        .render = render_pbr,
+        .onrender = render_pbr,
       });
     }
   }
@@ -359,7 +359,7 @@ scene_unload_fn_t scene_load_monument(Game game) {
   // Debug Renderer
   entity_add(&(entity_desc_t) {
     .model = demo->models.grid,
-    .render = render_debug,
+    .onrender = render_debug,
     .is_hidden = true,
     .behavior = behavior_grid_toggle,
   });
@@ -402,7 +402,7 @@ scene_unload_fn_t scene_load_monument(Game game) {
   // Gear sun
   entity_add(&(entity_desc_t) {
     .model = demo->models.gear,
-    .render = render_pbr,
+    .onrender = render_pbr,
     .tint = c4white.rgb,
     .material = demo->materials.renderite,
     .pos = v3add(sun_pos, v3f(0, 30, 0)),
@@ -418,7 +418,7 @@ scene_unload_fn_t scene_load_monument(Game game) {
     .material = demo->materials.grass,
     .pos = v3f(0, -(ext * size + size) - (ground_scale / 2.f) - offset, 0),
     .scale = ground_scale,
-    .render = render_pbr,
+    .onrender = render_pbr,
   });
 
   // Light 1 is left indicator (red)
