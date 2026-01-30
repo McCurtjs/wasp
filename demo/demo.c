@@ -1,7 +1,7 @@
 /*******************************************************************************
 * MIT License
 *
-* Copyright (c) 2025 Curtis McCoy
+* Copyright (c) 2026 Curtis McCoy
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -50,7 +50,9 @@ renderer_t* renderer_basic = &_renderer_basic;
 static renderer_t _renderer_pbr = {
   .name = "PBR",
   .register_entity = renderer_callback_register,
+  .update_entity = renderer_callback_update,
   .unregister_entity = renderer_callback_unregister,
+  .instance_update = renderer_callback_instance_update,
   .onrender = renderer_callback_render,
 };
 renderer_t* renderer_pbr = &_renderer_pbr;

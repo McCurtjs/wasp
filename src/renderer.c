@@ -93,7 +93,24 @@ void _renderer_callback_unregister_internal(
   render_group_t* group = map_rg_ref(e->renderer->groups, key);
   if (!group) return;
   pmap_remove(group->instances, e->render_id);
-  group->needs_update = true;
+  group->update_full = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static void _render_group_expand_update_range(
+  render_group_t* group, int32_t index
+) {
+  if (group->update_range_low < 0) {
+    group->update_range_low = index;
+    group->update_range_high = index;
+  }
+  else if (index < group->update_range_low) {
+    group->update_range_low = index;
+  }
+  else if (index > group->update_range_high) {
+    group->update_range_high = index;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -115,17 +132,30 @@ slotkey_t renderer_callback_register(Entity e, Game game) {
       .material = e->material,
       .model = e->model,
       .is_static = e->is_static,
+      .update_range_low = -1,
+      .update_range_high = -1,
+      .update_full = 1,
     };
   }
 
-  group_slot.value->needs_update = true;
-
   // add instance to the group and save its instance id
-  return pmap_insert(group_slot.value->instances,
+  PackedMap instances = group_slot.value->instances;
+  bool expanded = instances->size == instances->capacity;
+  slotkey_t ret = pmap_insert(instances,
     &(instance_attribute_default_t) {
       .transform = entity_transform(e),
     }
   );
+
+  // flag the modified value range for update
+  if (expanded) {
+    group_slot.value->update_full = true;
+  }
+  else {
+    _render_group_expand_update_range(group_slot.value, sk_index(ret));
+  }
+
+  return ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -151,9 +181,8 @@ slotkey_t renderer_callback_update(renderer_t* renderer, entity_t* e) {
   instance_attribute_default_t* att = pmap_ref(group->instances, e->render_id);
   assert(att);
 
-  // TODO: update to track range of updates for glBufferSubData
   att->transform = entity_transform(e);
-  group->needs_update = true;
+  _render_group_expand_update_range(group, sk_index(e->render_id));
   return e->render_id;
 }
 
@@ -163,6 +192,42 @@ void renderer_callback_unregister(entity_t* e) {
   assert(e);
   render_group_key_t key = { e->model, e->material, e->is_static };
   _renderer_callback_unregister_internal(e, key);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void renderer_callback_instance_update(render_group_t* group) {
+  assert(group->update_range_low >= 0);
+  assert(group->update_range_high >= 0);
+  assert(group->update_range_low < group->instances->size);
+  assert(group->update_range_high <= group->instances->size);
+  //assert(group->instance_buffer);
+
+  if (!group->instance_buffer) return;
+
+  // adding one to the count because range_high is inclusive
+  int32_t update_count = group->update_range_high - group->update_range_low + 1;
+
+  glBindBuffer(GL_ARRAY_BUFFER, group->instance_buffer);
+
+  // update all instances if there are lots of them
+  if (group->update_full || update_count > group->instances->size / 2) {
+    glBufferData(GL_ARRAY_BUFFER
+    , group->instances->size_bytes
+    , group->instances->begin
+    , group->is_static ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW
+    );
+  }
+  // update a range if we only have a few changes
+  else {
+    glBufferSubData(GL_ARRAY_BUFFER
+    , group->update_range_low
+    , group->instances->element_size * update_count
+    , pmap_ref_index(group->instances, group->update_range_low)
+    );
+  }
+
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -258,7 +323,7 @@ void renderer_callback_render(renderer_t* renderer, Game game) {
     }
 
     // if the instance data has updated since creation, upload it to the GPU
-    else if (group->needs_update) {
+    else if (group->update_full) {
       // TODO: add path for glBufferSubData for small changes
       glBindBuffer(GL_ARRAY_BUFFER, group->instance_buffer);
       glBufferData(GL_ARRAY_BUFFER
@@ -268,7 +333,7 @@ void renderer_callback_render(renderer_t* renderer, Game game) {
       );
       glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
-    group->needs_update = false;
+    group->update_full = false;
 
     glBindVertexArray(group->vao);
     model_render_instanced(group->model, group->instances->size);

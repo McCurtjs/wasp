@@ -49,7 +49,10 @@ typedef slotkey_t (*renderer_entity_register_fn_t)(Entity, Game);
 typedef void (*renderer_entity_unregister_fn_t)(Entity);
 
 // Used in the default instanced render callback to bind shader attributes
-typedef void (*renderer_bind_attributes_fn_t)(Shader, render_group_t*);
+typedef void (*renderer_instance_attributes_bind_fn_t)(Shader, render_group_t*);
+
+// Called when a render group has instances updated (non-negative update range)
+typedef void (*renderer_instance_update_fn_t)(render_group_t*);
 
 // Called once per frame after the entities are processed 
 typedef void (*renderer_render_fn_t)(renderer_t*, Game);
@@ -87,9 +90,9 @@ typedef struct render_group_t {
   PackedMap instances;
   uint vao;
   uint instance_buffer;
-  index_t update_range_low;
-  index_t update_range_high;
-  bool needs_update;
+  int32_t update_range_low;
+  int32_t update_range_high;
+  bool update_full;
 } render_group_t;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -109,7 +112,8 @@ typedef struct renderer_t {
   renderer_entity_register_fn_t register_entity;
   renderer_entity_unregister_fn_t unregister_entity;
   renderer_entity_update_fn_t update_entity;
-  renderer_bind_attributes_fn_t bind_attributes;
+  renderer_instance_attributes_bind_fn_t bind_attributes;
+  renderer_instance_update_fn_t instance_update;
   renderer_render_fn_t onrender;
   HMap_rg groups;
   Shader shader;
@@ -123,6 +127,7 @@ void      renderer_entity_unregister(Entity);
 slotkey_t renderer_callback_register(Entity, Game);
 slotkey_t renderer_callback_update(renderer_t*, Entity);
 void      renderer_callback_unregister(Entity);
+void      renderer_callback_instance_update(render_group_t*);
 void      renderer_callback_render(renderer_t*, Game);
 
 ////////////////////////////////////////////////////////////////////////////////

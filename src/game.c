@@ -405,13 +405,16 @@ void game_render(Game _game) {
       continue;
     }
 
-    entity->onrender(_game, entity);
+    if (!entity->is_hidden) {
+      entity->onrender(_game, entity);
+    }
+
     ++i;
   }
 
   gfx_render(game->pub.graphics, _game);
 }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 // Entity management functions
 ////////////////////////////////////////////////////////////////////////////////

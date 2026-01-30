@@ -73,10 +73,39 @@ void gfx_delete(Graphics* gfx) {
 // Iterates the list of renderers in order and executes their render functions
 ////////////////////////////////////////////////////////////////////////////////
 
+static void _renderer_update_instances(renderer_t* renderer) {
+  render_group_t* map_foreach(group, renderer->groups) {
+
+    if (group->update_full) {
+      assert(group->instances->size <= SK_INDEX_MAX);
+      group->update_range_low = 0;
+      group->update_range_high = (int32_t)group->instances->size;
+      group->update_full = false;
+    }
+
+    if (group->update_range_low >= 0) {
+      assert(group->update_range_low < group->instances->size);
+      assert(group->update_range_high >= 0);
+      assert(group->update_range_high <= group->instances->size);
+      renderer->instance_update(group);
+      group->update_range_low = -1;
+      group->update_range_high = -1;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 void gfx_render(Graphics _gfx, Game game) {
   GRAPHICS_INTERNAL;
+
   renderer_t** span_foreach(renderer_ptr, gfx->renderers) {
     renderer_t* renderer = *renderer_ptr;
+
+    if (renderer->instance_update) {
+      _renderer_update_instances(renderer);
+    }
+
     if (renderer->onrender) {
       renderer->onrender(renderer, game);
     }
@@ -95,7 +124,7 @@ void gfx_clear_instances(Graphics gfx) {
     if (renderer->groups) {
       render_group_t* map_foreach(group, renderer->groups) {
         pmap_clear(group->instances);
-        group->needs_update = true;
+        group->update_full = true;
       }
     }
   }
