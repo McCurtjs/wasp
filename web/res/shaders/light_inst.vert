@@ -25,10 +25,10 @@ void main() {
   vColor = vec3(1.0) - color;
 
   // Calculate tangent space transform
-  mat4 normal_matrix = in_view_matrix * model_matrix;
-  normal_matrix = transpose(inverse(in_view_matrix));
-  vec3 tbn_normal = normalize(mat3(normal_matrix) * normal.xyz);
-  vec3 tbn_tangent = normalize(mat3(normal_matrix) * tangent.xyz);
+  mat4 model_view_matrix = in_view_matrix * model_matrix;
+  mat3 normal_matrix = mat3(transpose(inverse(model_view_matrix)));
+  vec3 tbn_normal = normalize(normal_matrix * normal.xyz);
+  vec3 tbn_tangent = normalize(normal_matrix * tangent.xyz);
   vec3 tbn_bitangent = cross(tbn_normal, tbn_tangent) * tangent.w;
   vTangentTransform = mat3(tbn_tangent, tbn_bitangent, tbn_normal);
 }
