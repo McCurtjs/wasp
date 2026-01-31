@@ -109,12 +109,12 @@ typedef struct render_group_t {
 
 typedef struct renderer_t {
   const char* const name;
-  renderer_entity_register_fn_t register_entity;
-  renderer_entity_unregister_fn_t unregister_entity;
-  renderer_entity_update_fn_t update_entity;
-  renderer_instance_attributes_bind_fn_t bind_attributes;
+  renderer_entity_register_fn_t entity_register;
+  renderer_entity_unregister_fn_t entity_unregister;
+  renderer_entity_update_fn_t entity_update;
+  renderer_instance_attributes_bind_fn_t attribute_bind;
   renderer_instance_update_fn_t instance_update;
-  renderer_render_fn_t onrender;
+  renderer_render_fn_t render;
   HMap_rg groups;
   Shader shader;
   index_t instance_size;
@@ -124,9 +124,9 @@ void      renderer_entity_register(renderer_t*, Entity);
 void      renderer_entity_update(Entity);
 void      renderer_entity_unregister(Entity);
 
-slotkey_t renderer_callback_register(Entity, Game);
-slotkey_t renderer_callback_update(renderer_t*, Entity);
-void      renderer_callback_unregister(Entity);
+slotkey_t renderer_callback_entity_register(Entity, Game);
+slotkey_t renderer_callback_entity_update(renderer_t*, Entity);
+void      renderer_callback_entity_unregister(Entity);
 void      renderer_callback_instance_update(render_group_t*);
 void      renderer_callback_render(renderer_t*, Game);
 

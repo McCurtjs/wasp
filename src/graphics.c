@@ -79,14 +79,14 @@ static void _renderer_update_instances(renderer_t* renderer) {
     if (group->update_full) {
       assert(group->instances->size <= SK_INDEX_MAX);
       group->update_range_low = 0;
-      group->update_range_high = (int32_t)group->instances->size;
+      group->update_range_high = (int32_t)group->instances->size - 1;
       group->update_full = false;
     }
 
     if (group->update_range_low >= 0) {
       assert(group->update_range_low < group->instances->size);
+      assert(group->update_range_high < group->instances->size);
       assert(group->update_range_high >= 0);
-      assert(group->update_range_high <= group->instances->size);
       renderer->instance_update(group);
       group->update_range_low = -1;
       group->update_range_high = -1;
@@ -106,8 +106,8 @@ void gfx_render(Graphics _gfx, Game game) {
       _renderer_update_instances(renderer);
     }
 
-    if (renderer->onrender) {
-      renderer->onrender(renderer, game);
+    if (renderer->render) {
+      renderer->render(renderer, game);
     }
   }
 }

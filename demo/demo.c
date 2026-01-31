@@ -49,17 +49,17 @@ renderer_t* renderer_basic = &_renderer_basic;
 
 static renderer_t _renderer_pbr = {
   .name = "PBR",
-  .register_entity = renderer_callback_register,
-  .update_entity = renderer_callback_update,
-  .unregister_entity = renderer_callback_unregister,
+  .entity_register = renderer_callback_entity_register,
+  .entity_update = renderer_callback_entity_update,
+  .entity_unregister = renderer_callback_entity_unregister,
   .instance_update = renderer_callback_instance_update,
-  .onrender = renderer_callback_render,
+  .render = renderer_callback_render,
 };
 renderer_t* renderer_pbr = &_renderer_pbr;
 
 static renderer_t _renderer_debug = {
   .name = "Debug",
-  .onrender = render_debug3,
+  .render = render_debug3,
 };
 renderer_t* renderer_debug = &_renderer_debug;
 

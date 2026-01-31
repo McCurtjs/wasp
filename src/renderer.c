@@ -43,10 +43,10 @@ void renderer_entity_register(renderer_t* renderer, Entity entity) {
     entity->render_id = SK_NULL;
   }
 
-  if (renderer->register_entity) {
+  if (renderer->entity_register) {
     Game game = game_get_active();
     entity->renderer = renderer;
-    entity->render_id = renderer->register_entity(entity, game);
+    entity->render_id = renderer->entity_register(entity, game);
   }
 
   if (!entity->render_id.hash) {
@@ -63,8 +63,8 @@ void renderer_entity_update(Entity entity) {
   assert(entity);
   renderer_t* renderer = entity->renderer;
   assert(renderer || !entity->render_id.hash);
-  if (!renderer || !renderer->update_entity) return;
-  slotkey_t new_id = renderer->update_entity(renderer, entity);
+  if (!renderer || !renderer->entity_update) return;
+  slotkey_t new_id = renderer->entity_update(renderer, entity);
   if (new_id.hash != entity->render_id.hash) entity->render_id = new_id;
 }
 
@@ -77,11 +77,15 @@ void renderer_entity_unregister(Entity entity) {
   renderer_t* renderer = entity->renderer;
   assert(renderer || !entity->render_id.hash);
   if (!renderer) return;
-  if (renderer->unregister_entity) {
-    renderer->unregister_entity(entity);
+  if (renderer->entity_unregister) {
+    renderer->entity_unregister(entity);
   }
   entity->render_id = SK_NULL;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 // "Default" callback functions to use for renderers (still need to assign)
@@ -115,7 +119,7 @@ static void _render_group_expand_update_range(
 
 ////////////////////////////////////////////////////////////////////////////////
 
-slotkey_t renderer_callback_register(Entity e, Game game) {
+slotkey_t renderer_callback_entity_register(Entity e, Game game) {
   assert(e);
   assert(e->renderer);
   assert(e->renderer->groups);
@@ -160,7 +164,7 @@ slotkey_t renderer_callback_register(Entity e, Game game) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-slotkey_t renderer_callback_update(renderer_t* renderer, entity_t* e) {
+slotkey_t renderer_callback_entity_update(renderer_t* renderer, entity_t* e) {
   UNUSED(renderer);
   assert(renderer);
   assert(e);
@@ -170,7 +174,7 @@ slotkey_t renderer_callback_update(renderer_t* renderer, entity_t* e) {
   if (e->is_dirty_static) {
     render_group_key_t key = { e->model, e->material, !e->is_static };
     _renderer_callback_unregister_internal(e, key);
-    return renderer_callback_register(e, game_get_active());
+    return renderer_callback_entity_register(e, game_get_active());
   }
 
   render_group_key_t key = { e->model, e->material, e->is_static };
@@ -188,7 +192,7 @@ slotkey_t renderer_callback_update(renderer_t* renderer, entity_t* e) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void renderer_callback_unregister(entity_t* e) {
+void renderer_callback_entity_unregister(entity_t* e) {
   assert(e);
   render_group_key_t key = { e->model, e->material, e->is_static };
   _renderer_callback_unregister_internal(e, key);
@@ -211,7 +215,8 @@ void renderer_callback_instance_update(render_group_t* group) {
   glBindBuffer(GL_ARRAY_BUFFER, group->instance_buffer);
 
   // update all instances if there are lots of them
-  if (group->update_full || update_count > group->instances->size / 2) {
+  // (will also be triggered if a full upload is required for expanding the set)
+  if (update_count > group->instances->size / 2) {
     glBufferData(GL_ARRAY_BUFFER
     , group->instances->size_bytes
     , group->instances->begin
@@ -317,23 +322,10 @@ void renderer_callback_render(renderer_t* renderer, Game game) {
     if (!group->vao) {
       _renderer_bind_default_attributes(shader, group);
 
-      if (renderer->bind_attributes) {
-        renderer->bind_attributes(shader, group);
+      if (renderer->attribute_bind) {
+        renderer->attribute_bind(shader, group);
       }
     }
-
-    // if the instance data has updated since creation, upload it to the GPU
-    else if (group->update_full) {
-      // TODO: add path for glBufferSubData for small changes
-      glBindBuffer(GL_ARRAY_BUFFER, group->instance_buffer);
-      glBufferData(GL_ARRAY_BUFFER
-      , group->instances->size_bytes
-      , group->instances->begin
-      , group->is_static ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW
-      );
-      glBindBuffer(GL_ARRAY_BUFFER, 0);
-    }
-    group->update_full = false;
 
     glBindVertexArray(group->vao);
     model_render_instanced(group->model, group->instances->size);
