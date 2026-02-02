@@ -120,6 +120,8 @@ typedef struct renderer_t {
   index_t instance_size;
 } renderer_t;
 
+void      renderer_clear_instances(renderer_t*);
+
 void      renderer_entity_register(renderer_t*, Entity);
 void      renderer_entity_update(Entity);
 void      renderer_entity_unregister(Entity);

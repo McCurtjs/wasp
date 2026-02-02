@@ -121,12 +121,7 @@ void gfx_clear_instances(Graphics gfx) {
   renderer_t** span_foreach(prenderer, gfx->renderers) {
     renderer_t* renderer = *prenderer;
     assert(renderer);
-    if (renderer->groups) {
-      render_group_t* map_foreach(group, renderer->groups) {
-        pmap_clear(group->instances);
-        group->update_full = true;
-      }
-    }
+    renderer_clear_instances(renderer);
   }
 }
 

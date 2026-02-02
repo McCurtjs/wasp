@@ -28,6 +28,21 @@
 #include "gl.h"
 
 ////////////////////////////////////////////////////////////////////////////////
+// Clears instance data and resets bookkeeping values
+////////////////////////////////////////////////////////////////////////////////
+
+void renderer_clear_instances(renderer_t* renderer) {
+  if (renderer->groups) {
+    render_group_t* map_foreach(group, renderer->groups) {
+      group->update_range_low = -1;
+      group->update_range_high = -1;
+      group->update_full = false;
+      if (group->instances) pmap_clear(group->instances);
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Registers an entity with a renderer
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -226,7 +241,7 @@ void renderer_callback_instance_update(render_group_t* group) {
   // update a range if we only have a few changes
   else {
     glBufferSubData(GL_ARRAY_BUFFER
-    , group->update_range_low
+    , group->instances->element_size * group->update_range_low
     , group->instances->element_size * update_count
     , pmap_ref_index(group->instances, group->update_range_low)
     );
