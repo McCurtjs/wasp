@@ -139,6 +139,12 @@ function wasm_import_gl(imports, game) {
     game.gl.useProgram(data.program);
   }
 
+  imports["js_glGetAttribLocation"] = (program_id, name, len) => {
+    let data = game.data[program_id];
+    if (!data || data.type != types.sprog) return 0;
+    return game.gl.getAttribLocation(data.program, game.str(name, len));
+  }
+
   imports["js_glGetUniformLocation"] = (program_id, name, len) => {
     let data = game.data[program_id];
     if (!data || data.type != types.sprog) return 0;
@@ -210,6 +216,10 @@ function wasm_import_gl(imports, game) {
     game.gl.bufferData(target, game.memory(src, size), usage);
   }
 
+  imports["glBufferSubData"] = (target, offset, size, src) => {
+    game.gl.bufferSubData(target, offset, game.memory(src, size));
+  }
+
   imports["glDeleteBuffer"] = (data_id) => {
     let data = game.data[data_id];
     if (!data || data.type != types.buffer) return;
@@ -238,6 +248,10 @@ function wasm_import_gl(imports, game) {
     game.free(data_id);
   }
 
+  imports["glVertexAttribDivisor"] = (index, divisor) => {
+    game.gl.vertexAttribDivisor(index, divisor);
+  }
+
   imports["glVertexAttribPointer"] = (index, size, type, norm, stride, ptr) => {
     game.gl.vertexAttribPointer(index, size, type, norm, stride, ptr);
   }
@@ -256,6 +270,18 @@ function wasm_import_gl(imports, game) {
 
   imports["glDrawElements"] = (mode, count, type, index_offset) => {
     game.gl.drawElements(mode, count, type, index_offset);
+  }
+
+  imports["glDrawArraysInstanced"] = (
+    mode, first, count, prim_count
+  ) => {
+    game.gl.drawArraysInstanced(mode, first, count, prim_count);
+  }
+
+  imports["glDrawElementsInstanced"] = (
+    mode, count, type, ind_offset, prim_count
+  ) => {
+    game.gl.drawElementsInstanced(mode, count, type, ind_offset, prim_count);
   }
 
   // Textures

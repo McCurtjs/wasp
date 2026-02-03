@@ -26,6 +26,7 @@
 #include "gl.h"
 
 #include <stdlib.h>
+#include <string.h> // memcpy
 
 // inlined static data declarations for model primitives
 #include "../data/inline_primitives.h"

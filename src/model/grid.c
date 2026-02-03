@@ -93,12 +93,12 @@ Model model_new_grid(model_grid_param_t param) {
   assert(points != NULL);
   assert(colors != NULL);
 
-  uint i = 0;
+  index_t i = 0;
   const vec3* basis = grid->basis;
   const byte  ga = MIN(grid->primary[0], 2);
   const byte  gb = MIN(grid->primary[1], 2);
 
-  for (int j = 0; i < 6; i += 2, ++j) {
+  for (index_t j = 0; i < 6; i += 2, ++j) {
     colors[i] = b3zero;
     points[i] = points[i+1] = v3zero;
     colors[i].i[j] = 255;
@@ -108,13 +108,13 @@ Model model_new_grid(model_grid_param_t param) {
 
   if (ext > 0) {
 
-    for (uint j = 0; i < 12; i += 2, ++j) {
+    for (index_t j = 0; i < 12; i += 2, ++j) {
       colors[i] = colors[i+1] = v3b(255, 255, 255);
       points[i] = points[i+1] = v3zero;
       points[i] = v3scale(basis[j], -exf);
     }
 
-    for (int j = 1; i < grid->vert_count; i += 8, ++j) {
+    for (index_t j = 1; i < grid->vert_count; i += 8, ++j) {
       // (x * ext) + (y * j)
       float jf = (float)j;
       points[i+0] = v3add(v3scale(basis[ga], exf), v3scale(basis[gb], jf));
@@ -128,7 +128,7 @@ Model model_new_grid(model_grid_param_t param) {
 
       byte c = (j % 10 == 0 ? 128 : (j % 5 == 0 ? 0 : 63));
       color3b color = v3b(c, c, c);
-      for (uint k = 0; k < 8; ++k) {
+      for (index_t k = 0; k < 8; ++k) {
         colors[i + k] = color;
       }
     }

@@ -84,6 +84,10 @@ static void _renderer_update_instances(renderer_t* renderer) {
     }
 
     if (group->update_range_low >= 0) {
+      if (group->update_range_high >= group->instances->size) {
+        // possible when items are removed from the list
+        group->update_range_high = (int32_t)group->instances->size - 1;
+      }
       assert(group->update_range_low < group->instances->size);
       assert(group->update_range_high < group->instances->size);
       assert(group->update_range_high >= 0);

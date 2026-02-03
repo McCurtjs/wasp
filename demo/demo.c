@@ -88,16 +88,14 @@ static keybind_t input_map[] = {
   { .name = IN_RELOAD, .key = 'p' },
   { .name = IN_LEVEL_1, .key = '1' },
   { .name = IN_LEVEL_2, .key = '2' },
-  { .name = IN_LEVEL_3_1, .key = '3' },
-  { .name = IN_LEVEL_3_2, .key = '4' },
-  { .name = IN_LEVEL_3_3, .key = '5' },
-  { .name = IN_LEVEL_3_4, .key = '6' },
-  { .name = IN_LEVEL_3_5, .key = '7' },
+  { .name = IN_LEVEL_3, .key = '3' },
   { .name = IN_TOGGLE_SHADER, .key = 'm' },
   { .name = IN_TOGGLE_GRID, .key = 'g' },
   { .name = IN_TOGGLE_LOCK, .key = SDLK_ESCAPE },
   { .name = IN_INCREASE, .key = SDLK_UP },
   { .name = IN_DECREASE, .key = SDLK_DOWN },
+  { .name = IN_INCREASE_FAST, .key = SDLK_PAGEUP },
+  { .name = IN_DECREASE_FAST, .key = SDLK_PAGEDOWN },
 };
 
 static scene_load_fn_t demo_scenes[] =

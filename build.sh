@@ -146,6 +146,7 @@ sources_demo="
 sources="
   ./src/*.c
   ./src/loaders/*.c
+  ./src/model/*.c
   ./lib/mclib/src/*.c
   ./lib/mclib/lib/murmur3/murmur3.c
 "

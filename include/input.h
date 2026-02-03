@@ -31,6 +31,7 @@
 typedef struct keybind_t {
   int name;
   int key;
+  int scan;
   bool mouse;
   bool pressed;
   bool triggered;

@@ -134,6 +134,7 @@ static void _render_group_expand_update_range(
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "utility.h"
 slotkey_t renderer_callback_entity_register(Entity e, Game game) {
   assert(e);
   assert(e->renderer);
@@ -142,11 +143,11 @@ slotkey_t renderer_callback_entity_register(Entity e, Game game) {
   UNUSED(game);
 
   // get associated render group
-  render_group_key_t key = { e->model, e->material, e->is_static };
+  render_group_key_t key = { e->model, e->material, !!e->is_static };
   res_ensure_rg_t group_slot = map_rg_ensure(e->renderer->groups, key);
 
   if (group_slot.is_new) {
-    *group_slot.value = (render_group_t){
+    *group_slot.value = (render_group_t) {
       .instances = pmap_new(instance_attribute_default_t),
       .material = e->material,
       .model = e->model,
@@ -167,6 +168,7 @@ slotkey_t renderer_callback_entity_register(Entity e, Game game) {
   );
 
   // flag the modified value range for update
+  group_slot.value->update_full = true;
   if (expanded) {
     group_slot.value->update_full = true;
   }
@@ -178,7 +180,7 @@ slotkey_t renderer_callback_entity_register(Entity e, Game game) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-
+#include <string.h>
 slotkey_t renderer_callback_entity_update(renderer_t* renderer, entity_t* e) {
   UNUSED(renderer);
   assert(renderer);
@@ -192,7 +194,7 @@ slotkey_t renderer_callback_entity_update(renderer_t* renderer, entity_t* e) {
     return renderer_callback_entity_register(e, game_get_active());
   }
 
-  render_group_key_t key = { e->model, e->material, e->is_static };
+  render_group_key_t key = { e->model, e->material, !!e->is_static };
   render_group_t* group = map_rg_ref(e->renderer->groups, key);
   assert(group);
   assert(group->instances);

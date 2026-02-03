@@ -265,6 +265,7 @@ scene_unload_fn_t scene_load_wizard(Game game) {
 
   // Debug Renderer
   entity_add(&(entity_desc_t) {
+    .name = S("Grid"),
     .model = demo->models.grid,
     .onrender = render_debug,
     .behavior = behavior_grid_toggle,
@@ -272,6 +273,7 @@ scene_unload_fn_t scene_load_wizard(Game game) {
   
   // Target gizmo
   entity_add(&(entity_desc_t) {
+    .name = S("Target"),
     .model = demo->models.gear,
     .onrender = render_pbr,
     .tint = c4black.rgb,
@@ -283,11 +285,12 @@ scene_unload_fn_t scene_load_wizard(Game game) {
 
   // Wizard crate
   entity_add(&(entity_desc_t) {
+    .name = S("Player"),
     .pos = v3f(0, 0.5, 0),
     .model = demo->models.box,
     .material = demo->materials.crate,
     .behavior = behavior_wizard,
-    .onrender = render_pbr,
+    .renderer = renderer_pbr,
   });
 
   // Ground tiles
@@ -316,7 +319,8 @@ scene_unload_fn_t scene_load_wizard(Game game) {
         .material = material,
         .pos = pos,
         .scale = 5.0f,
-        .onrender = render_pbr,
+        .renderer = renderer_pbr,
+        .is_static = true,
       });
     }
   }
@@ -392,6 +396,7 @@ scene_unload_fn_t scene_load_monument(Game game) {
           .pos = pos,
           .scale = 120.f - 2.f * (y + ext),
           .renderer = renderer_pbr,
+          .is_static = true,
         });
       }
     }
@@ -401,14 +406,15 @@ scene_unload_fn_t scene_load_monument(Game game) {
 
   // Gear sun
   entity_add(&(entity_desc_t) {
+    .name = S("Sungear"),
     .model = demo->models.gear,
     .onrender = render_pbr,
     .tint = c4white.rgb,
     .material = demo->materials.renderite,
     .pos = v3add(sun_pos, v3f(0, 30, 0)),
-    .rot = q4axang(v3x, d2r(90.f)),
+    .rot = q4axang(v3x, d2r(-90.f)),
     .scale = 15.f,
-    .behavior = behavior_gear_rotate_cw,
+    .behavior = behavior_gear_rotate_sun,
   });
 
   // Ground

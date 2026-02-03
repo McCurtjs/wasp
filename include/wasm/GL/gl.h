@@ -4,6 +4,8 @@
 #define __gl_h_
 #define __GL_H__
 
+#include "types.h"
+
 typedef char GLboolean;
 typedef char GLbyte;
 typedef char GLchar;
@@ -15,13 +17,14 @@ typedef unsigned int GLuint;
 typedef unsigned int GLenum;
 typedef unsigned int GLsizei;
 typedef unsigned int GLbitfield;
-typedef unsigned int GLsizeiptr;
-typedef long GLint64;
-typedef unsigned long GLuint64;
+typedef ptrdiff_t GLsizeiptr;
+typedef int64_t GLint64;
+typedef uint64_t GLuint64;
 typedef float GLfloat;
 typedef float GLclampf;
 typedef double GLdouble;
 typedef double GLclampd;
+typedef ptrdiff_t GLintptr;
 
 // https://github.com/KhronosGroup/OpenGL-Registry/blob/main/api/GLES3/gl3.h
 #define GL_FALSE                          0
@@ -346,7 +349,6 @@ typedef double GLclampd;
 
 #define GL_UNPACK_FLIP_Y_WEBGL            0x9240
 
-
 GLenum  glGetError();
 void    glGetIntegerv(GLenum pname, GLint * data);
 void    glViewport(GLint x, GLint y, GLsizei width, GLsizei height);
@@ -373,6 +375,7 @@ void    glGetProgramInfoLog(
 void    glUseProgram(GLuint program);
 void    glDeleteProgram(GLuint program);
 
+GLint   glGetAttribLocation(GLuint program, const GLchar* name);
 GLint   glGetUniformLocation(GLuint program, const GLchar* name);
 void    glUniform1i(GLint loc, GLint v0);
 void    glUniform2fv(GLint loc, GLsizei count, const GLfloat* value);
@@ -384,6 +387,8 @@ void    glUniformMatrix4fv(
 void    glGenBuffers(GLsizei n, GLuint* buffers);
 void    glBindBuffer(GLenum target, GLuint buffer);
 void    glBufferData(GLenum tgt, GLsizeiptr size, const void* src, GLenum use);
+void    glBufferSubData(
+          GLenum target, GLintptr offset, GLsizeiptr size, const void* data);
 void    glDeleteBuffers(GLsizei n, const GLuint* buffers);
 
 void    glGenVertexArrays(GLsizei n, GLuint* arrays);
@@ -392,10 +397,16 @@ void    glDeleteVertexArrays(GLsizei n, const GLuint* arrays);
 void    glVertexAttribPointer(
           GLuint index, GLint size, GLenum type, GLboolean normalized,
           GLsizei stride, const void* pointer);
-void    glEnableVertexAttribArray(	GLuint index);
-void    glDisableVertexAttribArray(	GLuint index);
+void    glEnableVertexAttribArray(GLuint index);
+void    glDisableVertexAttribArray(GLuint index);
+void    glVertexAttribDivisor(GLuint index, GLuint divisor);
 void    glDrawArrays(GLenum mode, GLint first, GLsizei count);
 void    glDrawElements(GLenum mode, GLsizei count, GLenum type, const void* of);
+void    glDrawArraysInstanced(
+          GLenum mode, GLint first, GLsizei count, GLsizei primcount);
+void    glDrawElementsInstanced(
+          GLenum mode, GLsizei count, GLenum type,
+          const void* index_offset, GLsizei primcount);
 
 void    glGenTextures(GLsizei n, GLuint* textures);
 void    glActiveTexture(GLenum texture);

@@ -95,6 +95,7 @@ void behavior_grid_toggle(Game game, entity_t* entity, float dt);
 void behavior_cubespin(Game game, entity_t* entity, float dt);
 void behavior_gear_rotate_cw(Game game, entity_t* entity, float dt);
 void behavior_gear_rotate_ccw(Game game, entity_t* entity, float dt);
+void behavior_gear_rotate_sun(Game game, entity_t* entity, float dt);
 void behavior_stare(Game game, entity_t* entity, float dt);
 void behavior_attach_to_light(Game game, entity_t* entity, float dt);
 void behavior_wizard_level(Game game, entity_t* entity, float dt);
@@ -108,14 +109,6 @@ void behavior_wizard(Game game, entity_t* entity, float dt);
 void render_basic(Game game, entity_t* entity);
 void render_debug(Game game, entity_t* entity);
 void render_pbr(Game game, entity_t* entity);
-
-void render_basic2(renderer_t* renderer, Game game, entity_t* entity);
-void render_debug2(renderer_t* renderer, Game game, entity_t* entity);
-
-slotkey_t render_pbr_register(entity_t* e, Game game);
-void render_pbr_unregister(entity_t* e);
-void render_pbr2(renderer_t* renderer, Game game, entity_t* entity);
-void render_pbr3(renderer_t* renderer, Game game);
 
 void render_debug3(renderer_t* renderer, Game game);
 
@@ -132,11 +125,7 @@ enum demo_key_t {
 
   IN_LEVEL_1,
   IN_LEVEL_2,
-  IN_LEVEL_3_1,
-  IN_LEVEL_3_2,
-  IN_LEVEL_3_3,
-  IN_LEVEL_3_4,
-  IN_LEVEL_3_5,
+  IN_LEVEL_3,
   LEVEL_COUNT,
 
   IN_JUMP,
@@ -157,7 +146,9 @@ enum demo_key_t {
   IN_TOGGLE_GRID,
   IN_TOGGLE_LOCK,
   IN_INCREASE,
-  IN_DECREASE
+  IN_DECREASE,
+  IN_INCREASE_FAST,
+  IN_DECREASE_FAST
 };
 
 ////////////////////////////////////////////////////////////////////////////////

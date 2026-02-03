@@ -68,8 +68,7 @@ void glGetShaderiv(GLuint data_id, GLenum pname, GLint* params) {
   *params = js_glGetShaderParameter(data_id, pname);
 }
 
-extern int
-js_glGetShaderInfoLog(GLuint data_id, GLsizei len, char* out_log);
+extern int js_glGetShaderInfoLog(GLuint data_id, GLsizei len, char* out_log);
 void glGetShaderInfoLog(
   GLuint shader, GLsizei maxLength, GLsizei *length, GLchar* infoLog
 ) {
@@ -97,6 +96,11 @@ void glGetProgramInfoLog(
 extern void glUseProgram(GLuint program);
 
 extern void glDeleteProgram(GLuint program);
+
+extern GLint js_glGetAttribLocation(GLuint data_id, const char* name, int len);
+GLint glGetAttribLocation(GLuint program, const GLchar* name) {
+  return js_glGetAttribLocation(program, name, strlen(name));
+}
 
 extern GLint js_glGetUniformLocation(GLuint data_id, const char* nam, int len);
 GLint glGetUniformLocation(GLuint program, const GLchar* name) {
@@ -134,6 +138,10 @@ extern void glBufferData(
   GLenum target, GLsizeiptr size, const void* src, GLenum usage
 );
 
+extern void glBufferSubData(
+  GLenum target, GLintptr offset, GLsizeiptr size, const void* data
+);
+
 extern void js_glDeleteBuffer(int data_id);
 void glDeleteBuffers(GLsizei n, const GLuint* buffers) {
   for (GLsizei i = 0; i < n; ++i) js_glDeleteBuffer(buffers[i]);
@@ -149,18 +157,32 @@ extern void js_glDeleteVertexArray(int data_id);
 void glDeleteVertexArrays(GLsizei n, const GLuint* arrays) {
   for (GLsizei i = 0; i < n; ++i) js_glDeleteVertexArray(arrays[i]);
 }
+
 extern void glVertexAttribPointer(
   GLuint index, GLint size, GLenum type, GLboolean normalized,
-  GLsizei stride, const void* pointer);
+  GLsizei stride, const void* pointer
+);
 
 extern void glEnableVertexAttribArray(GLuint index);
 
 extern void glDisableVertexAttribArray(GLuint index);
 
-extern void glDrawArrays(GLenum mode, GLint first, GLsizei count);
+extern void glVertexAttribDivisor(GLuint index, GLuint divisor);
+
+extern void glDrawArrays(
+  GLenum mode, GLint first, GLsizei count
+);
 
 extern void glDrawElements(
   GLenum mode, GLsizei count, GLenum type, const void* offset
+);
+
+extern void glDrawArraysInstanced(
+  GLenum mode, GLint first, GLsizei count, GLsizei primcount
+);
+
+extern void glDrawElementsInstanced(
+  GLenum mode, GLsizei, GLenum type, const void* offset, GLsizei primcount
 );
 
 ////////////////////////////////////////////////////////////////////////////////

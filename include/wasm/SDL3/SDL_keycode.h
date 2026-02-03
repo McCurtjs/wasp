@@ -130,50 +130,50 @@ typedef Uint32 SDL_Keycode;
 #define SDLK_PIPE                   0x0000007cu /**< '|' */
 #define SDLK_RIGHTBRACE             0x0000007du /**< '}' */
 #define SDLK_TILDE                  0x0000007eu /**< '~' */
-#define SDLK_DELETE                 0x0000007fu /**< '\x7F' */
+#define SDLK_DELETE                 0x0000002eu
 #define SDLK_PLUSMINUS              0x000000b1u /**< '\xB1' */
 #define SDLK_CAPSLOCK               0x40000039u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_CAPSLOCK) */
-#define SDLK_F1                     0x4000003au /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_F1) */
-#define SDLK_F2                     0x4000003bu /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_F2) */
-#define SDLK_F3                     0x4000003cu /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_F3) */
-#define SDLK_F4                     0x4000003du /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_F4) */
-#define SDLK_F5                     0x4000003eu /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_F5) */
-#define SDLK_F6                     0x4000003fu /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_F6) */
-#define SDLK_F7                     0x40000040u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_F7) */
-#define SDLK_F8                     0x40000041u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_F8) */
-#define SDLK_F9                     0x40000042u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_F9) */
-#define SDLK_F10                    0x40000043u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_F10) */
-#define SDLK_F11                    0x40000044u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_F11) */
-#define SDLK_F12                    0x40000045u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_F12) */
-#define SDLK_PRINTSCREEN            0x40000046u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_PRINTSCREEN) */
-#define SDLK_SCROLLLOCK             0x40000047u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_SCROLLLOCK) */
-#define SDLK_PAUSE                  0x40000048u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_PAUSE) */
-#define SDLK_INSERT                 0x40000049u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_INSERT) */
-#define SDLK_HOME                   0x4000004au /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_HOME) */
-#define SDLK_PAGEUP                 0x4000004bu /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_PAGEUP) */
-#define SDLK_END                    0x4000004du /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_END) */
-#define SDLK_PAGEDOWN               0x4000004eu /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_PAGEDOWN) */
-#define SDLK_RIGHT                  0x4000004fu /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_RIGHT) */
-#define SDLK_LEFT                   0x40000050u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_LEFT) */
-#define SDLK_DOWN                   0x40000051u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_DOWN) */
-#define SDLK_UP                     0x40000052u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_UP) */
-#define SDLK_NUMLOCKCLEAR           0x40000053u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_NUMLOCKCLEAR) */
-#define SDLK_KP_DIVIDE              0x40000054u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_KP_DIVIDE) */
-#define SDLK_KP_MULTIPLY            0x40000055u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_KP_MULTIPLY) */
-#define SDLK_KP_MINUS               0x40000056u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_KP_MINUS) */
-#define SDLK_KP_PLUS                0x40000057u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_KP_PLUS) */
-#define SDLK_KP_ENTER               0x40000058u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_KP_ENTER) */
-#define SDLK_KP_1                   0x40000059u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_KP_1) */
-#define SDLK_KP_2                   0x4000005au /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_KP_2) */
-#define SDLK_KP_3                   0x4000005bu /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_KP_3) */
-#define SDLK_KP_4                   0x4000005cu /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_KP_4) */
-#define SDLK_KP_5                   0x4000005du /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_KP_5) */
-#define SDLK_KP_6                   0x4000005eu /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_KP_6) */
-#define SDLK_KP_7                   0x4000005fu /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_KP_7) */
-#define SDLK_KP_8                   0x40000060u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_KP_8) */
-#define SDLK_KP_9                   0x40000061u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_KP_9) */
-#define SDLK_KP_0                   0x40000062u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_KP_0) */
-#define SDLK_KP_PERIOD              0x40000063u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_KP_PERIOD) */
+#define SDLK_F1                     0x00000070u
+#define SDLK_F2                     0x00000071u
+#define SDLK_F3                     0x00000072u
+#define SDLK_F4                     0x00000073u
+#define SDLK_F5                     0x00000074u
+#define SDLK_F6                     0x00000075u
+#define SDLK_F7                     0x00000076u
+#define SDLK_F8                     0x00000077u
+#define SDLK_F9                     0x00000078u
+#define SDLK_F10                    0x00000079u
+#define SDLK_F11                    0x0000007au
+#define SDLK_F12                    0x0000007bu
+#define SDLK_PRINTSCREEN            0x00000046u
+#define SDLK_SCROLLLOCK             0x00000091u
+#define SDLK_PAUSE                  0x00000013u
+#define SDLK_INSERT                 0x0000002du
+#define SDLK_HOME                   0x00000024u
+#define SDLK_PAGEUP                 0x00000021u
+#define SDLK_END                    0x00000023u
+#define SDLK_PAGEDOWN               0x00000022u
+#define SDLK_RIGHT                  0x00000027u
+#define SDLK_LEFT                   0x00000025u
+#define SDLK_DOWN                   0x00000028u
+#define SDLK_UP                     0x00000026u
+#define SDLK_NUMLOCKCLEAR           0x00000090u
+#define SDLK_KP_DIVIDE              0x0000006fu
+#define SDLK_KP_MULTIPLY            0x0000006au
+#define SDLK_KP_MINUS               0x0000006du
+#define SDLK_KP_PLUS                0x0000006bu
+#define SDLK_KP_ENTER               0x0000000du
+#define SDLK_KP_1                   0x00000061u
+#define SDLK_KP_2                   0x00000062u
+#define SDLK_KP_3                   0x00000063u
+#define SDLK_KP_4                   0x00000064u
+#define SDLK_KP_5                   0x00000065u
+#define SDLK_KP_6                   0x00000066u
+#define SDLK_KP_7                   0x00000067u
+#define SDLK_KP_8                   0x00000068u
+#define SDLK_KP_9                   0x00000069u
+#define SDLK_KP_0                   0x00000060u
+#define SDLK_KP_PERIOD              0x0000006eu
 #define SDLK_APPLICATION            0x40000065u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_APPLICATION) */
 #define SDLK_POWER                  0x40000066u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_POWER) */
 #define SDLK_KP_EQUALS              0x40000067u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_KP_EQUALS) */
@@ -199,10 +199,10 @@ typedef Uint32 SDL_Keycode;
 #define SDLK_CUT                    0x4000007bu /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_CUT) */
 #define SDLK_COPY                   0x4000007cu /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_COPY) */
 #define SDLK_PASTE                  0x4000007du /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_PASTE) */
-#define SDLK_FIND                   0x4000007eu /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_FIND) */
-#define SDLK_MUTE                   0x4000007fu /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_MUTE) */
-#define SDLK_VOLUMEUP               0x40000080u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_VOLUMEUP) */
-#define SDLK_VOLUMEDOWN             0x40000081u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_VOLUMEDOWN) */
+#define SDLK_FIND                   0x000000b7u
+#define SDLK_MUTE                   0x000000adu
+#define SDLK_VOLUMEUP               0x000000afu
+#define SDLK_VOLUMEDOWN             0x000000aeu
 #define SDLK_KP_COMMA               0x40000085u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_KP_COMMA) */
 #define SDLK_KP_EQUALSAS400         0x40000086u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_KP_EQUALSAS400) */
 #define SDLK_ALTERASE               0x40000099u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_ALTERASE) */
@@ -263,14 +263,14 @@ typedef Uint32 SDL_Keycode;
 #define SDLK_KP_OCTAL               0x400000dbu /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_KP_OCTAL) */
 #define SDLK_KP_DECIMAL             0x400000dcu /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_KP_DECIMAL) */
 #define SDLK_KP_HEXADECIMAL         0x400000ddu /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_KP_HEXADECIMAL) */
-#define SDLK_LCTRL                  0x400000e0u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_LCTRL) */
-#define SDLK_LSHIFT                 0x400000e1u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_LSHIFT) */
-#define SDLK_LALT                   0x400000e2u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_LALT) */
+#define SDLK_LCTRL                  0x00000011u
+#define SDLK_LSHIFT                 0x00000010u
+#define SDLK_LALT                   0x00000012u
 #define SDLK_LGUI                   0x400000e3u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_LGUI) */
-#define SDLK_RCTRL                  0x400000e4u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_RCTRL) */
-#define SDLK_RSHIFT                 0x400000e5u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_RSHIFT) */
-#define SDLK_RALT                   0x400000e6u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_RALT) */
-#define SDLK_RGUI                   0x400000e7u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_RGUI) */
+#define SDLK_RCTRL                  0x00000011u
+#define SDLK_RSHIFT                 0x00000010u
+#define SDLK_RALT                   0x00000012u
+#define SDLK_RGUI                   0x0000005cu
 #define SDLK_MODE                   0x40000101u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_MODE) */
 #define SDLK_SLEEP                  0x40000102u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_SLEEP) */
 #define SDLK_WAKE                   0x40000103u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_WAKE) */
@@ -281,11 +281,11 @@ typedef Uint32 SDL_Keycode;
 #define SDLK_MEDIA_RECORD           0x40000108u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_MEDIA_RECORD) */
 #define SDLK_MEDIA_FAST_FORWARD     0x40000109u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_MEDIA_FAST_FORWARD) */
 #define SDLK_MEDIA_REWIND           0x4000010au /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_MEDIA_REWIND) */
-#define SDLK_MEDIA_NEXT_TRACK       0x4000010bu /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_MEDIA_NEXT_TRACK) */
-#define SDLK_MEDIA_PREVIOUS_TRACK   0x4000010cu /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_MEDIA_PREVIOUS_TRACK) */
-#define SDLK_MEDIA_STOP             0x4000010du /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_MEDIA_STOP) */
+#define SDLK_MEDIA_NEXT_TRACK       0x000000b0u
+#define SDLK_MEDIA_PREVIOUS_TRACK   0x000000b1u
+#define SDLK_MEDIA_STOP             0x000000b2u
 #define SDLK_MEDIA_EJECT            0x4000010eu /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_MEDIA_EJECT) */
-#define SDLK_MEDIA_PLAY_PAUSE       0x4000010fu /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_MEDIA_PLAY_PAUSE) */
+#define SDLK_MEDIA_PLAY_PAUSE       0x000000b3u
 #define SDLK_MEDIA_SELECT           0x40000110u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_MEDIA_SELECT) */
 #define SDLK_AC_NEW                 0x40000111u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_AC_NEW) */
 #define SDLK_AC_OPEN                0x40000112u /**< SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_AC_OPEN) */

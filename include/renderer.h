@@ -67,7 +67,10 @@ typedef void (*renderer_delete_fn_t)(renderer_t**);
 typedef struct render_group_key_t {
   Model model;
   Material material;
-  bool is_static;
+  size_t is_static;
+  // Note: "is_static" can't just be a bool or the padding will be uninitialized
+  //    which causes errors because this key is used for hashing. None of the
+  //    methods I tried to prevent optimizing out memset worked in clang/wasm.
 } render_group_key_t;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -80,9 +83,7 @@ typedef struct render_group_t {
   union {
     render_group_key_t key;
     struct {
-      union {
-        Model model;
-      };
+      Model model;
       Material material;
       bool is_static;
     };

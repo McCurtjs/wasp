@@ -301,7 +301,7 @@ static void _wizard_baddies(Game game, entity_t* e, float dt) {
       .pos = pos,
       .scale = 2.0f,
       .tint = v3f(1.0f, 0.6f, 0.6f),
-      .onrender = render_pbr,
+      .renderer = renderer_pbr,
       .behavior = behavior_baddy,
     });
   }
@@ -351,6 +351,30 @@ void behavior_camera_monument(Game game, entity_t* e, float dt) {
     input_pointer_lock();
   }
 
+  if (input_triggered(IN_INCREASE)) {
+    game->demo->monument_extent += 1;
+    game->next_scene = game->scene;
+  }
+
+  if (input_triggered(IN_DECREASE)) {
+    game->demo->monument_extent -= 1;
+    game->next_scene = game->scene;
+  }
+
+  if (input_triggered(IN_INCREASE_FAST)) {
+    game->demo->monument_extent += 10;
+    game->next_scene = game->scene;
+  }
+
+  if (input_triggered(IN_DECREASE_FAST)) {
+    game->demo->monument_extent -= 10;
+    game->next_scene = game->scene;
+  }
+
+  if (game->next_scene == game->scene) {
+    str_log("[Game.monument] Extent: {}", game->demo->monument_extent);
+  }
+
   vec3 direction = game->camera.front.xyz;
   plane_speed += v3dot(direction, v3down) * dt * 9.8f;
   if (plane_speed < PLANE_SPEED_MIN) {
@@ -384,7 +408,6 @@ void behavior_camera_monument(Game game, entity_t* e, float dt) {
 
 #ifndef __WASM__
 #include "ui.h"
-#endif
 
 static void _normalize_floats_fixed(float* floats, int count, int fixed_ind) {
   assert(count >= 0 && fixed_ind >= 0);
@@ -420,6 +443,8 @@ struct editor_state_t {
   bool hide_scene_list;
 } editor_state;
 
+#endif // ifndef __WASM__
+
 void behavior_grid_toggle(Game game, entity_t* e, float dt) {
   UNUSED(dt);
   if (input_triggered(IN_TOGGLE_GRID)) {
@@ -438,7 +463,7 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
     game->next_scene = 1;
   }
 
-  if (input_triggered(IN_LEVEL_3_1)) {
+  if (input_triggered(IN_LEVEL_3)) {
     game->next_scene = 2;
   }
 
@@ -681,6 +706,15 @@ void behavior_gear_rotate_ccw(Game game, entity_t* e, float dt) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Sun-gear rotation around the Y axis
+////////////////////////////////////////////////////////////////////////////////
+
+void behavior_gear_rotate_sun(Game game, entity_t* e, float dt) {
+  UNUSED(game);
+  entity_rotate_a(e, v3down, dt);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Orients the entity to face the camera along its local +Z axis
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -750,11 +784,6 @@ void render_basic(Game game, entity_t* e) {
   model_render(e->model);
 }
 
-void render_basic2(renderer_t* renderer, Game game, entity_t* e) {
-  UNUSED(renderer);
-  render_basic(game, e);
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // Renders the debug objects
 ////////////////////////////////////////////////////////////////////////////////
@@ -762,11 +791,6 @@ void render_basic2(renderer_t* renderer, Game game, entity_t* e) {
 void render_debug(Game game, entity_t* e) {
   render_basic(game, e);
   draw_render();
-}
-
-void render_debug2(renderer_t* renderer, Game game, entity_t* e) {
-  UNUSED(renderer);
-  render_debug(game, e);
 }
 
 void render_debug3(renderer_t* renderer, Game game) {
