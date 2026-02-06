@@ -1,7 +1,7 @@
 /*******************************************************************************
 * MIT License
 *
-* Copyright (c) 2025 Curtis McCoy
+* Copyright (c) 2026 Curtis McCoy
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -30,55 +30,60 @@
 static texture_t tex_default_white = { 0 };
 static texture_t tex_default_normal = { 0 };
 
-static const GLenum _rt_formats_internal[] = {
+static const GLenum _rt_formats_internal[TF_SUPPORTED_MAX] = {
   GL_RGB8, GL_RGBA8,
-  GL_RGBA16F, GL_RGB32F, GL_RGBA32F, GL_R32F, GL_RG16F,
+  GL_RGBA16F, GL_RGB32F, GL_RGBA32F, GL_R8, GL_R32F, GL_RG16F,
   GL_RGB10_A2,
   GL_DEPTH_COMPONENT32F
 };
 
-static const GLenum _rt_formats[] = {
+static const GLenum _rt_formats[TF_SUPPORTED_MAX] = {
   GL_RGB, GL_RGBA,
-  GL_RGBA, GL_RGB, GL_RGBA, GL_RED, GL_RG,
+  GL_RGBA, GL_RGB, GL_RGBA, GL_RED, GL_RED, GL_RG,
   GL_RGBA,
   GL_DEPTH_COMPONENT
 };
 
-static const GLenum _rt_format_type[] = {
+static const GLenum _rt_format_type[TF_SUPPORTED_MAX] = {
   GL_UNSIGNED_BYTE, GL_UNSIGNED_BYTE,
-  GL_FLOAT, GL_FLOAT, GL_FLOAT, GL_FLOAT, GL_FLOAT,
+  GL_FLOAT, GL_FLOAT, GL_FLOAT, GL_UNSIGNED_BYTE, GL_FLOAT, GL_FLOAT,
   GL_UNSIGNED_INT_2_10_10_10_REV,
   GL_FLOAT
 };
+
+static const int _rt_format_bytes[TF_SUPPORTED_MAX] = {
+  3, 4,
+  8, 12, 16, 1, 4, 4,
+  4,
+  4
+};
+
+texture_format_t _tex_format_from_image(Image image) {
+  switch (image->channels) {
+#ifdef __WASM__
+    case 0: return TF_RGBA_8;
+#endif
+    case 1: return TF_R_8;
+    case 3: return TF_RGB_8;
+    case 4: return TF_RGBA_8;
+    default: assert(false);
+  }
+  return TF_RGB_8;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Initialize a texture from loaded image data
 ////////////////////////////////////////////////////////////////////////////////
 
 texture_t tex_from_image(Image image) {
+  assert(image);
+  assert(image->ready);
+
   texture_t ret = { 0 };
 
   if (!image || !image->ready) return ret;
 
-  GLenum fmt_internal = GL_RGBA8;
-  GLenum fmt = GL_RGBA;
-
-  if (image->channels == 3) {
-    fmt = GL_RGB;
-    fmt_internal = GL_RGB8;
-  }
-  else if (image->channels == 1) {
-    fmt = GL_RED;
-    fmt_internal = GL_R8;
-  }
-  else if
-  (   image->channels != 4
-#ifdef __WASM__
-  &&  image->channels != 0
-#endif
-  ) {
-    assert(false);
-  }
+  texture_format_t format = _tex_format_from_image(image);
 
 #ifdef __WASM__
   glPixelStorei(GL_UNPACK_FLIP_Y_WEBGL, GL_TRUE);
@@ -89,15 +94,14 @@ texture_t tex_from_image(Image image) {
   glGenTextures(1, &ret.handle);
   glBindTexture(GL_TEXTURE_2D, ret.handle);
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-  glTexImage2D
-  ( GL_TEXTURE_2D
-  , 0
-  , fmt_internal
+  glTexImage2D(GL_TEXTURE_2D
+  , 0 // Mipmap level
+  , _rt_formats_internal[format]
   , image->width
   , image->height
-  , 0
-  , fmt
-  , GL_UNSIGNED_BYTE
+  , 0 // border (always 0)
+  , _rt_formats[format]
+  , _rt_format_type[format]
   , image->data
   );
 
@@ -130,6 +134,8 @@ texture_t tex_from_image(Image image) {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
+  glBindTexture(GL_TEXTURE_2D, 0);
+
   return ret;
 }
 
@@ -159,13 +165,12 @@ texture_t tex_from_data(
 
   glBindTexture(GL_TEXTURE_2D, texture.handle);
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-  glTexImage2D
-  ( GL_TEXTURE_2D
-  , 0
+  glTexImage2D(GL_TEXTURE_2D
+  , 0 // Mipmap level
   , _rt_formats_internal[format]
   , size.w
   , size.h
-  , 0
+  , 0 // border (must be 0)
   , _rt_formats[format]
   , _rt_format_type[format]
   , data
@@ -180,6 +185,8 @@ texture_t tex_from_data(
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
+  glBindTexture(GL_TEXTURE_2D, 0);
+
   return texture;
 }
 
@@ -190,13 +197,13 @@ texture_t tex_from_data(
 texture_t tex_generate(texture_format_t format, vec2i size) {
   texture_t texture;
   assert(format >= 0 && format < TF_SUPPORTED_MAX);
+  assert(size.x > 0 && size.y > 0);
 
   glGenTextures(1, &texture.handle);
 
   glBindTexture(GL_TEXTURE_2D, texture.handle);
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-  glTexImage2D
-  ( GL_TEXTURE_2D
+  glTexImage2D(GL_TEXTURE_2D
   , 0
   , _rt_formats_internal[format]
   , size.w
@@ -211,6 +218,8 @@ texture_t tex_generate(texture_format_t format, vec2i size) {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+  glBindTexture(GL_TEXTURE_2D, 0);
 
   return texture;
 }
@@ -256,4 +265,184 @@ void tex_apply(texture_t texture, uint slot, int sampler) {
 void tex_free(texture_t* texture) {
   glDeleteTextures(1, &texture->handle);
   texture->handle = 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// Texture Array
+////////////////////////////////////////////////////////////////////////////////
+
+texture_array_t tex_arr_generate(
+  texture_format_t format, vec2i size, int layers
+) {
+  assert(format >= 0 && format < TF_SUPPORTED_MAX);
+  assert(size.x > 0 && size.y > 0);
+  assert(layers > 0);
+
+  texture_array_t ret = {
+    .format = format,
+    .size = size,
+    .layers = layers,
+  };
+
+  glGenTextures(1, &ret.handle);
+  glBindTexture(GL_TEXTURE_2D_ARRAY, ret.handle);
+
+  GLsizei mip_levels = 4;
+  glTexStorage3D(GL_TEXTURE_2D_ARRAY
+  , mip_levels
+  , _rt_formats_internal[format]
+  , size.w
+  , size.h
+  , layers
+  );
+
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+  glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+
+  return ret;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void tex_arr_set_layer(
+  texture_array_t tex, int layer, Image image
+) {
+  assert(tex.handle);
+  assert(layer >= 0 && layer < tex.layers);
+  assert(image);
+  assert(image->ready);
+  assert(image->width == tex.size.w);
+  assert(image->height == tex.size.h);
+
+  glBindTexture(GL_TEXTURE_2D_ARRAY, tex.handle);
+
+  glTexSubImage3D(GL_TEXTURE_2D_ARRAY
+  , 0           // Mipmap level
+  , 0, 0, layer // x, y, z offsets
+  , tex.size.w
+  , tex.size.h
+  , 1           // depth of change
+  , _rt_formats[tex.format]
+  , _rt_format_type[tex.format]
+  , image->data
+  );
+
+  glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Generate a texture array from an image atlas/grid/spritesheet
+////////////////////////////////////////////////////////////////////////////////
+
+#include <stdlib.h>
+#include <string.h>
+
+texture_array_t tex_arr_from_image(Image image, vec2i dim) {
+  assert(image);
+  assert(image->ready);
+  assert(dim.x > 0 && dim.y > 0);
+
+  texture_array_t ret = {
+    .format = _tex_format_from_image(image),
+    .size = v2i(image->width / dim.x, image->height / dim.h),
+    .layers = dim.x * dim.y,
+  };
+
+  glGenTextures(1, &ret.handle);
+  glBindTexture(GL_TEXTURE_2D_ARRAY, ret.handle);
+
+  if (dim.x == 1) {
+    glTexImage3D(GL_TEXTURE_2D_ARRAY
+    , 0 // target level (0 to hit all imagse in the vertical atlas)
+    , _rt_formats_internal[ret.format]
+    , ret.size.w
+    , ret.size.h
+    , ret.layers
+    , 0 // Border (must be 0)
+    , _rt_formats[ret.format]
+    , _rt_format_type[ret.format]
+    , image->data
+    );
+  }
+  else {
+    int cell_width = _rt_format_bytes[ret.format] * ret.size.w;
+    int full_width = cell_width * dim.w;
+    int cell_size = cell_width * ret.size.h;
+    int source_size_bytes = cell_size * ret.layers;
+
+    byte* data = malloc(source_size_bytes);
+    assert(data);
+
+    byte* iter_target = data;
+    const byte* iter_source = image->data;
+    for (int dy = 0; dy < dim.y; ++dy) {
+      for (int dx = 0; dx < dim.x; ++dx) {
+        const byte* source = iter_source + dx * cell_width;
+        for (int y = 0; y < ret.size.h; ++y) {
+          memcpy(iter_target, source, cell_width);
+          source += full_width;
+          iter_target += cell_width;
+        }
+      }
+      iter_source += cell_size * dim.w;
+    }
+
+    glTexImage3D(GL_TEXTURE_2D_ARRAY
+    , 0 // target level (0 to hit all imagse in the vertical atlas)
+    , _rt_formats_internal[ret.format]
+    , ret.size.w
+    , ret.size.h
+    , ret.layers
+    , 0 // Border (must be 0)
+    , _rt_formats[ret.format]
+    , _rt_format_type[ret.format]
+    , data
+    );
+
+    free(data);
+
+    tex_arr_gen_mips(ret);
+  }
+
+  glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+
+  return ret;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void tex_arr_apply(texture_array_t tarr, uint slot, int sampler) {
+  glActiveTexture(GL_TEXTURE0 + slot);
+  glUniform1i(sampler, slot);
+  glBindTexture(GL_TEXTURE_2D_ARRAY, tarr.handle);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void tex_arr_gen_mips(texture_array_t array) {
+  glBindTexture(GL_TEXTURE_2D_ARRAY, array.handle);
+  glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
+
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(
+    GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR
+  );
+
+  glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void tex_arr_free(texture_array_t* tex_array) {
+  glDeleteTextures(1, &tex_array->handle);
+  tex_array->handle = 0;
 }

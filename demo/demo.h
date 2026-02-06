@@ -32,6 +32,7 @@
 #include "model.h"
 #include "material.h"
 #include "render_target.h"
+#include "texture.h"
 
 typedef struct demo_shaders_t {
   Shader loading;

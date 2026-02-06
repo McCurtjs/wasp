@@ -248,6 +248,10 @@ void main() {
   //vec3 ambient_specular = env * (F * brdf.x + brdf.y);
   //frag_color.xyz += ambient_diffuse;// + ambient_specular;
 
+  /* // Test render a sampler
+  frag_color = texture(samp_test, vec3(uv, 0));
+  //*/
+
   /* // Test render the metallicness map
   frag_color = vec4(vec3(metallic), 1.0);
   //*/

@@ -35,6 +35,7 @@ typedef enum texture_format_t {
   TF_RGBA_16,
   TF_RGB_32,
   TF_RGBA_32,
+  TF_R_8,
   TF_R_32,
   TF_RG_16,
   TF_RGB_10_A_2,
@@ -56,6 +57,20 @@ texture_t tex_get_default_white(void);
 texture_t tex_get_default_normal(void);
 void      tex_apply(texture_t texture, uint slot, int sampler);
 void      tex_free(texture_t* handle);
+
+typedef struct texture_array_t {
+  uint handle;
+  texture_format_t format;
+  vec2i size;
+  int layers;
+} texture_array_t;
+
+texture_array_t tex_arr_from_image(Image, vec2i dim);
+texture_array_t tex_arr_generate(texture_format_t, vec2i size, int layers);
+void            tex_arr_set_layer(texture_array_t, int layer, Image);
+void            tex_arr_apply(texture_array_t, uint slot, int sampler);
+void            tex_arr_gen_mips(texture_array_t);
+void            tex_arr_free(texture_array_t* tex_array);
 
 #endif
 

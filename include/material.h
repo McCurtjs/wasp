@@ -51,6 +51,11 @@ typedef struct _opaque_Material_t {
   bool            use_metalness_map;
 }* Material;
 
+typedef struct _opaque_MaterialSet_t {
+  slice_t const name;
+  bool const ready;
+}* MaterialSet;
+
 Material  material_new(slice_t name);
 Material  material_new_load(slice_t name);
 Material  material_get(slice_t name);

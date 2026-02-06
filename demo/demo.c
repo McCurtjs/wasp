@@ -40,7 +40,12 @@ static File file_model_gear = NULL;
 
 static demo_t demo;
 
+static Image test_sprites = NULL;
+static Image test_crate = NULL;
+
 static int active_shader = 1;
+
+texture_array_t test_tex_arr;
 
 static renderer_t _renderer_basic = {
   .name = "Basic",
@@ -193,6 +198,9 @@ bool wasp_preload(Game game) {
   demo.materials.renderite->weight_roughness = 0.2f;
   demo.materials.renderite->weight_metalness = 0.8f;
 
+  test_sprites = img_load_async(S("./res/textures/test_sprites.png"));
+  test_crate = img_load_async(S("./res/textures/crate.png"));
+
   material_load_all_async();
 
   demo.shaders.basic = shader_new_load_async(S("basic_deferred"));
@@ -236,6 +244,15 @@ bool wasp_load (Game game, int await_count, float dt) {
     TF_RGB_8, TF_RG_16, TF_RGB_10_A_2, TF_DEPTH_32
   );
   rt_build(game->demo->render_target, game->window);
+
+  //test_tex_arr = tex_arr_generate(TF_RGBA_8, v2i(512, 512), 2);
+  //tex_arr_set_layer(test_tex_arr, 0, test_sprites);
+  //tex_arr_set_layer(test_tex_arr, 1, test_crate);
+  test_tex_arr = tex_arr_from_image(test_sprites, v2i(4, 4));
+  img_delete(&test_sprites);
+  img_delete(&test_crate);
+
+  tex_arr_gen_mips(test_tex_arr);
 
   shader_build_all();
   material_build_all();
