@@ -30,32 +30,24 @@
 static texture_t tex_default_white = { 0 };
 static texture_t tex_default_normal = { 0 };
 
-static const GLenum _rt_formats_internal[TF_SUPPORTED_MAX] = {
-  GL_RGB8, GL_RGBA8,
-  GL_RGBA16F, GL_RGB32F, GL_RGBA32F, GL_R8, GL_R32F, GL_RG16F,
-  GL_RGB10_A2,
-  GL_DEPTH_COMPONENT32F
-};
+typedef struct rt_format_t {
+  int     size;
+  GLenum  format;
+  GLenum  internal;
+  GLenum  type;
+} rt_format_t;
 
-static const GLenum _rt_formats[TF_SUPPORTED_MAX] = {
-  GL_RGB, GL_RGBA,
-  GL_RGBA, GL_RGB, GL_RGBA, GL_RED, GL_RED, GL_RG,
-  GL_RGBA,
-  GL_DEPTH_COMPONENT
-};
-
-static const GLenum _rt_format_type[TF_SUPPORTED_MAX] = {
-  GL_UNSIGNED_BYTE, GL_UNSIGNED_BYTE,
-  GL_FLOAT, GL_FLOAT, GL_FLOAT, GL_UNSIGNED_BYTE, GL_FLOAT, GL_FLOAT,
-  GL_UNSIGNED_INT_2_10_10_10_REV,
-  GL_FLOAT
-};
-
-static const int _rt_format_bytes[TF_SUPPORTED_MAX] = {
-  3, 4,
-  8, 12, 16, 1, 4, 4,
-  4,
-  4
+static const rt_format_t _rt_format[TF_SUPPORTED_MAX] = {
+  { 3,  GL_RGB,   GL_RGB8,      GL_UNSIGNED_BYTE },
+  { 4,  GL_RGBA,  GL_RGBA8,     GL_UNSIGNED_BYTE },
+  { 1,  GL_RED,   GL_R8,        GL_UNSIGNED_BYTE },
+  { 8,  GL_RGBA,  GL_RGBA16F,   GL_FLOAT },
+  { 4,  GL_RG,    GL_RG16F,     GL_FLOAT },
+  { 12, GL_RGB,   GL_RGB32F,    GL_FLOAT },
+  { 16, GL_RGBA,  GL_RGBA32F,   GL_FLOAT },
+  { 4,  GL_RED,   GL_R32F,      GL_FLOAT },
+  { 4,  GL_RGBA,  GL_RGB10_A2,  GL_UNSIGNED_INT_2_10_10_10_REV },
+  { 4,  GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT32F,  GL_FLOAT }
 };
 
 texture_format_t _tex_format_from_image(Image image) {
@@ -96,12 +88,12 @@ texture_t tex_from_image(Image image) {
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
   glTexImage2D(GL_TEXTURE_2D
   , 0 // Mipmap level
-  , _rt_formats_internal[format]
+  , _rt_format[format].internal
   , image->width
   , image->height
   , 0 // border (always 0)
-  , _rt_formats[format]
-  , _rt_format_type[format]
+  , _rt_format[format].format
+  , _rt_format[format].type
   , image->data
   );
 
@@ -167,12 +159,12 @@ texture_t tex_from_data(
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
   glTexImage2D(GL_TEXTURE_2D
   , 0 // Mipmap level
-  , _rt_formats_internal[format]
+  , _rt_format[format].internal
   , size.w
   , size.h
   , 0 // border (must be 0)
-  , _rt_formats[format]
-  , _rt_format_type[format]
+  , _rt_format[format].format
+  , _rt_format[format].type
   , data
   );
 
@@ -205,12 +197,12 @@ texture_t tex_generate(texture_format_t format, vec2i size) {
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
   glTexImage2D(GL_TEXTURE_2D
   , 0
-  , _rt_formats_internal[format]
+  , _rt_format[format].internal
   , size.w
   , size.h
   , 0
-  , _rt_formats[format]
-  , _rt_format_type[format]
+  , _rt_format[format].format
+  , _rt_format[format].type
   , NULL
   );
 
@@ -294,7 +286,7 @@ texture_array_t tex_arr_generate(
   GLsizei mip_levels = 4;
   glTexStorage3D(GL_TEXTURE_2D_ARRAY
   , mip_levels
-  , _rt_formats_internal[format]
+  , _rt_format[format].internal
   , size.w
   , size.h
   , layers
@@ -330,9 +322,9 @@ void tex_arr_set_layer(
   , 0, 0, layer // x, y, z offsets
   , tex.size.w
   , tex.size.h
-  , 1           // depth of change
-  , _rt_formats[tex.format]
-  , _rt_format_type[tex.format]
+  , 1           // depth of change, only doing one layer at a time
+  , _rt_format[tex.format].format
+  , _rt_format[tex.format].type
   , image->data
   );
 
@@ -363,18 +355,18 @@ texture_array_t tex_arr_from_image(Image image, vec2i dim) {
   if (dim.x == 1) {
     glTexImage3D(GL_TEXTURE_2D_ARRAY
     , 0 // target level (0 to hit all imagse in the vertical atlas)
-    , _rt_formats_internal[ret.format]
+    , _rt_format[ret.format].internal
     , ret.size.w
     , ret.size.h
     , ret.layers
     , 0 // Border (must be 0)
-    , _rt_formats[ret.format]
-    , _rt_format_type[ret.format]
+    , _rt_format[ret.format].format
+    , _rt_format[ret.format].type
     , image->data
     );
   }
   else {
-    int cell_width = _rt_format_bytes[ret.format] * ret.size.w;
+    int cell_width = _rt_format[ret.format].size * ret.size.w;
     int full_width = cell_width * dim.w;
     int cell_size = cell_width * ret.size.h;
     int source_size_bytes = cell_size * ret.layers;
@@ -398,13 +390,13 @@ texture_array_t tex_arr_from_image(Image image, vec2i dim) {
 
     glTexImage3D(GL_TEXTURE_2D_ARRAY
     , 0 // target level (0 to hit all imagse in the vertical atlas)
-    , _rt_formats_internal[ret.format]
+    , _rt_format[ret.format].internal
     , ret.size.w
     , ret.size.h
     , ret.layers
     , 0 // Border (must be 0)
-    , _rt_formats[ret.format]
-    , _rt_format_type[ret.format]
+    , _rt_format[ret.format].format
+    , _rt_format[ret.format].type
     , data
     );
 

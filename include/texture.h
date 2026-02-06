@@ -32,12 +32,12 @@
 typedef enum texture_format_t {
   TF_RGB_8,
   TF_RGBA_8,
+  TF_R_8,
   TF_RGBA_16,
+  TF_RG_16,
   TF_RGB_32,
   TF_RGBA_32,
-  TF_R_8,
   TF_R_32,
-  TF_RG_16,
   TF_RGB_10_A_2,
   TF_DEPTH_32,
   TF_SUPPORTED_MAX
