@@ -338,6 +338,35 @@ void tex_arr_set_layer(
 #include <stdlib.h>
 #include <string.h>
 
+static byte* _tex_arr_vertical_copy(texture_array_t t, Image image, vec2i dim) {
+  int cell_width = _rt_format[t.format].size * t.size.w;
+  int full_width = cell_width * dim.w;
+  int cell_size = cell_width * t.size.h;
+  int source_size_bytes = cell_size * t.layers;
+
+  byte* data = malloc(source_size_bytes);
+  assert(data);
+
+  byte* iter_target = data;
+  for (int dy = 0; dy < dim.y; ++dy) {
+    for (int dx = 0; dx < dim.x; ++dx) {
+      const byte* source = (byte*)image->data
+        + dx * cell_width
+        + (dim.y - dy - 1) * full_width * t.size.h;
+
+      for (int y = 0; y < t.size.h; ++y) {
+        memcpy(iter_target, source, cell_width);
+        source += full_width;
+        iter_target += cell_width;
+      }
+    }
+  }
+
+  return data;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 texture_array_t tex_arr_from_image(Image image, vec2i dim) {
   assert(image);
   assert(image->ready);
@@ -352,58 +381,27 @@ texture_array_t tex_arr_from_image(Image image, vec2i dim) {
   glGenTextures(1, &ret.handle);
   glBindTexture(GL_TEXTURE_2D_ARRAY, ret.handle);
 
-  if (dim.x == 1) {
-    glTexImage3D(GL_TEXTURE_2D_ARRAY
-    , 0 // target level (0 to hit all imagse in the vertical atlas)
-    , _rt_format[ret.format].internal
-    , ret.size.w
-    , ret.size.h
-    , ret.layers
-    , 0 // Border (must be 0)
-    , _rt_format[ret.format].format
-    , _rt_format[ret.format].type
-    , image->data
-    );
+  byte* data = NULL;
+
+  if (dim.x != 1) {
+    data = _tex_arr_vertical_copy(ret, image, dim);
   }
-  else {
-    int cell_width = _rt_format[ret.format].size * ret.size.w;
-    int full_width = cell_width * dim.w;
-    int cell_size = cell_width * ret.size.h;
-    int source_size_bytes = cell_size * ret.layers;
 
-    byte* data = malloc(source_size_bytes);
-    assert(data);
+  glTexImage3D(GL_TEXTURE_2D_ARRAY
+  , 0 // target level (0 to hit all imagse in the vertical atlas)
+  , _rt_format[ret.format].internal
+  , ret.size.w
+  , ret.size.h
+  , ret.layers
+  , 0 // Border (must be 0)
+  , _rt_format[ret.format].format
+  , _rt_format[ret.format].type
+  , data ? data : image->data
+  );
 
-    byte* iter_target = data;
-    const byte* iter_source = image->data;
-    for (int dy = 0; dy < dim.y; ++dy) {
-      for (int dx = 0; dx < dim.x; ++dx) {
-        const byte* source = iter_source + dx * cell_width;
-        for (int y = 0; y < ret.size.h; ++y) {
-          memcpy(iter_target, source, cell_width);
-          source += full_width;
-          iter_target += cell_width;
-        }
-      }
-      iter_source += cell_size * dim.w;
-    }
+  if (data) free(data);
 
-    glTexImage3D(GL_TEXTURE_2D_ARRAY
-    , 0 // target level (0 to hit all imagse in the vertical atlas)
-    , _rt_format[ret.format].internal
-    , ret.size.w
-    , ret.size.h
-    , ret.layers
-    , 0 // Border (must be 0)
-    , _rt_format[ret.format].format
-    , _rt_format[ret.format].type
-    , data
-    );
-
-    free(data);
-
-    tex_arr_gen_mips(ret);
-  }
+  tex_arr_gen_mips(ret);
 
   glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
 
