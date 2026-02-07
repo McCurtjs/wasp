@@ -221,8 +221,8 @@ void rt_bind(RenderTarget rt_in) {
   }
 
   // check to remove redundancy warning
-  if (!rt_is_bound(rt_in))
-    glBindFramebuffer(GL_FRAMEBUFFER, rt->handle);
+  //if (!rt_is_bound(rt_in))
+  glBindFramebuffer(GL_FRAMEBUFFER, rt->handle);
 
   color3 c = rt->clear_color;
   glClearColor(c.r, c.g, c.b, 1.f);
@@ -234,11 +234,11 @@ void rt_bind(RenderTarget rt_in) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void rt_bind_default(void) {
-  GLint bound_value = 0;
+  //GLint bound_value = 0;
 
   // check to remove redundancy warning
-  glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &bound_value);
-  if (bound_value == 0) return;
+  //glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &bound_value);
+  //if (bound_value == 0) return;
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   glBindRenderbuffer(GL_RENDERBUFFER, 0);

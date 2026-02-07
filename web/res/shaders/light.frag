@@ -12,7 +12,7 @@ uniform sampler2D samp_tex;
 uniform sampler2D samp_norm;
 uniform sampler2D samp_rough;
 uniform sampler2D samp_metal;
-uniform sampler2DArray samp_test;
+uniform highp sampler2DArray samp_test;
 
 uniform vec3 in_weights; // normal, roughness, metallic
 uniform vec3 in_tint;
@@ -36,9 +36,9 @@ vec2 oct_encode(vec3 n) {
 
 void main() {
 
-  //* // Get base texture color - discard fully transparent fragments
+  /* // Get base texture color - discard fully transparent fragments
   vec4 albedo = texture(samp_tex, vUV); /*/
-  vec4 albedo = texture(samp_test, vec3(vUV, 18)); //*/
+  vec4 albedo = texture(samp_test, vec3(vUV, 1)); //*/
 
   if (albedo.w == 0.0) discard;
   frag_color = albedo.xyz * vColor;

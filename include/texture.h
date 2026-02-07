@@ -68,6 +68,7 @@ typedef struct texture_array_t {
 texture_array_t tex_arr_from_image(Image, vec2i dim);
 texture_array_t tex_arr_generate(texture_format_t, vec2i size, int layers);
 void            tex_arr_set_layer(texture_array_t, int layer, Image);
+void            tex_arr_set_layers(texture_array_t, int layr, vec2i dim, Image);
 void            tex_arr_apply(texture_array_t, uint slot, int sampler);
 void            tex_arr_gen_mips(texture_array_t);
 void            tex_arr_free(texture_array_t* tex_array);

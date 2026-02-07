@@ -318,7 +318,7 @@ void renderer_callback_render(renderer_t* renderer, Game game) {
   int loc_sampler_norm = shader_uniform_loc(shader, "samp_norm");
   int loc_sampler_rough = shader_uniform_loc(shader, "samp_rough");
   int loc_sampler_metal = shader_uniform_loc(shader, "samp_metal");
-  int loc_sampler_test = shader_uniform_loc(shader, "samp_test");
+  //int loc_sampler_test = shader_uniform_loc(shader, "samp_test");
   int loc_props = shader_uniform_loc(shader, "in_weights");
 
   // apply globally shared uniforms
@@ -336,7 +336,7 @@ void renderer_callback_render(renderer_t* renderer, Game game) {
     tex_apply(group->material->map_normals, 1, loc_sampler_norm);
     tex_apply(group->material->map_roughness, 2, loc_sampler_rough);
     tex_apply(group->material->map_metalness, 3, loc_sampler_metal);
-    tex_arr_apply(test_tex_arr, 5, loc_sampler_test);
+    //tex_arr_apply(test_tex_arr, 5, loc_sampler_test);
     glUniform3fv(loc_props, 1, group->material->weights.f);
 
     // if the group's VAO hasn't been set, create it
@@ -351,5 +351,13 @@ void renderer_callback_render(renderer_t* renderer, Game game) {
     glBindVertexArray(group->vao);
     model_render_instanced(group->model, group->instances->size);
     glBindVertexArray(0);
+    /*
+    for (int i = 0; i < 4; ++i) {
+      glActiveTexture(GL_TEXTURE0 + i);
+      glBindTexture(GL_TEXTURE_2D, 0);
+    }
+    glActiveTexture(GL_TEXTURE0 + 5);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+    */
   }
 }

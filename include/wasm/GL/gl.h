@@ -81,6 +81,7 @@ typedef ptrdiff_t GLintptr;
 #define GL_BACK                           0x0405
 #define GL_FRONT_AND_BACK                 0x0408
 #define GL_TEXTURE_2D                     0x0DE1
+#define GL_TEXTURE_2D_ARRAY               0x8C1A
 #define GL_CULL_FACE                      0x0B44
 #define GL_BLEND                          0x0BE2
 #define GL_DITHER                         0x0BD0
@@ -215,6 +216,7 @@ typedef ptrdiff_t GLintptr;
 #define GL_TEXTURE_MIN_FILTER             0x2801
 #define GL_TEXTURE_WRAP_S                 0x2802
 #define GL_TEXTURE_WRAP_T                 0x2803
+#define GL_TEXTURE_WRAP_R                 0x8072
 #define GL_TEXTURE                        0x1702
 #define GL_TEXTURE_CUBE_MAP               0x8513
 #define GL_TEXTURE_BINDING_CUBE_MAP       0x8514
@@ -415,6 +417,18 @@ void    glTexImage2D(
           GLenum target, GLint level, GLint internalFormat,
           GLsizei width, GLsizei height, GLint border, GLenum format,
           GLenum type, const void* data);
+void    glTexImage3D(
+          GLenum target, GLint level, GLint internalformat,
+ 	        GLsizei width, GLsizei height, GLsizei depth,
+ 	        GLint border, GLenum format, GLenum type, const void* data);
+void    glTexStorage3D(
+          GLenum target, GLsizei levels, GLenum internalformat,
+          GLsizei width, GLsizei height, GLsizei depth);
+void    glTexSubImage3D(
+          GLenum target, GLint level,
+ 	        GLint xoffset, GLint yoffset, GLint zoffset,
+ 	        GLsizei width, GLsizei height, GLsizei depth,
+ 	        GLenum format, GLenum type, const void* pixels);
 void    glGenerateMipmap(GLenum target);
 void    glTexParameteri(GLenum target, GLenum pname, GLint param);
 void    glPixelStorei(GLenum pname, GLint param);

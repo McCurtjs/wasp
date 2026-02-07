@@ -339,11 +339,59 @@ function wasm_import_gl(imports, game) {
           let buffer = game.memory_f(data.buffer.begin, data.buffer.size / 4);
           game.gl.texImage2D(
             target, level, iFmt, width, height, 0, fmt, sType, buffer
-          )
+          );
         }
         else {
           console.log("Unknown buffer vs data type match");
         }
+      break;
+      default: return;
+    }
+  }
+
+  imports["glTexImage3D"] = (
+    target, level, iFmt, width, height, _border, format, type, image_id
+  ) => {
+    let data = game.data[image_id];
+    if (!data || !data.ready) return;
+
+    switch (data.type) {
+      case types.image:
+        game.gl.texImage3D(
+          target, level, iFmt, width, height, depth, 0, format, type, data.image
+        );
+      break;
+      case types.bytes:
+        let buffer = data.get_buffer();
+        game.gl.texImage3D(
+          target, level, iFmt, width, height, depth, 0, format, type, buffer
+        );
+      break;
+      default: return;
+    }
+  }
+
+  imports["glTexStorage3D"] = (target, levels, iFmt, width, height, depth) => {
+    game.gl.texStorage3D(target, levels, iFmt, width, height, depth);
+  }
+
+  imports["glTexSubImage3D"] = (
+    target, level, x, y, z, w, h, d, fmt, type, data_id
+  ) => {
+    let data = game.data[data_id];
+    if (!data || !data.ready) return;
+
+    switch (data.type) {
+      case types.image:
+        game.gl.texSubImage3D(
+          target, level, x, y, z, w, h, d, fmt, type, data.image
+        );
+      break;
+      case types.bytes:
+        if (type != game.gl.BYTE && type != game.gl.UNSIGNED_BYTE) return;
+        game.gl.texImageSub3D(
+          target, level, x, y, z, w, h, d, fmt, type, data.get_buffer()
+        );
       break;
       default: return;
     }

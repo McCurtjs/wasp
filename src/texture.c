@@ -136,8 +136,8 @@ texture_t tex_from_image(Image image) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef __WASM__
-extern void* js_buffer_create(const byte* bytes, uint size);
-extern void  js_buffer_delete(void* data_id);
+extern const void* js_buffer_create(const byte* bytes, uint size);
+extern void  js_buffer_delete(const void* data_id);
 #endif
 
 texture_t tex_from_data(
@@ -149,7 +149,7 @@ texture_t tex_from_data(
   glGenTextures(1, &texture.handle);
 
 #ifdef __WASM__
-  void* data_buffer = js_buffer_create(
+  const void* data_buffer = js_buffer_create(
     data, size.w * size.h * sizeof(float) * 3 * 3
   );
   data = data_buffer;
@@ -191,6 +191,9 @@ texture_t tex_generate(texture_format_t format, vec2i size) {
   assert(format >= 0 && format < TF_SUPPORTED_MAX);
   assert(size.x > 0 && size.y > 0);
 
+#ifdef __WASM__
+  glPixelStorei(GL_UNPACK_FLIP_Y_WEBGL, GL_TRUE);
+#endif
   glGenTextures(1, &texture.handle);
 
   glBindTexture(GL_TEXTURE_2D, texture.handle);
@@ -387,8 +390,19 @@ texture_array_t tex_arr_from_image(Image image, vec2i dim) {
     data = _tex_arr_vertical_copy(ret, image, dim);
   }
 
+#ifdef __WASM__
+  const void* source = image->data;
+  if (data) {
+    source = js_buffer_create(
+      data, ret.size.x * ret.size.y * ret.layers * _rt_format[ret.format].size
+    );
+  }
+#else
+  const void* source = data ? data : image->data;
+#endif
+
   glTexImage3D(GL_TEXTURE_2D_ARRAY
-  , 0 // target level (0 to hit all imagse in the vertical atlas)
+  , 0 // target level (0 to hit all images in the vertical atlas)
   , _rt_format[ret.format].internal
   , ret.size.w
   , ret.size.h
@@ -396,12 +410,18 @@ texture_array_t tex_arr_from_image(Image image, vec2i dim) {
   , 0 // Border (must be 0)
   , _rt_format[ret.format].format
   , _rt_format[ret.format].type
-  , data ? data : image->data
+  , source
   );
+
+#ifdef __WASM__
+  if (data) js_buffer_delete(source);
+#endif
 
   if (data) free(data);
 
+#ifndef __WASM__
   tex_arr_gen_mips(ret);
+#endif
 
   glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
 
