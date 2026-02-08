@@ -286,7 +286,7 @@ texture_array_t tex_arr_generate(
   glGenTextures(1, &ret.handle);
   glBindTexture(GL_TEXTURE_2D_ARRAY, ret.handle);
 
-  GLsizei mip_levels = 4;
+  GLsizei mip_levels = 1;
   glTexStorage3D(GL_TEXTURE_2D_ARRAY
   , mip_levels
   , _rt_format[format].internal
@@ -321,11 +321,9 @@ void tex_arr_set_layer(
   glBindTexture(GL_TEXTURE_2D_ARRAY, tex.handle);
 
   glTexSubImage3D(GL_TEXTURE_2D_ARRAY
-  , 0           // Mipmap level
-  , 0, 0, layer // x, y, z offsets
-  , tex.size.w
-  , tex.size.h
-  , 1           // depth of change, only doing one layer at a time
+  , 0                         // Mipmap level
+  , 0, 0, layer               // x, y, z offsets
+  , tex.size.w, tex.size.h, 1 // width/height/depth of change
   , _rt_format[tex.format].format
   , _rt_format[tex.format].type
   , image->data

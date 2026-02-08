@@ -67,6 +67,7 @@ void APIENTRY glDebugOutput
     case 0x20071: return; // buffer video memory allocation note
     case 0x20084: return; // "bound texture has no defined base level" - glClear
     case 0x20092: return; // shader compilation performance warning
+    case 0x00008: return; // "Redundant state change" (in glBindFrameBuffer)
     default: break;
   }
 
