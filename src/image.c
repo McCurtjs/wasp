@@ -111,6 +111,7 @@ Image_Internal img_default_normal = {
 
 extern void* js_image_open(Image_Internal* img, const char* src, uint src_len);
 extern void  js_image_delete(void* data_id);
+extern void  js_image_extract(void* dst, void* src, int dst_channels);
 
 extern void* js_buffer_create(const byte* bytes, uint size);
 extern void  js_buffer_delete(void* data_id);
@@ -136,6 +137,7 @@ void export(img_open_async_done) (
     str_log("  Failed ({}): using default", (size_t)img->data);
   }
 
+  img->channels = 4;
   img->ready = true;
 }
 
@@ -171,12 +173,6 @@ Image img_load_async_str(String filename) {
     .ready = true,
     .blend = true,
   };
-
-  static bool first_load = true;
-  if (first_load) {
-    stbi_set_flip_vertically_on_load(true);
-    first_load = false;
-  }
 
   img.data = stbi_load(
     img.filename->begin, &img.width, &img.height, &img.channels, 0
@@ -308,4 +304,38 @@ void img_delete(Image* pimg) {
 #endif
 
   *pimg = NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Copies the image data to an array with the designated number of channels
+////////////////////////////////////////////////////////////////////////////////
+
+void img_copy_data(void* dst, Image img_in, int channels) {
+  IMAGE_INTERNAL;
+  assert(img);
+  assert(dst);
+  assert(img->ready);
+  assert(img->data);
+  assert(channels > 0 && channels <= 4);
+  assert(channels <= img->channels);
+
+#ifdef __WASM__
+  js_image_extract(dst, img->data, channels);
+#else
+  size_t size_bytes = img->width * img->height * img->channels;
+  byte* dst_bytes = dst;
+  const byte* src_bytes = img->data;
+
+  if (channels == img->channels) {
+    memcpy(dst, img->data, size_bytes);
+    return;
+  }
+
+  size_t img_channels = img->channels;
+  for (size_t s = 0, d = 0; s < size_bytes; s += img_channels, d += channels) {
+    for (size_t i = 0; i < channels; ++i) {
+      dst_bytes[d + i] = src_bytes[s + i];
+    }
+  }
+#endif
 }

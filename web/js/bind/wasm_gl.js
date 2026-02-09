@@ -300,7 +300,7 @@ function wasm_import_gl(imports, game) {
 
   imports["glBindTexture"] = (target, data_id) => {
     let texture = null;
-    if (data_id != null) {
+    if (data_id != null && data_id != 0) {
       let data = game.data[data_id];
       if (!data || data.type != types.texture) return;
       texture = data.texture;
@@ -349,28 +349,6 @@ function wasm_import_gl(imports, game) {
     }
   }
 
-  imports["glTexImage3D"] = (
-    target, level, iFmt, width, height, _border, format, type, image_id
-  ) => {
-    let data = game.data[image_id];
-    if (!data || !data.ready) return;
-
-    switch (data.type) {
-      case types.image:
-        game.gl.texImage3D(
-          target, level, iFmt, width, height, depth, 0, format, type, data.image
-        );
-      break;
-      case types.bytes:
-        let buffer = data.get_buffer();
-        game.gl.texImage3D(
-          target, level, iFmt, width, height, depth, 0, format, type, buffer
-        );
-      break;
-      default: return;
-    }
-  }
-
   imports["glTexStorage3D"] = (target, levels, iFmt, width, height, depth) => {
     game.gl.texStorage3D(target, levels, iFmt, width, height, depth);
   }
@@ -389,7 +367,7 @@ function wasm_import_gl(imports, game) {
       break;
       case types.bytes:
         if (type != game.gl.BYTE && type != game.gl.UNSIGNED_BYTE) return;
-        game.gl.texImageSub3D(
+        game.gl.texSubImage3D(
           target, level, x, y, z, w, h, d, fmt, type, data.get_buffer()
         );
       break;

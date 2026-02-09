@@ -77,10 +77,6 @@ texture_t tex_from_image(Image image) {
 
   texture_format_t format = _tex_format_from_image(image);
 
-#ifdef __WASM__
-  glPixelStorei(GL_UNPACK_FLIP_Y_WEBGL, GL_TRUE);
-#endif
-
   GLenum err = glGetError();
 
   glGenTextures(1, &ret.handle);
@@ -136,8 +132,8 @@ texture_t tex_from_image(Image image) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef __WASM__
-extern const void* js_buffer_create(const byte* bytes, uint size);
-extern void  js_buffer_delete(const void* data_id);
+extern const void*  js_buffer_create(const byte* bytes, uint size);
+extern void         js_buffer_delete(const void* data_id);
 #endif
 
 texture_t tex_from_data(
@@ -191,9 +187,6 @@ texture_t tex_generate(texture_format_t format, vec2i size) {
   assert(format >= 0 && format < TF_SUPPORTED_MAX);
   assert(size.x > 0 && size.y > 0);
 
-#ifdef __WASM__
-  glPixelStorei(GL_UNPACK_FLIP_Y_WEBGL, GL_TRUE);
-#endif
   glGenTextures(1, &texture.handle);
 
   glBindTexture(GL_TEXTURE_2D, texture.handle);
@@ -339,7 +332,9 @@ void tex_arr_set_layer(
 #include <stdlib.h>
 #include <string.h>
 
-static byte* _tex_arr_vertical_copy(texture_array_t t, Image image, vec2i dim) {
+static byte* _tex_arr_vertical_clone(
+  texture_array_t t, const byte* image_data, vec2i dim
+) {
   int cell_width = _rt_format[t.format].size * t.size.w;
   int full_width = cell_width * dim.w;
   int cell_size = cell_width * t.size.h;
@@ -351,9 +346,9 @@ static byte* _tex_arr_vertical_copy(texture_array_t t, Image image, vec2i dim) {
   byte* iter_target = data;
   for (int dy = 0; dy < dim.y; ++dy) {
     for (int dx = 0; dx < dim.x; ++dx) {
-      const byte* source = (byte*)image->data
+      const byte* source = image_data
         + dx * cell_width
-        + (dim.y - dy - 1) * full_width * t.size.h;
+        + dy * full_width * t.size.h;
 
       for (int y = 0; y < t.size.h; ++y) {
         memcpy(iter_target, source, cell_width);
@@ -382,40 +377,63 @@ texture_array_t tex_arr_from_image(Image image, vec2i dim) {
   glGenTextures(1, &ret.handle);
   glBindTexture(GL_TEXTURE_2D_ARRAY, ret.handle);
 
-  byte* data = NULL;
-
-  if (dim.x != 1) {
-    data = _tex_arr_vertical_copy(ret, image, dim);
+  // If the image is already a vertical atlas, we can use it directly
+  void* atlas_data = NULL;
+  const void* vertical_atlas = NULL;
+  if (dim.x == 1) {
+    vertical_atlas = image->data;
   }
-
-#ifdef __WASM__
-  const void* source = image->data;
-  if (data) {
-    source = js_buffer_create(
-      data, ret.size.x * ret.size.y * ret.layers * _rt_format[ret.format].size
-    );
-  }
+  // If it isn't already a vertical atlas, we need to make one
+  else {
+#ifndef __WASM__
+    atlas_data = _tex_arr_vertical_clone(ret, image->data, dim);
+    vertical_atlas = atlas_data;
 #else
-  const void* source = data ? data : image->data;
-#endif
+    size_t channels = (size_t)_rt_format[ret.format].size;
+    size_t size_bytes = ret.size.x * ret.size.y * channels * ret.layers;
 
-  glTexImage3D(GL_TEXTURE_2D_ARRAY
-  , 0 // target level (0 to hit all images in the vertical atlas)
+    void* image_data_copy = malloc(size_bytes);
+    assert(image_data_copy);
+    img_copy_data(image_data_copy, image, channels);
+    atlas_data = _tex_arr_vertical_clone(ret, image_data_copy, dim);
+    free(image_data_copy);
+
+    vertical_atlas = js_buffer_create(
+      atlas_data, ret.size.x * ret.size.y * ret.layers * _rt_format[ret.format].size
+    );
+#endif
+  }
+
+  GLsizei mip_levels = 1;
+  glTexStorage3D(GL_TEXTURE_2D_ARRAY
+  , mip_levels
   , _rt_format[ret.format].internal
   , ret.size.w
   , ret.size.h
   , ret.layers
-  , 0 // Border (must be 0)
-  , _rt_format[ret.format].format
-  , _rt_format[ret.format].type
-  , source
   );
 
-#ifdef __WASM__
-  if (data) js_buffer_delete(source);
-#endif
+  glTexSubImage3D(GL_TEXTURE_2D_ARRAY
+  , 0                                   // Mipmap level
+  , 0, 0, 0                             // x, y, z offsets
+  , ret.size.w, ret.size.h, ret.layers  // width/height/depth of change
+  , _rt_format[ret.format].format
+  , _rt_format[ret.format].type
+  , vertical_atlas
+  );
 
-  if (data) free(data);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+  if (atlas_data) {
+#ifdef __WASM__
+    js_buffer_delete(vertical_atlas);
+#endif
+    free(atlas_data);
+  }
 
 #ifndef __WASM__
   tex_arr_gen_mips(ret);

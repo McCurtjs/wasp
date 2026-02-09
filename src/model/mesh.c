@@ -155,12 +155,10 @@ void _model_bind_mesh(const Model model) {
 
   if (mesh->use_color) {
     glEnableVertexAttribArray(4);
-    glVertexAttribPointer(3, v3floats, GL_FLOAT, GL_FALSE, vert_size
+    glVertexAttribPointer(4, v3floats, GL_FLOAT, GL_FALSE, vert_size
     , &((obj_vertex_color_t*)0)->color
     );
   }
-
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

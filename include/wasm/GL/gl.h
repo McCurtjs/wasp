@@ -417,18 +417,14 @@ void    glTexImage2D(
           GLenum target, GLint level, GLint internalFormat,
           GLsizei width, GLsizei height, GLint border, GLenum format,
           GLenum type, const void* data);
-void    glTexImage3D(
-          GLenum target, GLint level, GLint internalformat,
- 	        GLsizei width, GLsizei height, GLsizei depth,
- 	        GLint border, GLenum format, GLenum type, const void* data);
 void    glTexStorage3D(
           GLenum target, GLsizei levels, GLenum internalformat,
           GLsizei width, GLsizei height, GLsizei depth);
 void    glTexSubImage3D(
           GLenum target, GLint level,
- 	        GLint xoffset, GLint yoffset, GLint zoffset,
- 	        GLsizei width, GLsizei height, GLsizei depth,
- 	        GLenum format, GLenum type, const void* pixels);
+          GLint xoffset, GLint yoffset, GLint zoffset,
+          GLsizei width, GLsizei height, GLsizei depth,
+          GLenum format, GLenum type, const void* pixels);
 void    glGenerateMipmap(GLenum target);
 void    glTexParameteri(GLenum target, GLenum pname, GLint param);
 void    glPixelStorei(GLenum pname, GLint param);

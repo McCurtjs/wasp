@@ -35,20 +35,21 @@ vec2 oct_encode(vec3 n) {
 // Write out to G-buffer
 
 void main() {
+  vec2 uv = vec2(vUV.x, 1.0 - vUV.y);
 
   /* // Get base texture color - discard fully transparent fragments
-  vec4 albedo = texture(samp_tex, vUV); /*/
-  vec4 albedo = texture(samp_test, vec3(vUV, 1)); //*/
+  vec4 albedo = texture(samp_tex, uv); /*/
+  vec4 albedo = texture(samp_test, vec3(uv, 4)); //*/
 
   if (albedo.w == 0.0) discard;
   frag_color = albedo.xyz * vColor;
 
   // Extract material properties and apply weights
-  frag_props.r = texture(samp_rough, vUV).r * in_weights.g; // roughness value
-  frag_props.g = texture(samp_metal, vUV).r * in_weights.b; // metallic value
+  frag_props.r = texture(samp_rough, uv).r * in_weights.g; // roughness value
+  frag_props.g = texture(samp_metal, uv).r * in_weights.b; // metallic value
 
   // Pack normal into octahedral space
-  vec3 tangent_normal = texture(samp_norm, vUV).xyz * 2.0 - 1.0;
+  vec3 tangent_normal = texture(samp_norm, uv).xyz * 2.0 - 1.0;
   tangent_normal = mix(vec3(0.0, 0.0, 1.0), tangent_normal, in_weights.r);
   vec3 n = vTangentTransform * tangent_normal;
   vec2 oct = oct_encode(n);

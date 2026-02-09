@@ -1,7 +1,7 @@
 /*******************************************************************************
 * MIT License
 *
-* Copyright (c) 2025 Curtis McCoy
+* Copyright (c) 2026 Curtis McCoy
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -45,5 +45,6 @@ Image img_load_async(slice_t filename);
 Image img_load_default_white(void);
 Image img_load_default_normal(void);
 void  img_delete(Image* image);
+void  img_copy_data(void* dst, Image image, int dst_channels);
 
 #endif

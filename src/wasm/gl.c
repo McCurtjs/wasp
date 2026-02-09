@@ -212,21 +212,17 @@ void glTexImage2D(
   js_glTexImage2D(target, level, inFormat, width, height, format, type, data);
 }
 
-extern void glTexImage3D(
-  GLenum target, GLint level, GLint internalformat,
-  GLsizei width, GLsizei height, GLsizei depth,
-  GLint border, GLenum format, GLenum type, const void* data
-);
-
 extern void glTexStorage3D(
   GLenum target, GLsizei levels, GLenum internalformat,
-  GLsizei width, GLsizei height, GLsizei depth);
+  GLsizei width, GLsizei height, GLsizei depth
+);
 
 extern void glTexSubImage3D(
   GLenum target, GLint level,
   GLint xoffset, GLint yoffset, GLint zoffset,
   GLsizei width, GLsizei height, GLsizei depth,
-  GLenum format, GLenum type, const void * pixels);
+  GLenum format, GLenum type, const void * pixels
+);
 
 extern void glGenerateMipmap(GLenum target);
 

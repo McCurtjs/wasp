@@ -803,6 +803,8 @@ void render_debug3(renderer_t* renderer, Game game) {
 // Render function for physically-based lighting
 ////////////////////////////////////////////////////////////////////////////////
 
+extern texture_array_t test_tex_arr;
+
 void render_pbr(Game game, entity_t* e) {
   Shader shader = game->demo->shaders.light;
   shader_bind(shader);
@@ -817,6 +819,7 @@ void render_pbr(Game game, entity_t* e) {
   int loc_sampler_norm = shader_uniform_loc(shader, "samp_norm");
   int loc_sampler_rough = shader_uniform_loc(shader, "samp_rough");
   int loc_sampler_metal = shader_uniform_loc(shader, "samp_metal");
+  int loc_sampler_test = shader_uniform_loc(shader, "samp_test");
   int loc_norm = shader_uniform_loc(shader, "in_normal_matrix");
   int loc_props = shader_uniform_loc(shader, "in_weights");
   int loc_tint = shader_uniform_loc(shader, "in_tint");
@@ -843,6 +846,7 @@ void render_pbr(Game game, entity_t* e) {
   tex_apply(e->material->map_normals, 1, loc_sampler_norm);
   tex_apply(e->material->map_roughness, 2, loc_sampler_rough);
   tex_apply(e->material->map_metalness, 3, loc_sampler_metal);
+  tex_arr_apply(test_tex_arr, 5, loc_sampler_test);
 
   model_render(e->model);
 
