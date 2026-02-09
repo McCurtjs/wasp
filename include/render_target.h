@@ -1,7 +1,7 @@
 /*******************************************************************************
 * MIT License
 *
-* Copyright (c) 2025 Curtis McCoy
+* Copyright (c) 2026 Curtis McCoy
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -36,18 +36,28 @@ typedef enum depth_format_t {
   F_DEPTH_FORMAT_MAX
 } depth_format_t;
 
-typedef struct _opaque_RenderTarget {
-  const index_t                   slot_count;
-  const texture_t         * const textures;
-  const texture_format_t  * const formats;
-  const depth_format_t            depth_format;
+#ifdef WASP_RENDER_TARGET_INTERNAL
+#undef CONST
+#define CONST
+#endif
+
+typedef struct _opaque_RenderTarget_t {
+  CONST index_t                   slot_count;
+  CONST Texture           * CONST textures;
+  CONST tex_format_t  * CONST formats;
+  CONST depth_format_t            depth_format;
         color3                    clear_color;
-  const bool                      ready;
+  CONST bool                      ready;
 }* RenderTarget;
 
-RenderTarget _rt_new(index_t size, texture_format_t formats[]);
+#ifdef WASP_RENDER_TARGET_INTERNAL
+#undef CONST
+#define CONST const
+#endif
+
+RenderTarget _rt_new(index_t size, tex_format_t formats[]);
 #define rt_new(...) \
-  _rt_new(_va_count(__VA_ARGS__), (texture_format_t[]) { __VA_ARGS__ })
+  _rt_new(_va_count(__VA_ARGS__), (tex_format_t[]) { __VA_ARGS__ })
 
 bool rt_build(RenderTarget rt, vec2i screen);
 void rt_clear(RenderTarget rt);

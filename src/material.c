@@ -1,7 +1,7 @@
 /*******************************************************************************
 * MIT License
 *
-* Copyright (c) 2025 Curtis McCoy
+* Copyright (c) 2026 Curtis McCoy
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -22,6 +22,7 @@
 * SOFTWARE.
 */
 
+#define WASP_MATERIAL_INTERNAL
 #include "material.h"
 
 #include "str.h"
@@ -30,24 +31,7 @@
 #include <stdlib.h>
 
 typedef struct Material_Internal {
-  slice_t name;
-  texture_t map_diffuse;
-  texture_t map_normals;
-  texture_t map_roughness;
-  texture_t map_metalness;
-  union {
-    vec3    weights;
-    struct {
-      float weight_normal;
-      float weight_roughness;
-      float weight_metalness;
-    };
-  };
-  bool ready;
-  bool use_diffuse_map;
-  bool use_normal_map;
-  bool use_roughness_map;
-  bool use_metalness_map;
+  struct _opaque_Material_t pub;
 
   // hidden values
   String  name_internal;
@@ -68,7 +52,7 @@ HMap _all_materials = NULL;
 // Initializes a new material
 ////////////////////////////////////////////////////////////////////////////////
 
-Material material_new(slice_t name) {
+Material material_new(slice_t name, material_params_t params) {
   if (!_all_materials) {
     _all_materials =
       map_new(slice_t, Material, slice_hash_vptr, slice_compare_vptr);
@@ -87,15 +71,14 @@ Material material_new(slice_t name) {
   String name_str = str_copy(name);
 
   *ret = (Material_Internal) {
-    .name = name_str->slice,
-    .weight_normal = 1.0f,
-    .weight_roughness = 0.5f,
-    .weight_metalness = 0.0f,
-    .ready = false,
-    .use_diffuse_map = true,
-    .use_normal_map = false,
-    .use_roughness_map = false,
-    .use_metalness_map = false,
+    .pub = {
+      .name = name_str->slice,
+      .weight_normal = 1.0f,
+      .weight_roughness = 0.5f,
+      .weight_metalness = 0.0f,
+      .ready = false,
+      .params = params,
+    },
     .name_internal = name_str,
     .ext = S("jpg"),
   };
@@ -107,8 +90,8 @@ Material material_new(slice_t name) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-Material material_new_load(slice_t name) {
-  Material ret = material_new(name);
+Material material_new_load(slice_t name, material_params_t params) {
+  Material ret = material_new(name, params);
   material_load_async(ret);
   return ret;
 }
@@ -131,23 +114,23 @@ Material material_get(slice_t name) {
 void material_load_async(Material m_in) {
   MATERIAL_INTERNAL;
 
-  if (m->use_diffuse_map) {
-    String filename = str_format("./res/textures/{}.{}", m->name, m->ext);
+  if (m->pub.params.use_diffuse_map) {
+    String filename = str_format("./res/textures/{}.{}", m->pub.name, m->ext);
     m->img_diffuse = img_load_async_str(filename);
   }
 
-  if (m->use_normal_map) {
-    String filename = str_format("./res/textures/{}_n.{}", m->name, m->ext);
+  if (m->pub.params.use_normal_map) {
+    String filename = str_format("./res/textures/{}_n.{}", m->pub.name, m->ext);
     m->img_normals = img_load_async_str(filename);
   }
 
-  if (m->use_roughness_map) {
-    String filename = str_format("./res/textures/{}_r.{}", m->name, m->ext);
+  if (m->pub.params.use_roughness_map) {
+    String filename = str_format("./res/textures/{}_r.{}", m->pub.name, m->ext);
     m->img_roughness = img_load_async_str(filename);
   }
 
-  if (m->use_metalness_map) {
-    String filename = str_format("./res/textures/{}_m.{}", m->name, m->ext);
+  if (m->pub.params.use_metalness_map) {
+    String filename = str_format("./res/textures/{}_m.{}", m->pub.name, m->ext);
     m->img_metalness = img_load_async_str(filename);
   }
 }
@@ -166,37 +149,37 @@ void material_load_all_async(void) {
 
 void material_build(Material m_in) {
   MATERIAL_INTERNAL;
-  if (m->ready) return;
+  if (m->pub.ready) return;
 
   if (m->img_diffuse) {
     assert(m->img_diffuse->ready);
-    m->map_diffuse = tex_from_image(m->img_diffuse);
+    m->pub.map_diffuse = tex_from_image(m->img_diffuse);
     img_delete(&m->img_diffuse);
   }
-  else m->map_diffuse = tex_get_default_white();
+  else m->pub.map_diffuse = tex_get_default_white();
 
   if (m->img_normals) {
     assert(m->img_normals->ready);
-    m->map_normals = tex_from_image(m->img_normals);
+    m->pub.map_normals = tex_from_image(m->img_normals);
     img_delete(&m->img_normals);
   }
-  else m->map_normals = tex_get_default_normal();
+  else m->pub.map_normals = tex_get_default_normal();
 
   if (m->img_roughness) {
     assert(m->img_roughness->ready);
-    m->map_roughness = tex_from_image(m->img_roughness);
+    m->pub.map_roughness = tex_from_image(m->img_roughness);
     img_delete(&m->img_roughness);
   }
-  else m->map_roughness = tex_get_default_white();
+  else m->pub.map_roughness = tex_get_default_white();
 
   if (m->img_metalness) {
     assert(m->img_metalness->ready);
-    m->map_metalness = tex_from_image(m->img_metalness);
+    m->pub.map_metalness = tex_from_image(m->img_metalness);
     img_delete(&m->img_metalness);
   }
-  else m->map_metalness = tex_get_default_white();
+  else m->pub.map_metalness = tex_get_default_white();
 
-  m->ready = true;
+  m->pub.ready = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -215,6 +198,7 @@ void material_build_all(void) {
 // Material sets
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
 typedef struct MaterialSet_Internal {
   struct _opaque_MaterialSet_t pub;
 } MaterialSet_Internal;
@@ -222,5 +206,4 @@ typedef struct MaterialSet_Internal {
 #define MATSET_INTERNAL \
   MaterialSet_Internal* ms = (MaterialSet_Internal*)(m_in); \
   assert(ms)
-
-
+//*/

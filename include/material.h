@@ -1,7 +1,7 @@
 /*******************************************************************************
 * MIT License
 *
-* Copyright (c) 2025 Curtis McCoy
+* Copyright (c) 2026 Curtis McCoy
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -30,34 +30,54 @@
 #include "texture.h"
 #include "vec.h"
 
+#ifdef WASP_MATERIAL_INTERNAL
+#undef CONST
+#define CONST
+#endif
+
+typedef struct material_params_t {
+  bool use_diffuse_map;
+  bool use_normal_map;
+  bool use_roughness_map;
+  bool use_metalness_map;
+} material_params_t;
+
 typedef struct _opaque_Material_t {
-  slice_t   const name;
-  texture_t const map_diffuse;
-  texture_t const map_normals;
-  texture_t const map_roughness;
-  texture_t const map_metalness;
+  slice_t     CONST name;
+  Texture     CONST map_diffuse;
+  Texture     CONST map_normals;
+  Texture     CONST map_roughness;
+  Texture     CONST map_metalness;
   union {
-    vec3          weights;
+    vec3            weights;
     struct {
-      float       weight_normal;
-      float       weight_roughness;
-      float       weight_metalness;
+      float         weight_normal;
+      float         weight_roughness;
+      float         weight_metalness;
     };
   };
-  bool      const ready;
-  bool            use_diffuse_map;
-  bool            use_normal_map;
-  bool            use_roughness_map;
-  bool            use_metalness_map;
+  material_params_t params;
+  bool        CONST ready;
 }* Material;
 
-typedef struct _opaque_MaterialSet_t {
-  slice_t const name;
-  bool const ready;
-}* MaterialSet;
+#ifdef WASP_MATERIAL_INTERNAL
+#undef CONST
+#define CONST const
+#endif
 
-Material  material_new(slice_t name);
-Material  material_new_load(slice_t name);
+// Material create params to denote which maps are active
+#define matparams_none        ((material_params_t){ 0, 0, 0, 0 })
+#define matparams_diffuse     ((material_params_t){ 1, 0, 0, 0 })
+#define matparams_norm        ((material_params_t){ 1, 1, 0, 0 })
+#define matparams_roughness   ((material_params_t){ 1, 0, 1, 0 })
+#define matparams_metallic    ((material_params_t){ 1, 0, 0, 1 })
+#define matparams_rough_metal ((material_params_t){ 1, 0, 1, 1 })
+#define matparams_norm_rough  ((material_params_t){ 1, 1, 1, 0 })
+#define matparams_norm_metal  ((material_params_t){ 1, 1, 0, 1 })
+#define matparams_pbr         ((material_params_t){ 1, 1, 1, 1 })
+
+Material  material_new(slice_t name, material_params_t params);
+Material  material_new_load(slice_t name, material_params_t params);
 Material  material_get(slice_t name);
 void      material_load_async(Material material);
 void      material_build(Material material);

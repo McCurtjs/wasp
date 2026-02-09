@@ -39,7 +39,7 @@ void main() {
 
   /* // Get base texture color - discard fully transparent fragments
   vec4 albedo = texture(samp_tex, uv); /*/
-  vec4 albedo = texture(samp_test, vec3(uv, 4)); //*/
+  vec4 albedo = texture(samp_test, vec3(uv, 0)); //*/
 
   if (albedo.w == 0.0) discard;
   frag_color = albedo.xyz * vColor;

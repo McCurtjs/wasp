@@ -301,7 +301,7 @@ static void _renderer_bind_default_attributes(Shader s, render_group_t* group) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-extern texture_array_t test_tex_arr;
+extern Texture test_tex_arr;
 
 void renderer_callback_render(renderer_t* renderer, Game game) {
   assert(renderer);
@@ -336,7 +336,7 @@ void renderer_callback_render(renderer_t* renderer, Game game) {
     tex_apply(group->material->map_normals, 1, loc_sampler_norm);
     tex_apply(group->material->map_roughness, 2, loc_sampler_rough);
     tex_apply(group->material->map_metalness, 3, loc_sampler_metal);
-    tex_arr_apply(test_tex_arr, 5, loc_sampler_test);
+    tex_apply(test_tex_arr, 5, loc_sampler_test);
     glUniform3fv(loc_props, 1, group->material->weights.f);
 
     // if the group's VAO hasn't been set, create it

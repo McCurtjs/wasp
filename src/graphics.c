@@ -197,7 +197,7 @@ typedef struct light_img_t {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-texture_t tex_from_lights(void) {
+Texture tex_from_lights(void) {
   LIGHT_INTERNAL;
 
   light_img_t* buffer = malloc(graphics->lights->size * sizeof(light_img_t));
@@ -221,7 +221,7 @@ texture_t tex_from_lights(void) {
   }
 
   vec2i tex_size = v2i(3, (int)graphics->lights->size);
-  texture_t texture = tex_from_data(TF_RGBA_32, tex_size, buffer);
+  Texture texture = tex_from_data(TF_RGBA_32, tex_size, buffer);
   free(buffer);
   return texture;
 }

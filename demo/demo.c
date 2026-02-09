@@ -45,7 +45,7 @@ static Image test_crate = NULL;
 
 static int active_shader = 1;
 
-texture_array_t test_tex_arr;
+Texture test_tex_arr = NULL;
 
 static renderer_t _renderer_basic = {
   .name = "Basic",
@@ -172,29 +172,20 @@ bool wasp_preload(Game game) {
 
   file_model_gear = file_new(S("./res/models/gear.obj"));
 
-  demo.materials.grass = material_new(S("grass_rocky"));
-  demo.materials.grass->use_normal_map = true;
-  demo.materials.grass->use_roughness_map = true;
+  demo.materials.grass = material_new(S("grass_rocky"), matparams_norm_rough);
   demo.materials.grass->weight_roughness = 1.0f;
 
-  demo.materials.crate = material_new(S("crate"));
+  demo.materials.crate = material_new(S("crate"), matparams_roughness);
   demo.materials.crate->weight_roughness = 1.0f;
 
-  demo.materials.tiles = material_new(S("tiles"));
+  demo.materials.tiles = material_new(S("tiles"), matparams_diffuse);
 
-  demo.materials.sands = material_new(S("brass2"));
+  demo.materials.sands = material_new(S("brass2"), matparams_norm);
   demo.materials.sands->weight_roughness = 1.0f;
-  demo.materials.sands->use_normal_map = true;
 
-  demo.materials.mudds = material_new(S("rustediron2"));
-  demo.materials.mudds->use_normal_map = true;
-  demo.materials.mudds->use_roughness_map = true;
-  demo.materials.mudds->use_metalness_map = true;
-  demo.materials.mudds->weight_roughness = 0.8f;
-  demo.materials.mudds->weight_metalness = 1.0f;
+  demo.materials.mudds = material_new(S("rustediron2"), matparams_rough_metal);
 
-  demo.materials.renderite = material_new(S("renderite"));
-  demo.materials.renderite->use_diffuse_map = false;
+  demo.materials.renderite = material_new(S("renderite"), matparams_none);
   demo.materials.renderite->weight_roughness = 0.2f;
   demo.materials.renderite->weight_metalness = 0.8f;
 
@@ -245,16 +236,16 @@ bool wasp_load (Game game, int await_count, float dt) {
   );
   rt_build(game->demo->render_target, game->window);
 
-  //test_tex_arr = tex_arr_generate(TF_RGBA_8, v2i(512, 512), 2);
-  //tex_arr_set_layer(test_tex_arr, 0, test_sprites);
-  //tex_arr_set_layer(test_tex_arr, 1, test_crate);
-  test_tex_arr = tex_arr_from_image(test_sprites, v2i(4, 4));
+  //test_tex_arr = tex_atlas_generate(TF_RGBA_8, v2i(512, 512), 2);
+  //tex_atlas_set_layer(test_tex_arr, 0, test_sprites);
+  //tex_atlas_set_layer(test_tex_arr, 1, test_crate);
+  test_tex_arr = tex_atlas_from_image(test_sprites, v2i(4, 4));
 
   img_delete(&test_sprites);
   img_delete(&test_crate);
 
 #ifndef __WASM__
-  tex_arr_gen_mips(test_tex_arr);
+  tex_atlas_gen_mips(test_tex_arr);
 #endif
 
   shader_build_all();
@@ -310,7 +301,7 @@ void wasp_render(Game game) {
   rt_bind(game->demo->render_target);
   game_render(game);
 
-  texture_t lights = tex_from_lights();
+  Texture lights = tex_from_lights();
 
   rt_bind_default();
 
@@ -337,5 +328,5 @@ void wasp_render(Game game) {
 
   model_render(game->demo->models.frame);
 
-  tex_free(&lights);
+  tex_delete(&lights);
 }

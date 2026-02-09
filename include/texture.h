@@ -1,7 +1,7 @@
 /*******************************************************************************
 * MIT License
 *
-* Copyright (c) 2025 Curtis McCoy
+* Copyright (c) 2026 Curtis McCoy
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +29,7 @@
 #include "image.h"
 #include "vec.h"
 
-typedef enum texture_format_t {
+typedef enum tex_format_t {
   TF_RGB_8,
   TF_RGBA_8,
   TF_R_8,
@@ -41,41 +41,63 @@ typedef enum texture_format_t {
   TF_RGB_10_A_2,
   TF_DEPTH_32,
   TF_SUPPORTED_MAX
-} texture_format_t;
+} tex_format_t;
+
+typedef enum tex_filtering_t {
+  TEX_FILTERING_LINEAR,
+  TEX_FILTERING_CLAMP
+} tex_filtering_t;
+
+typedef enum tex_wrapping_t {
+  TEX_WRAPPING_CLAMP,
+  TEX_WRAPPING_REPEAT,
+  TEX_WRAPPING_MIRROR
+} tex_wrapping_t;
+
+#ifdef WASP_TEXTURE_INTERNAL
+#undef CONST
+#define CONST
+#endif
 
 typedef struct texture_t {
-  uint handle;
-} texture_t;
+  String          CONST name;
+  vec2i           CONST size;
+  tex_format_t    CONST format;
+  tex_filtering_t CONST filtering;
+  tex_wrapping_t  CONST wrapping;
+  int             CONST layers;
+  uint            CONST handle;
+  bool            CONST has_mips;
+}* Texture;
 
-//Texture texture_new(texture_format_t format, vec2i size);
-//Texture texture_new_from_image(Image image);
+Texture tex_from_image(Image);
+Texture tex_from_data(tex_format_t format, vec2i size, const void* data);
+Texture tex_generate(tex_format_t format, vec2i size);
+Texture tex_get_default_white(void);
+Texture tex_get_default_normal(void);
+uint    tex_get_handle(Texture);
+void    tex_set_name(Texture, slice_t name);
+void    tex_set_filtering(Texture, tex_filtering_t filtering);
+void    tex_set_wrapping(Texture, tex_wrapping_t wrapping);
+void    tex_apply(Texture texture, uint slot, int sampler);
+void    tex_delete(Texture* handle);
 
-texture_t tex_from_image(Image image);
-texture_t tex_from_data(texture_format_t format, vec2i size, const void* data);
-texture_t tex_generate(texture_format_t format, vec2i size);
-texture_t tex_get_default_white(void);
-texture_t tex_get_default_normal(void);
-void      tex_apply(texture_t texture, uint slot, int sampler);
-void      tex_free(texture_t* handle);
+Texture tex_atlas_from_image(Image, vec2i dim);
+Texture tex_atlas_generate(tex_format_t, vec2i dim, int layers);
+void    tex_atlas_set_layer(Texture, int layer, Image);
+void    tex_atlas_gen_mips(Texture);
 
-typedef struct texture_array_t {
-  uint handle;
-  texture_format_t format;
-  vec2i size;
-  int layers;
-} texture_array_t;
+//Texture tex_atlas_from_data(tex_format_t, vec2i size, const void* dat);
+//void    tex_atlas_set_layers(Texture, int layr, vec2i dim, Image);
 
-texture_array_t tex_arr_from_image(Image, vec2i dim);
-texture_array_t tex_arr_generate(texture_format_t, vec2i size, int layers);
-void            tex_arr_set_layer(texture_array_t, int layer, Image);
-void            tex_arr_set_layers(texture_array_t, int layr, vec2i dim, Image);
-void            tex_arr_apply(texture_array_t, uint slot, int sampler);
-void            tex_arr_gen_mips(texture_array_t);
-void            tex_arr_free(texture_array_t* tex_array);
+#ifdef WASP_TEXTURE_INTERNAL
+#undef CONST
+#define CONST const
+#endif
 
 #endif
 
 // Specialty function for when both texture and light headers are included
 #ifdef WASP_LIGHT_H_
-texture_t tex_from_lights(void);
+Texture tex_from_lights(void);
 #endif
