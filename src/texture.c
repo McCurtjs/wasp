@@ -156,9 +156,7 @@ extern const void*  js_buffer_create(const byte* bytes, uint size);
 extern void         js_buffer_delete(const void* data_id);
 #endif
 
-Texture tex_from_data(
-  tex_format_t format, vec2i size, const void* data
-) {
+Texture tex_from_data(tex_format_t format, vec2i size, const void* data) {
   assert(format >= 0 && format < TF_SUPPORTED_MAX);
 
   Texture ret = malloc(sizeof(struct texture_t));
@@ -286,12 +284,6 @@ Texture tex_get_default_normal(void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-uint tex_get_handle(Texture tex) {
-  return tex->handle;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
 void tex_set_name(Texture tex, slice_t name) {
   assert(tex);
   assert(tex->name);
@@ -405,7 +397,7 @@ static byte* _tex_arr_vertical_clone(
 // Creates a texture atlas from an image sectioned into a grid
 ////////////////////////////////////////////////////////////////////////////////
 
-Texture tex_atlas_from_image(Image image, vec2i dim) {
+Texture tex_from_image_atlas(Image image, vec2i dim) {
   assert(image);
   assert(image->ready);
   assert(dim.x > 0 && dim.y > 0);
@@ -481,7 +473,7 @@ Texture tex_atlas_from_image(Image image, vec2i dim) {
   }
 
 #ifndef __WASM__
-  tex_atlas_gen_mips(ret);
+  tex_gen_mips(ret);
 #endif
 
   glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
@@ -491,9 +483,7 @@ Texture tex_atlas_from_image(Image image, vec2i dim) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-Texture tex_atlas_generate(
-  tex_format_t format, vec2i size, int layers
-) {
+Texture tex_generate_atlas(tex_format_t format, vec2i size, int layers) {
   assert(format >= 0 && format < TF_SUPPORTED_MAX);
   assert(size.x > 0 && size.y > 0);
   assert(layers > 0);
@@ -502,7 +492,7 @@ Texture tex_atlas_generate(
   assert(ret);
 
   *ret = (struct texture_t) {
-    .name = str_copy("tex_atlas_gen"),
+    .name = str_copy("tex_atlas"),
     .size = size,
     .format = format,
     .layers = layers,
@@ -535,9 +525,7 @@ Texture tex_atlas_generate(
 // Sets a single image in an atlas - must match size and format
 ////////////////////////////////////////////////////////////////////////////////
 
-void tex_atlas_set_layer(
-  Texture tex, int layer, Image image
-) {
+void tex_set_atlas_layer(Texture tex, int layer, Image image) {
   assert(tex);
   assert(tex->handle);
   assert(tex->layers > 0);
@@ -564,7 +552,7 @@ void tex_atlas_set_layer(
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void tex_atlas_gen_mips(Texture tex) {
+void tex_gen_mips(Texture tex) {
   assert(tex);
   assert(tex->handle);
   assert(tex->layers > 0);

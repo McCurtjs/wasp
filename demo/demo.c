@@ -236,16 +236,16 @@ bool wasp_load (Game game, int await_count, float dt) {
   );
   rt_build(game->demo->render_target, game->window);
 
-  //test_tex_arr = tex_atlas_generate(TF_RGBA_8, v2i(512, 512), 2);
-  //tex_atlas_set_layer(test_tex_arr, 0, test_sprites);
-  //tex_atlas_set_layer(test_tex_arr, 1, test_crate);
-  test_tex_arr = tex_atlas_from_image(test_sprites, v2i(4, 4));
+  //test_tex_arr = tex_generate_atlas(TF_RGBA_8, v2i(512, 512), 2);
+  //tex_set_atlas_layer(test_tex_arr, 0, test_sprites);
+  //tex_set_atlas_layer(test_tex_arr, 1, test_crate);
+  test_tex_arr = tex_from_image_atlas(test_sprites, v2i(4, 4));
 
   img_delete(&test_sprites);
   img_delete(&test_crate);
 
 #ifndef __WASM__
-  tex_atlas_gen_mips(test_tex_arr);
+  tex_gen_mips(test_tex_arr);
 #endif
 
   shader_build_all();

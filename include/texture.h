@@ -71,21 +71,19 @@ typedef struct texture_t {
 }* Texture;
 
 Texture tex_from_image(Image);
-Texture tex_from_data(tex_format_t format, vec2i size, const void* data);
-Texture tex_generate(tex_format_t format, vec2i size);
+Texture tex_from_image_atlas(Image, vec2i dim);
+Texture tex_from_data(tex_format_t, vec2i size, const void* data);
+Texture tex_generate(tex_format_t, vec2i size);
+Texture tex_generate_atlas(tex_format_t, vec2i size, int layers);
 Texture tex_get_default_white(void);
 Texture tex_get_default_normal(void);
-uint    tex_get_handle(Texture);
 void    tex_set_name(Texture, slice_t name);
 void    tex_set_filtering(Texture, tex_filtering_t filtering);
 void    tex_set_wrapping(Texture, tex_wrapping_t wrapping);
-void    tex_apply(Texture texture, uint slot, int sampler);
-void    tex_delete(Texture* handle);
-
-Texture tex_atlas_from_image(Image, vec2i dim);
-Texture tex_atlas_generate(tex_format_t, vec2i dim, int layers);
-void    tex_atlas_set_layer(Texture, int layer, Image);
-void    tex_atlas_gen_mips(Texture);
+void    tex_set_atlas_layer(Texture, int layer, Image);
+void    tex_gen_mips(Texture);
+void    tex_apply(Texture, uint slot, int sampler);
+void    tex_delete(Texture*);
 
 //Texture tex_atlas_from_data(tex_format_t, vec2i size, const void* dat);
 //void    tex_atlas_set_layers(Texture, int layr, vec2i dim, Image);
