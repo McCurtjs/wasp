@@ -54,6 +54,14 @@ typedef enum tex_wrapping_t {
   TEX_WRAPPING_MIRROR
 } tex_wrapping_t;
 
+typedef struct tex_params_t {
+  tex_filtering_t filtering;
+  tex_wrapping_t  wrapping;
+  bool            use_mips;
+  vec2i           atlas_dimensions;
+  int             layers;
+} tex_params_t;
+
 #ifdef WASP_TEXTURE_INTERNAL
 #undef CONST
 #define CONST
@@ -70,16 +78,32 @@ typedef struct texture_t {
   bool            CONST has_mips;
 }* Texture;
 
+#ifdef WASP_TEXTURE_INTERNAL
+#undef CONST
+#define CONST const
+#endif
+
+// \brief Default texture params:
+// \brief   - Filtering: linear
+// \brief   - Wrapping: clamp
+// \brief   - Mipmaps: true
+// \brief   - Atlas: 1x1
+// \brief   - Layers: 1
+extern tex_params_t tex_params_default;
+
 Texture tex_from_image(Image);
+Texture tex_from_image_params(Image, tex_params_t);
 Texture tex_from_image_atlas(Image, vec2i dim);
 Texture tex_from_data(tex_format_t, vec2i size, const void* data);
 Texture tex_generate(tex_format_t, vec2i size);
 Texture tex_generate_atlas(tex_format_t, vec2i size, int layers);
 Texture tex_get_default_white(void);
+Texture tex_get_default_white_atlas(void);
 Texture tex_get_default_normal(void);
+Texture tex_get_default_normal_atlas(void);
 void    tex_set_name(Texture, slice_t name);
-void    tex_set_filtering(Texture, tex_filtering_t filtering);
-void    tex_set_wrapping(Texture, tex_wrapping_t wrapping);
+void    tex_set_filtering(Texture, tex_filtering_t);
+void    tex_set_wrapping(Texture, tex_wrapping_t);
 void    tex_set_atlas_layer(Texture, int layer, Image);
 void    tex_gen_mips(Texture);
 void    tex_apply(Texture, uint slot, int sampler);
@@ -87,11 +111,6 @@ void    tex_delete(Texture*);
 
 //Texture tex_atlas_from_data(tex_format_t, vec2i size, const void* dat);
 //void    tex_atlas_set_layers(Texture, int layr, vec2i dim, Image);
-
-#ifdef WASP_TEXTURE_INTERNAL
-#undef CONST
-#define CONST const
-#endif
 
 #endif
 

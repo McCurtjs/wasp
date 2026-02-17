@@ -30,20 +30,22 @@
 #include "texture.h"
 #include "vec.h"
 
+typedef struct material_params_t {
+  bool  use_diffuse_map;
+  bool  use_normal_map;
+  bool  use_roughness_map;
+  bool  use_metalness_map;
+  vec2i atlas_dimensions;
+} material_params_t;
+
 #ifdef WASP_MATERIAL_INTERNAL
 #undef CONST
 #define CONST
 #endif
 
-typedef struct material_params_t {
-  bool use_diffuse_map;
-  bool use_normal_map;
-  bool use_roughness_map;
-  bool use_metalness_map;
-} material_params_t;
-
 typedef struct _opaque_Material_t {
   slice_t     CONST name;
+  int         CONST layers;
   Texture     CONST map_diffuse;
   Texture     CONST map_normals;
   Texture     CONST map_roughness;
@@ -66,25 +68,27 @@ typedef struct _opaque_Material_t {
 #endif
 
 // Material create params to denote which maps are active
-#define matparams_none        ((material_params_t){ 0, 0, 0, 0 })
-#define matparams_diffuse     ((material_params_t){ 1, 0, 0, 0 })
-#define matparams_norm        ((material_params_t){ 1, 1, 0, 0 })
-#define matparams_roughness   ((material_params_t){ 1, 0, 1, 0 })
-#define matparams_metallic    ((material_params_t){ 1, 0, 0, 1 })
-#define matparams_rough_metal ((material_params_t){ 1, 0, 1, 1 })
-#define matparams_norm_rough  ((material_params_t){ 1, 1, 1, 0 })
-#define matparams_norm_metal  ((material_params_t){ 1, 1, 0, 1 })
-#define matparams_pbr         ((material_params_t){ 1, 1, 1, 1 })
+#define matparams_none        ((material_params_t){ 0, 0, 0, 0, si2ones })
+#define matparams_diffuse     ((material_params_t){ 1, 0, 0, 0, si2ones })
+#define matparams_norm        ((material_params_t){ 1, 1, 0, 0, si2ones })
+#define matparams_roughness   ((material_params_t){ 1, 0, 1, 0, si2ones })
+#define matparams_metallic    ((material_params_t){ 1, 0, 0, 1, si2ones })
+#define matparams_rough_metal ((material_params_t){ 1, 0, 1, 1, si2ones })
+#define matparams_norm_rough  ((material_params_t){ 1, 1, 1, 0, si2ones })
+#define matparams_norm_metal  ((material_params_t){ 1, 1, 0, 1, si2ones })
+#define matparams_pbr         ((material_params_t){ 1, 1, 1, 1, si2ones })
 
-Material  material_new(slice_t name, material_params_t params);
-Material  material_new_load(slice_t name, material_params_t params);
+Material  material_new(slice_t name, material_params_t);
+Material  material_new_load(slice_t name, material_params_t);
+Material  material_new_atlas(slice_t name, material_params_t, vec2i dim);
+Material  material_new_atlas_load(slice_t name, material_params_t, vec2i dim);
 Material  material_get(slice_t name);
-void      material_load_async(Material material);
-void      material_build(Material material);
+void      material_load_async(Material);
+void      material_build(Material);
 void      material_load_all_async(void);
 void      material_build_all(void);
 void      material_delete(Material* material);
 
-void      mateiral_bind(Material material);
+void      mateiral_bind(Material);
 
 #endif

@@ -40,6 +40,7 @@ typedef struct Material_Internal {
   Image   img_normals;
   Image   img_roughness;
   Image   img_metalness;
+//Image   img_emissive; ?
 } Material_Internal;
 
 #define MATERIAL_INTERNAL \
@@ -70,9 +71,14 @@ Material material_new(slice_t name, material_params_t params) {
 
   String name_str = str_copy(name);
 
-  *ret = (Material_Internal) {
+  if (params.atlas_dimensions.x <= 0 || params.atlas_dimensions.y <= 0) {
+    params.atlas_dimensions = i2ones;
+  }
+
+  *ret = (Material_Internal){
     .pub = {
       .name = name_str->slice,
+      .layers = params.atlas_dimensions.x * params.atlas_dimensions.y,
       .weight_normal = 1.0f,
       .weight_roughness = 0.5f,
       .weight_metalness = 0.0f,
@@ -94,6 +100,23 @@ Material material_new_load(slice_t name, material_params_t params) {
   Material ret = material_new(name, params);
   material_load_async(ret);
   return ret;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Initializes a new material using texture atlases
+////////////////////////////////////////////////////////////////////////////////
+
+Material  material_new_atlas(slice_t name, material_params_t p, vec2i dim) {
+  p.atlas_dimensions = dim;
+  return material_new(name, p);
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+Material  material_new_atlas_load(slice_t name, material_params_t p, vec2i d) {
+  p.atlas_dimensions = d;
+  return material_new_load(name, p);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -151,33 +174,35 @@ void material_build(Material m_in) {
   MATERIAL_INTERNAL;
   if (m->pub.ready) return;
 
+  vec2i dim = m->pub.params.atlas_dimensions;
+
   if (m->img_diffuse) {
     assert(m->img_diffuse->ready);
-    m->pub.map_diffuse = tex_from_image(m->img_diffuse);
+    m->pub.map_diffuse = tex_from_image_atlas(m->img_diffuse, dim);
     img_delete(&m->img_diffuse);
   }
-  else m->pub.map_diffuse = tex_get_default_white();
+  else m->pub.map_diffuse = tex_get_default_white_atlas();
 
   if (m->img_normals) {
     assert(m->img_normals->ready);
-    m->pub.map_normals = tex_from_image(m->img_normals);
+    m->pub.map_normals = tex_from_image_atlas(m->img_normals, dim);
     img_delete(&m->img_normals);
   }
-  else m->pub.map_normals = tex_get_default_normal();
+  else m->pub.map_normals = tex_get_default_normal_atlas();
 
   if (m->img_roughness) {
     assert(m->img_roughness->ready);
-    m->pub.map_roughness = tex_from_image(m->img_roughness);
+    m->pub.map_roughness = tex_from_image_atlas(m->img_roughness, dim);
     img_delete(&m->img_roughness);
   }
-  else m->pub.map_roughness = tex_get_default_white();
+  else m->pub.map_roughness = tex_get_default_white_atlas();
 
   if (m->img_metalness) {
     assert(m->img_metalness->ready);
-    m->pub.map_metalness = tex_from_image(m->img_metalness);
+    m->pub.map_metalness = tex_from_image_atlas(m->img_metalness, dim);
     img_delete(&m->img_metalness);
   }
-  else m->pub.map_metalness = tex_get_default_white();
+  else m->pub.map_metalness = tex_get_default_white_atlas();
 
   m->pub.ready = true;
 }

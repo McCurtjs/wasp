@@ -97,6 +97,7 @@ static keybind_t input_map[] = {
   { .name = IN_TOGGLE_SHADER, .key = 'm' },
   { .name = IN_TOGGLE_GRID, .key = 'g' },
   { .name = IN_TOGGLE_LOCK, .key = SDLK_ESCAPE },
+  { .name = IN_TOGGLE_UI, .key = SDLK_F2 },
   { .name = IN_INCREASE, .key = SDLK_UP },
   { .name = IN_DECREASE, .key = SDLK_DOWN },
   { .name = IN_INCREASE_FAST, .key = SDLK_PAGEUP },
@@ -184,6 +185,7 @@ bool wasp_preload(Game game) {
   demo.materials.sands->weight_roughness = 1.0f;
 
   demo.materials.mudds = material_new(S("rustediron2"), matparams_rough_metal);
+  demo.materials.mudds->weight_metalness = 1.0f;
 
   demo.materials.renderite = material_new(S("renderite"), matparams_none);
   demo.materials.renderite->weight_roughness = 0.2f;

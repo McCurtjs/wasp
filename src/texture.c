@@ -38,6 +38,14 @@
 static struct texture_t tex_default_white = { 0 };
 static struct texture_t tex_default_normal = { 0 };
 
+tex_params_t tex_params_default = {
+  .filtering = TEX_FILTERING_LINEAR,
+  .wrapping = TEX_WRAPPING_CLAMP,
+  .use_mips = true,
+  .atlas_dimensions = si2ones,
+  .layers = 1
+};
+
 typedef struct rt_format_t {
   int     size;
   GLenum  format;
@@ -72,6 +80,42 @@ tex_format_t _tex_format_from_image(Image image) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Internal function versions
+////////////////////////////////////////////////////////////////////////////////
+
+static inline void _tex_set_filtering(
+  GLenum target, tex_filtering_t filtering, bool has_mips
+) {
+  GLenum param = filtering == TEX_FILTERING_LINEAR ? GL_LINEAR : GL_NEAREST;
+
+  glTexParameteri(target, GL_TEXTURE_MAG_FILTER, param);
+
+  if (has_mips) {
+    if (filtering == TEX_FILTERING_LINEAR)
+      param = GL_LINEAR_MIPMAP_LINEAR;
+    else
+      param = GL_NEAREST_MIPMAP_NEAREST;
+  }
+
+  glTexParameteri(target, GL_TEXTURE_MIN_FILTER, param);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static inline void _tex_set_wrapping(GLenum target, tex_wrapping_t wrapping) {
+  GLenum param;
+  switch (wrapping) {
+    case TEX_WRAPPING_CLAMP:  param = GL_CLAMP_TO_EDGE;   break;
+    case TEX_WRAPPING_REPEAT: param = GL_REPEAT;          break;
+    case TEX_WRAPPING_MIRROR: param = GL_MIRRORED_REPEAT; break;
+    default: assert(false); return;
+  }
+
+  glTexParameteri(target, GL_TEXTURE_WRAP_S, param);
+  glTexParameteri(target, GL_TEXTURE_WRAP_T, param);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Initialize a texture from loaded image data
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -88,6 +132,7 @@ Texture tex_from_image(Image image) {
     .name = str_copy(image->filename),
     .size = v2i(image->width, image->height),
     .format = _tex_format_from_image(image),
+    .filtering = TEX_FILTERING_LINEAR,
     .wrapping = TEX_WRAPPING_CLAMP,
     .layers = 0,
     .has_mips = false,
@@ -117,30 +162,18 @@ Texture tex_from_image(Image image) {
   // Don't make mipmaps for very small textures, and set them up to use
   //    "nearest" filtering, mostly to make sure the error texture is sharp.
   if (image->width < 5 || image->height < 5) {
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     ret->filtering = TEX_FILTERING_CLAMP;
   }
   // Generate mipmaps for any texture that's a valid power of 2 and set up
   //    proper mipmap filtering.
-  else if (isPow2(image->width) && isPow2(image->height)) {
+  else if (is_pow2(image->width) && is_pow2(image->height)) {
     glGenerateMipmap(GL_TEXTURE_2D);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(
-      GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR
-    );
     ret->filtering = TEX_FILTERING_LINEAR;
     ret->has_mips = true;
   }
-  // Generic filtering for all other textures
-  else {
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    ret->filtering = TEX_FILTERING_LINEAR;
-  }
 
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  _tex_set_filtering(GL_TEXTURE_2D, ret->filtering, ret->has_mips);
+  _tex_set_wrapping(GL_TEXTURE_2D, ret->wrapping);
 
   glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -271,12 +304,36 @@ Texture tex_get_default_white(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+
+Texture tex_get_default_white_atlas(void) {
+  if (tex_default_white.handle == 0) {
+    tex_default_white = *tex_from_image_atlas(
+      img_load_default_white(), i2ones
+    );
+  }
+
+  return (Texture)&tex_default_white;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Initialize/get a default normal map texture <0.5, 0.5, 1.0>
 ////////////////////////////////////////////////////////////////////////////////
 
 Texture tex_get_default_normal(void) {
   if (tex_default_normal.handle == 0) {
     tex_default_normal = *tex_from_image(img_load_default_normal());
+  }
+
+  return (Texture)&tex_default_normal;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+Texture tex_get_default_normal_atlas(void) {
+  if (tex_default_normal.handle == 0) {
+    tex_default_normal = *tex_from_image_atlas(
+      img_load_default_normal(), i2ones
+    );
   }
 
   return (Texture)&tex_default_normal;
@@ -292,42 +349,28 @@ void tex_set_name(Texture tex, slice_t name) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Sets the filtering level
+////////////////////////////////////////////////////////////////////////////////
 
 void tex_set_filtering(Texture tex, tex_filtering_t filtering) {
   assert(tex);
   assert(tex->handle);
   GLenum target = tex->layers > 0 ? GL_TEXTURE_2D_ARRAY : GL_TEXTURE_2D;
-  GLenum param = filtering ? GL_LINEAR : GL_NEAREST;
   glBindTexture(target, tex->handle);
-  glTexParameteri(target, GL_TEXTURE_MAG_FILTER, param);
-
-  if (tex->has_mips) {
-    if (tex->filtering == TEX_FILTERING_LINEAR)
-      param = GL_LINEAR_MIPMAP_LINEAR;
-    else
-      param = GL_NEAREST;
-  }
-
-  glTexParameteri(target, GL_TEXTURE_MIN_FILTER, param);
+  _tex_set_filtering(target, filtering, tex->has_mips);
   glBindTexture(target, 0);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Sets the texture wrapping style
 ////////////////////////////////////////////////////////////////////////////////
 
 void tex_set_wrapping(Texture tex, tex_wrapping_t wrapping) {
   assert(tex);
   assert(tex->handle);
   GLenum target = tex->layers > 0 ? GL_TEXTURE_2D_ARRAY : GL_TEXTURE_2D;
-  GLenum param;
-  switch (wrapping) {
-    case TEX_WRAPPING_CLAMP:  param = GL_CLAMP_TO_EDGE;   break;
-    case TEX_WRAPPING_REPEAT: param = GL_REPEAT;          break;
-    case TEX_WRAPPING_MIRROR: param = GL_MIRRORED_REPEAT; break;
-    default: assert(false); return;
-  }
   glBindTexture(target, tex->handle);
-  glTexParameteri(target, GL_TEXTURE_WRAP_S, param);
-  glTexParameteri(target, GL_TEXTURE_WRAP_T, param);
+  _tex_set_wrapping(target, wrapping);
   glBindTexture(target, 0);
 }
 
@@ -397,6 +440,8 @@ static byte* _tex_arr_vertical_clone(
 // Creates a texture atlas from an image sectioned into a grid
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <math.h>
+
 Texture tex_from_image_atlas(Image image, vec2i dim) {
   assert(image);
   assert(image->ready);
@@ -442,6 +487,21 @@ Texture tex_from_image_atlas(Image image, vec2i dim) {
   }
 
   GLsizei mip_levels = 1;
+
+  // Don't make mipmaps for very small textures, and set them up to use
+  //    "nearest" filtering, mostly to make sure the error texture is sharp.
+  if (image->width < 5 || image->height < 5) {
+    ret->filtering = TEX_FILTERING_CLAMP;
+  }
+  // Generate mipmaps for any texture that's a valid power of 2 and set up
+  //    proper mipmap filtering.
+  else if (is_pow2(ret->size.w) && is_pow2(ret->size.h)) {
+    ret->filtering = TEX_FILTERING_LINEAR;
+    ret->has_mips = true;
+    mip_levels = (GLsizei)log2f((float)MIN(ret->size.w, ret->size.h));
+    assert(mip_levels > 0);
+  }
+
   glTexStorage3D(GL_TEXTURE_2D_ARRAY
   , mip_levels
   , _rt_format[ret->format].internal
@@ -451,19 +511,18 @@ Texture tex_from_image_atlas(Image image, vec2i dim) {
   );
 
   glTexSubImage3D(GL_TEXTURE_2D_ARRAY
-  , 0                                   // Mipmap level
-  , 0, 0, 0                             // x, y, z offsets
-  , ret->size.w, ret->size.h, ret->layers  // width/height/depth of change
+  , 0                                       // Mipmap level
+  , 0, 0, 0                                 // x, y, z offsets
+  , ret->size.w, ret->size.h, ret->layers   // width/height/depth of change
   , _rt_format[ret->format].format
   , _rt_format[ret->format].type
   , vertical_atlas
   );
 
-  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  _tex_set_filtering(GL_TEXTURE_2D_ARRAY, ret->filtering, ret->has_mips);
+  _tex_set_wrapping(GL_TEXTURE_2D_ARRAY, ret->wrapping);
+
   glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
   if (atlas_data) {
 #ifdef __WASM__
@@ -472,9 +531,9 @@ Texture tex_from_image_atlas(Image image, vec2i dim) {
     free(atlas_data);
   }
 
-#ifndef __WASM__
-  tex_gen_mips(ret);
-#endif
+//#ifndef __WASM__
+  glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
+//#endif
 
   glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
 
@@ -539,8 +598,8 @@ void tex_set_atlas_layer(Texture tex, int layer, Image image) {
   glBindTexture(GL_TEXTURE_2D_ARRAY, tex->handle);
 
   glTexSubImage3D(GL_TEXTURE_2D_ARRAY
-  , 0                         // Mipmap level
-  , 0, 0, layer               // x, y, z offsets
+  , 0                           // Mipmap level
+  , 0, 0, layer                 // x, y, z offsets
   , tex->size.w, tex->size.h, 1 // width/height/depth of change
   , _rt_format[tex->format].format
   , _rt_format[tex->format].type

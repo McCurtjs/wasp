@@ -472,6 +472,14 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
   }
 
 #ifndef __WASM__
+  static bool show_ui = false;
+
+  if (input_triggered(IN_TOGGLE_UI)) {
+    show_ui ^= 1;
+  }
+
+  if (!show_ui) return;
+
   ImVec2_c v2imzero = { 0 };
   ImVec2_c v2imwinsize = { 250, (float)game->window.h };
   ImVec2_c v2imsubmenu = { 234 };
