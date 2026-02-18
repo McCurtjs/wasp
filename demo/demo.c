@@ -40,12 +40,7 @@ static File file_model_gear = NULL;
 
 static demo_t demo;
 
-static Image test_sprites = NULL;
-static Image test_crate = NULL;
-
 static int active_shader = 1;
-
-Texture test_tex_arr = NULL;
 
 static renderer_t _renderer_basic = {
   .name = "Basic",
@@ -171,30 +166,53 @@ static void cheesy_loading_animation(Game game, float dt) {
 bool wasp_preload(Game game) {
   UNUSED(game);
 
+  //*
+  slice_t _tex_names[] = {
+    S("grass_green"),
+    S("grass_rocky"),
+    S("ground_ferns"),
+    S("brass2"),
+    S("rusty"),
+    S("lava"),
+    S("lava2"),
+    S("tiles")
+  };
+
+  span_slice_t tex_names = span_slice(_tex_names, ARRAY_COUNT(_tex_names));
+
+  demo.materials.atlas = mat_new(S("atlas"), mat_params_norm);
+  mat_load_multi_async(demo.materials.atlas, tex_names.view);
+
+  /*/
+  demo.materials.atlas = mat_new_atlas_load(
+    S("test_sprites"), mat_params_diffuse, v2i(4, 4)
+  );
+  demo.materials.atlas->weight_roughness = 0.3f;
+  demo.materials.atlas->weight_metalness = 1.0f;
+  mat_set_ext(demo.materials.atlas, S("png"));
+  //*/
+
   file_model_gear = file_new(S("./res/models/gear.obj"));
 
-  demo.materials.grass = material_new(S("grass_rocky"), matparams_norm_rough);
+  demo.materials.grass = mat_new(S("grass_rocky"), mat_params_norm_rough);
   demo.materials.grass->weight_roughness = 1.0f;
 
-  demo.materials.crate = material_new(S("crate"), matparams_roughness);
+  demo.materials.crate = mat_new(S("crate"), mat_params_diffuse);
   demo.materials.crate->weight_roughness = 1.0f;
 
-  demo.materials.tiles = material_new(S("tiles"), matparams_diffuse);
+  demo.materials.tiles = mat_new(S("tiles"), mat_params_diffuse);
 
-  demo.materials.sands = material_new(S("brass2"), matparams_norm);
+  demo.materials.sands = mat_new(S("brass2"), mat_params_norm);
   demo.materials.sands->weight_roughness = 1.0f;
 
-  demo.materials.mudds = material_new(S("rustediron2"), matparams_rough_metal);
+  demo.materials.mudds = mat_new(S("rustediron2"), mat_params_rough_metal);
   demo.materials.mudds->weight_metalness = 1.0f;
 
-  demo.materials.renderite = material_new(S("renderite"), matparams_none);
+  demo.materials.renderite = mat_new(S("renderite"), mat_params_none);
   demo.materials.renderite->weight_roughness = 0.2f;
   demo.materials.renderite->weight_metalness = 0.8f;
 
-  test_sprites = img_load_async(S("./res/textures/test_sprites.png"));
-  test_crate = img_load_async(S("./res/textures/crate.png"));
-
-  material_load_all_async();
+  mat_load_all_async();
 
   demo.shaders.basic = shader_new_load_async(S("basic_deferred"));
   demo.shaders.light = shader_new_load_async(S("light"));
@@ -238,20 +256,8 @@ bool wasp_load (Game game, int await_count, float dt) {
   );
   rt_build(game->demo->render_target, game->window);
 
-  //test_tex_arr = tex_generate_atlas(TF_RGBA_8, v2i(512, 512), 2);
-  //tex_set_atlas_layer(test_tex_arr, 0, test_sprites);
-  //tex_set_atlas_layer(test_tex_arr, 1, test_crate);
-  test_tex_arr = tex_from_image_atlas(test_sprites, v2i(4, 4));
-
-  img_delete(&test_sprites);
-  img_delete(&test_crate);
-
-#ifndef __WASM__
-  tex_gen_mips(test_tex_arr);
-#endif
-
   shader_build_all();
-  material_build_all();
+  mat_build_all();
 
   // Set params for PBR render group
   _renderer_pbr.shader = game->demo->shaders.light_inst;

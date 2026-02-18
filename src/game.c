@@ -22,8 +22,7 @@
 * SOFTWARE.
 */
 
-#define WASP_ENTITY_INTERNAL
-#define WASP_GAME_INTERNAL
+#define MCLIB_INTERNAL_IMPL
 #include "game.h"
 
 #include "quat.h"

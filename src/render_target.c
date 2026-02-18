@@ -1,7 +1,7 @@
 /*******************************************************************************
 * MIT License
 *
-* Copyright (c) 2025 Curtis McCoy
+* Copyright (c) 2026 Curtis McCoy
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -22,7 +22,7 @@
 * SOFTWARE.
 */
 
-#define WASP_RENDER_TARGET_INTERNAL
+#define MCLIB_INTERNAL_IMPL
 #include "render_target.h"
 
 #include "texture.h"
@@ -37,16 +37,16 @@ typedef struct RenderTarget_Internal {
   struct _opaque_RenderTarget_t pub;
 
   // private
-  uint              handle;
-  uint              depth_buffer;
-  index_t           attachment_count;
-  GLenum*           color_attachments;
+  uint    handle;
+  uint    depth_buffer;
+  index_t attachment_count;
+  GLenum* color_attachments;
 
 } RenderTarget_Internal;
 
-#define RT_INTERNAL \
-  RenderTarget_Internal* rt = (RenderTarget_Internal*)(rt_in); \
-  assert(rt)
+#define RT_INTERNAL                                                           \
+  RenderTarget_Internal* rt = (RenderTarget_Internal*)(rt_in);                \
+  assert(rt)                                                                  //
 
 static const GLenum _rt_depth_formats[] = {
   0, GL_DEPTH_COMPONENT32F, GL_DEPTH24_STENCIL8

@@ -246,16 +246,14 @@ void _model_render_prim(Model model) {
   }
 
   if (prim->index_count) {
-    glDrawElements
-    ( GL_TRIANGLES
+    glDrawElements(GL_TRIANGLES
     , (GLsizei)prim->index_count
     , GL_UNSIGNED_INT
     , 0
     );
   }
   else {
-    glDrawArrays
-    ( GL_TRIANGLES
+    glDrawArrays(GL_TRIANGLES
     , 0
     , (GLsizei)prim->vert_count
     );

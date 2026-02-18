@@ -36,24 +36,14 @@ typedef enum depth_format_t {
   F_DEPTH_FORMAT_MAX
 } depth_format_t;
 
-#ifdef WASP_RENDER_TARGET_INTERNAL
-#undef CONST
-#define CONST
-#endif
-
 typedef struct _opaque_RenderTarget_t {
-  CONST index_t                   slot_count;
-  CONST Texture           * CONST textures;
+  CONST index_t               slot_count;
+  CONST Texture       * CONST textures;
   CONST tex_format_t  * CONST formats;
-  CONST depth_format_t            depth_format;
-        color3                    clear_color;
-  CONST bool                      ready;
+  CONST depth_format_t        depth_format;
+        color3                clear_color;
+  CONST bool                  ready;
 }* RenderTarget;
-
-#ifdef WASP_RENDER_TARGET_INTERNAL
-#undef CONST
-#define CONST const
-#endif
 
 RenderTarget _rt_new(index_t size, tex_format_t formats[]);
 #define rt_new(...) \

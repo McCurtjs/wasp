@@ -80,11 +80,6 @@ typedef struct entity_desc_t {
   entity_delete_fn_t  ondelete;
 } entity_desc_t;
 
-#ifdef WASP_ENTITY_INTERNAL
-#undef CONST
-#define CONST
-#endif
-
 typedef struct entity_t {
   // Entity basic attributes and identifiers
   slotkey_t           CONST id;
@@ -121,11 +116,6 @@ typedef struct entity_t {
   entity_create_fn_t        oncreate;         // after transform sync
   entity_delete_fn_t        ondelete;
 }* Entity;
-
-#ifdef WASP_ENTITY_INTERNAL
-#undef CONST
-#define CONST const
-#endif
 
 slotkey_t entity_add(const entity_desc_t* entity);
 void      entity_remove(slotkey_t entity_id);

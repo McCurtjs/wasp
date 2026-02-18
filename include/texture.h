@@ -59,13 +59,8 @@ typedef struct tex_params_t {
   tex_wrapping_t  wrapping;
   bool            use_mips;
   vec2i           atlas_dimensions;
-  int             layers;
+  index_t         layers;
 } tex_params_t;
-
-#ifdef WASP_TEXTURE_INTERNAL
-#undef CONST
-#define CONST
-#endif
 
 typedef struct texture_t {
   String          CONST name;
@@ -73,15 +68,10 @@ typedef struct texture_t {
   tex_format_t    CONST format;
   tex_filtering_t CONST filtering;
   tex_wrapping_t  CONST wrapping;
-  int             CONST layers;
+  index_t         CONST layers;
   uint            CONST handle;
   bool            CONST has_mips;
 }* Texture;
-
-#ifdef WASP_TEXTURE_INTERNAL
-#undef CONST
-#define CONST const
-#endif
 
 // \brief Default texture params:
 // \brief   - Filtering: linear
@@ -91,21 +81,25 @@ typedef struct texture_t {
 // \brief   - Layers: 1
 extern tex_params_t tex_params_default;
 
+// Gets the equivalent texture format of a loaded image
+tex_format_t img_format(Image);
+
 Texture tex_from_image(Image);
 Texture tex_from_image_params(Image, tex_params_t);
 Texture tex_from_image_atlas(Image, vec2i dim);
 Texture tex_from_data(tex_format_t, vec2i size, const void* data);
 Texture tex_generate(tex_format_t, vec2i size);
-Texture tex_generate_atlas(tex_format_t, vec2i size, int layers);
+Texture tex_generate_atlas(tex_format_t, vec2i size, index_t layers);
 Texture tex_get_default_white(void);
-Texture tex_get_default_white_atlas(void);
 Texture tex_get_default_normal(void);
+Texture tex_get_default_white_atlas(void);
 Texture tex_get_default_normal_atlas(void);
 void    tex_set_name(Texture, slice_t name);
 void    tex_set_filtering(Texture, tex_filtering_t);
 void    tex_set_wrapping(Texture, tex_wrapping_t);
-void    tex_set_atlas_layer(Texture, int layer, Image);
-void    tex_gen_mips(Texture);
+void    tex_set_atlas_layer(Texture, index_t layer, Image);
+void    tex_set_atlas_layer_color(Texture, index_t layer, color4);
+void    tex_generate_mips(Texture);
 void    tex_apply(Texture, uint slot, int sampler);
 void    tex_delete(Texture*);
 

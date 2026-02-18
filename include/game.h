@@ -67,11 +67,6 @@ typedef struct app_defaults_t {
   CUSTOM_GAME_TYPE* CUSTOM_GAME_VAR;
 } app_defaults_t;
 
-#ifdef WASP_GAME_INTERNAL
-#undef CONST
-#define CONST
-#endif
-
 typedef struct _opaque_Game_t {
   CUSTOM_GAME_TYPE* CUSTOM_GAME_VAR;
 
@@ -98,11 +93,6 @@ typedef struct _opaque_Game_t {
   // settable events
   event_resize_window_fn_t on_window_resize;
 }* Game;
-
-#ifdef WASP_GAME_INTERNAL
-#undef CONST
-#define CONST const
-#endif
 
 Game game_init(int window_width, int window_height);
 Game game_new(String title, vec2i window_size);

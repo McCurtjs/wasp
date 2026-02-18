@@ -28,15 +28,29 @@
 #include "types.h"
 #include "slice.h"
 #include "span.h"
+#include "vec.h"
 
-typedef struct _opaque_Image_base {
-  const String filename;
-  const void* data;
-  const int width;
-  const int height;
-  const int channels;
-  const bool ready;
-  bool blend;
+typedef enum img_type_t {
+  IMG_DEFAULT,
+  IMG_ERROR,
+  IMG_FROM_FILE,
+  IMG_DATA,
+} img_type_t;
+
+typedef struct image_t {
+  String        CONST filename;
+  CONST void  * CONST data;
+  union {
+    vec2i       CONST size;
+    struct {
+      int       CONST width;
+      int       CONST height;
+    };
+  };
+  int           CONST channels;
+  bool          CONST ready;
+  bool                blend;
+  img_type_t    CONST type;
 }* Image;
 
 //Image2 img_new(width/height);

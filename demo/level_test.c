@@ -189,7 +189,7 @@ scene_unload_fn_t scene_load_gears(Game game) {
       }
 
       Material material = demo->materials.tiles;
-
+      /*
       if (i == 2 && j == 1) {
         axis = v3up;
         angle = 3.14159f;// / 4.0f;
@@ -205,6 +205,9 @@ scene_unload_fn_t scene_load_gears(Game game) {
         material = j % 2 == 0 ?
           demo->materials.renderite : demo->materials.mudds;
       }
+      /*/
+      material = demo->materials.atlas;
+      //*/
 
       entity_add(&(entity_desc_t) {
         .name = S("Ground Cube"),

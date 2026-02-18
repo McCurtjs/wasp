@@ -1,7 +1,7 @@
 /*******************************************************************************
 * MIT License
 *
-* Copyright (c) 2025 Curtis McCoy
+* Copyright (c) 2026 Curtis McCoy
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -22,39 +22,16 @@
 * SOFTWARE.
 */
 
+#define MCLIB_INTERNAL_IMPL
 #include "image.h"
 #include "str.h"
-
-typedef enum img_load_t {
-  IMG_DEFAULT,
-  IMG_FROM_FILE,
-  IMG_DATA
-} img_load_t;
-
-typedef struct Image_Internal {
-  // public (read-only)
-  String filename;
-  void* data;
-  int width;
-  int height;
-  int channels;
-  bool ready;
-  bool blend;
-
-  // private
-  img_load_t type : 8;
-} Image_Internal;
-
-#define IMAGE_INTERNAL \
-  Image_Internal* img = (Image_Internal*)(img_in); \
-  assert(img)
 
 ////////////////////////////////////////////////////////////////////////////////
 // Data section for default built-in image values
 ////////////////////////////////////////////////////////////////////////////////
 
 #define F 255
-Image_Internal img_default = {
+struct image_t img_default = {
   .filename = (String)&slice_empty,
   .data = (byte[]) {
     0,0,0, F,0,F, 0,0,0, F,0,F,
@@ -67,12 +44,12 @@ Image_Internal img_default = {
   .channels = 3,
   .ready = true,
   .blend = false,
-  .type = IMG_DEFAULT,
+  .type = IMG_ERROR,
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 
-Image_Internal img_default_white = {
+struct image_t img_default_white = {
   .filename = (String)&slice_empty,
   .data = (byte[]) { F, F, F },
   .width = 1,
@@ -89,7 +66,7 @@ Image_Internal img_default_white = {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-Image_Internal img_default_normal = {
+struct image_t img_default_normal = {
   .filename = (String)&slice_empty,
   .data = (byte[]) { 127, 127, 255 },
   .width = 1,
@@ -104,12 +81,15 @@ Image_Internal img_default_normal = {
   .type = IMG_DEFAULT
 };
 
-#ifdef __WASM__
+#ifndef __WASM__
+# define STB_IMAGE_IMPLEMENTATION
+# include "stb_image.h"
+#else
 # include <string.h>
 # include <stdlib.h> // malloc, free
 # include "wasm.h"
 
-extern void* js_image_open(Image_Internal* img, const char* src, uint src_len);
+extern void* js_image_open(Image img, const char* src, uint src_len);
 extern void  js_image_delete(void* data_id);
 extern void  js_image_extract(void* dst, void* src, int dst_channels);
 
@@ -121,9 +101,9 @@ extern void  js_buffer_delete(void* data_id);
 ////////////////////////////////////////////////////////////////////////////////
 
 void export(img_open_async_done) (
-  Image img_in, int width, int height, bool success
+  Image img, int width, int height, bool success
 ) {
-  IMAGE_INTERNAL;
+  assert(img);
   if (success) {
     img->width = width;
     img->height = height;
@@ -133,7 +113,6 @@ void export(img_open_async_done) (
     *img = img_default;
     int buffer_size = img->width * img->height * img->channels;
     img->data = js_buffer_create(img_default.data, buffer_size);
-    img->type = IMG_DATA;
     str_log("  Failed ({}): using default", (size_t)img->data);
   }
 
@@ -141,9 +120,6 @@ void export(img_open_async_done) (
   img->ready = true;
 }
 
-#else
-# define STB_IMAGE_IMPLEMENTATION
-# include "stb_image.h"
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -152,13 +128,13 @@ void export(img_open_async_done) (
 
 Image img_load_async_str(String filename) {
   str_log("[Image.load] Loading: {}", filename);
-  Image_Internal* ret;
+  Image ret;
 
 #ifdef __WASM__
-  ret = malloc(sizeof(Image_Internal));
+  ret = malloc(sizeof(*ret));
   assert(ret);
 
-  *ret = (Image_Internal) {
+  *ret = (struct image_t) {
     .filename = filename,
     .type = IMG_FROM_FILE,
     .blend = true,
@@ -167,7 +143,7 @@ Image img_load_async_str(String filename) {
   ret->data = js_image_open(ret, ret->filename->begin, ret->filename->length);
   str_log("  Async ID: {}", (size_t)ret->data);
 #else
-  Image_Internal img = {
+  struct image_t img = {
     .filename = filename,
     .type = IMG_FROM_FILE,
     .ready = true,
@@ -184,14 +160,14 @@ Image img_load_async_str(String filename) {
     str_log("  Failed: {} - using default", stbi_failure_reason());
   }
   else {
-    ret = malloc(sizeof(Image_Internal));
+    ret = malloc(sizeof(*ret));
     assert(ret);
     *ret = img;
     str_log("  Loaded: {} x {} ({})", ret->width, ret->height, ret->channels);
   }
 #endif
 
-  return (Image)ret;
+  return ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -241,10 +217,10 @@ Image img_from_bytes(const byte* data, int width, int height, int channels) {
 
   index_t data_size = width * height * channels;
 
-  Image_Internal* ret = malloc(sizeof(Image_Internal) + data_size);
+  Image ret = malloc(sizeof(*ret) + data_size);
   assert(ret);
 
-  *ret = (Image_Internal) {
+  *ret = (struct image_t) {
     .filename = str_empty,
     .data = (void*)(ret + 1),
     .width = width,
@@ -269,7 +245,7 @@ Image img_from_bytes(const byte* data, int width, int height, int channels) {
 
 void img_delete(Image* pimg) {
   if (!pimg || !*pimg) return;
-  Image_Internal* img = (Image_Internal*)*pimg;
+  Image img = *pimg;
   str_delete(&img->filename);
 
 #ifdef __WASM__
@@ -279,6 +255,7 @@ void img_delete(Image* pimg) {
       break;
 
     case IMG_DATA:
+    case IMG_ERROR:
       js_buffer_delete(img->data);
       break;
 
@@ -299,6 +276,7 @@ void img_delete(Image* pimg) {
       break;
 
     case IMG_DEFAULT:
+    case IMG_ERROR:
       break;
   }
 #endif
@@ -310,8 +288,7 @@ void img_delete(Image* pimg) {
 // Copies the image data to an array with the designated number of channels
 ////////////////////////////////////////////////////////////////////////////////
 
-void img_copy_data(void* dst, Image img_in, int channels) {
-  IMAGE_INTERNAL;
+void img_copy_data(void* dst, Image img, int channels) {
   assert(img);
   assert(dst);
   assert(img->ready);

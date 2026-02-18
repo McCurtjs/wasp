@@ -56,6 +56,7 @@ typedef struct demo_models_t {
 } demo_models_t;
 
 typedef struct demo_materials_t {
+  Material atlas;
   Material grass;
   Material sands;
   Material tiles;

@@ -29,27 +29,30 @@
 
 #include "texture.h"
 #include "vec.h"
+#include "span_slice.h"
 
-typedef struct material_params_t {
+typedef struct mat_params_t {
   bool  use_diffuse_map;
   bool  use_normal_map;
   bool  use_roughness_map;
   bool  use_metalness_map;
   vec2i atlas_dimensions;
-} material_params_t;
+} mat_params_t;
 
-#ifdef WASP_MATERIAL_INTERNAL
-#undef CONST
-#define CONST
-#endif
+#define MAT_MAP_COUNT 4
 
 typedef struct _opaque_Material_t {
   slice_t     CONST name;
-  int         CONST layers;
-  Texture     CONST map_diffuse;
-  Texture     CONST map_normals;
-  Texture     CONST map_roughness;
-  Texture     CONST map_metalness;
+  index_t     CONST layers;
+  union {
+    Texture   CONST maps[MAT_MAP_COUNT];
+    struct {
+      Texture CONST map_diffuse;
+      Texture CONST map_normals;
+      Texture CONST map_roughness;
+      Texture CONST map_metalness;
+    };
+  };
   union {
     vec3            weights;
     struct {
@@ -58,37 +61,51 @@ typedef struct _opaque_Material_t {
       float         weight_metalness;
     };
   };
-  material_params_t params;
+  mat_params_t params;
   bool        CONST ready;
 }* Material;
 
-#ifdef WASP_MATERIAL_INTERNAL
-#undef CONST
-#define CONST const
-#endif
-
 // Material create params to denote which maps are active
-#define matparams_none        ((material_params_t){ 0, 0, 0, 0, si2ones })
-#define matparams_diffuse     ((material_params_t){ 1, 0, 0, 0, si2ones })
-#define matparams_norm        ((material_params_t){ 1, 1, 0, 0, si2ones })
-#define matparams_roughness   ((material_params_t){ 1, 0, 1, 0, si2ones })
-#define matparams_metallic    ((material_params_t){ 1, 0, 0, 1, si2ones })
-#define matparams_rough_metal ((material_params_t){ 1, 0, 1, 1, si2ones })
-#define matparams_norm_rough  ((material_params_t){ 1, 1, 1, 0, si2ones })
-#define matparams_norm_metal  ((material_params_t){ 1, 1, 0, 1, si2ones })
-#define matparams_pbr         ((material_params_t){ 1, 1, 1, 1, si2ones })
+#define   mat_params_none        ((mat_params_t){ 0, 0, 0, 0, si2ones })
+#define   mat_params_diffuse     ((mat_params_t){ 1, 0, 0, 0, si2ones })
+#define   mat_params_norm        ((mat_params_t){ 1, 1, 0, 0, si2ones })
+#define   mat_params_roughness   ((mat_params_t){ 1, 0, 1, 0, si2ones })
+#define   mat_params_metallic    ((mat_params_t){ 1, 0, 0, 1, si2ones })
+#define   mat_params_rough_metal ((mat_params_t){ 1, 0, 1, 1, si2ones })
+#define   mat_params_norm_rough  ((mat_params_t){ 1, 1, 1, 0, si2ones })
+#define   mat_params_norm_metal  ((mat_params_t){ 1, 1, 0, 1, si2ones })
+#define   mat_params_pbr         ((mat_params_t){ 1, 1, 1, 1, si2ones })
 
-Material  material_new(slice_t name, material_params_t);
-Material  material_new_load(slice_t name, material_params_t);
-Material  material_new_atlas(slice_t name, material_params_t, vec2i dim);
-Material  material_new_atlas_load(slice_t name, material_params_t, vec2i dim);
-Material  material_get(slice_t name);
-void      material_load_async(Material);
-void      material_build(Material);
-void      material_load_all_async(void);
-void      material_build_all(void);
-void      material_delete(Material* material);
+// \brief Creates a new and empty material with the given params
+Material  mat_new(slice_t name, mat_params_t);
 
-void      mateiral_bind(Material);
+// \brief Creates an empty material with the given params and atlas dimensions
+Material  mat_new_atlas(slice_t name, mat_params_t, vec2i dim);
+
+// \brief Begins loading material using the material name as the filename
+void      mat_load_async(Material);
+
+// \brief Loads material with filename override (may differ from material name)
+//void    mat_load_file_async(Material, slice_t filename);
+
+// \brief Loads atlas where each texture is from a separate image
+void      mat_load_multi_async(Material, view_slice_t filenames);
+
+// \brief Same as calling `mat_new` then `mat_load_async`.
+Material  mat_new_load(slice_t name, mat_params_t);
+
+// \brief Same as calling `mat_new_atlas` then `mat_load_async`.
+Material  mat_new_atlas_load(slice_t name, mat_params_t, vec2i dim);
+
+// \brief Begins loading all materials that aren't already loading
+void      mat_load_all_async(void);
+
+Material  mat_get(slice_t name);
+void      mat_set_ext(Material, slice_t file_extension);
+void      mat_build(Material);
+void      mat_build_all(void);
+void      mat_delete(Material* material);
+
+void      mat_bind(Material);
 
 #endif

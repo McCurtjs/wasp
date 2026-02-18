@@ -22,7 +22,7 @@
 * SOFTWARE.
 */
 
-#define WASP_TEXTURE_INTERNAL
+#define MCLIB_INTERNAL_IMPL
 #include "texture.h"
 
 #include "gl.h"
@@ -46,14 +46,14 @@ tex_params_t tex_params_default = {
   .layers = 1
 };
 
-typedef struct rt_format_t {
+typedef struct tex_format_desc_t {
   int     size;
   GLenum  format;
   GLenum  internal;
   GLenum  type;
-} rt_format_t;
+} tex_format_desc_t;
 
-static const rt_format_t _rt_format[TF_SUPPORTED_MAX] = {
+static const tex_format_desc_t _rt_format[TF_SUPPORTED_MAX] = {
   { 3,  GL_RGB,   GL_RGB8,      GL_UNSIGNED_BYTE },
   { 4,  GL_RGBA,  GL_RGBA8,     GL_UNSIGNED_BYTE },
   { 1,  GL_RED,   GL_R8,        GL_UNSIGNED_BYTE },
@@ -65,19 +65,6 @@ static const rt_format_t _rt_format[TF_SUPPORTED_MAX] = {
   { 4,  GL_RGBA,  GL_RGB10_A2,  GL_UNSIGNED_INT_2_10_10_10_REV },
   { 4,  GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT32F,  GL_FLOAT }
 };
-
-tex_format_t _tex_format_from_image(Image image) {
-  switch (image->channels) {
-#ifdef __WASM__
-    case 0: return TF_RGBA_8;
-#endif
-    case 1: return TF_R_8;
-    case 3: return TF_RGB_8;
-    case 4: return TF_RGBA_8;
-    default: assert(false);
-  }
-  return TF_RGB_8;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Internal function versions
@@ -116,6 +103,32 @@ static inline void _tex_set_wrapping(GLenum target, tex_wrapping_t wrapping) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+
+static inline GLenum _tex_gl_target_type(Texture tex) {
+  return tex->layers > 0 ? GL_TEXTURE_2D_ARRAY : GL_TEXTURE_2D;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Helper to get texture format equivalent from an image
+////////////////////////////////////////////////////////////////////////////////
+
+tex_format_t img_format(Image image) {
+  assert(image->ready);
+
+  switch (image->channels) {
+#ifdef __WASM__
+    case 0: return TF_RGBA_8;
+#endif
+    case 1: return TF_R_8;
+    case 3: return TF_RGB_8;
+    case 4: return TF_RGBA_8;
+    default: assert(false);
+  }
+
+  return TF_RGB_8;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Initialize a texture from loaded image data
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -131,7 +144,7 @@ Texture tex_from_image(Image image) {
   *ret = (struct texture_t) {
     .name = str_copy(image->filename),
     .size = v2i(image->width, image->height),
-    .format = _tex_format_from_image(image),
+    .format = img_format(image),
     .filtering = TEX_FILTERING_LINEAR,
     .wrapping = TEX_WRAPPING_CLAMP,
     .layers = 0,
@@ -185,8 +198,8 @@ Texture tex_from_image(Image image) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef __WASM__
-extern const void*  js_buffer_create(const byte* bytes, uint size);
-extern void         js_buffer_delete(const void* data_id);
+extern void*  js_buffer_create(const byte* bytes, uint size);
+extern void   js_buffer_delete(const void* data_id);
 #endif
 
 Texture tex_from_data(tex_format_t format, vec2i size, const void* data) {
@@ -355,7 +368,7 @@ void tex_set_name(Texture tex, slice_t name) {
 void tex_set_filtering(Texture tex, tex_filtering_t filtering) {
   assert(tex);
   assert(tex->handle);
-  GLenum target = tex->layers > 0 ? GL_TEXTURE_2D_ARRAY : GL_TEXTURE_2D;
+  GLenum target = _tex_gl_target_type(tex);
   glBindTexture(target, tex->handle);
   _tex_set_filtering(target, filtering, tex->has_mips);
   glBindTexture(target, 0);
@@ -368,7 +381,7 @@ void tex_set_filtering(Texture tex, tex_filtering_t filtering) {
 void tex_set_wrapping(Texture tex, tex_wrapping_t wrapping) {
   assert(tex);
   assert(tex->handle);
-  GLenum target = tex->layers > 0 ? GL_TEXTURE_2D_ARRAY : GL_TEXTURE_2D;
+  GLenum target = _tex_gl_target_type(tex);
   glBindTexture(target, tex->handle);
   _tex_set_wrapping(target, wrapping);
   glBindTexture(target, 0);
@@ -385,7 +398,7 @@ void tex_apply(Texture tex, uint slot, int sampler) {
   glActiveTexture(GL_TEXTURE0 + slot);
   glUniform1i(sampler, slot);
 
-  GLenum target = tex->layers > 0 ? GL_TEXTURE_2D_ARRAY : GL_TEXTURE_2D;
+  GLenum target = _tex_gl_target_type(tex);
   glBindTexture(target, tex->handle);
 }
 
@@ -413,7 +426,7 @@ static byte* _tex_arr_vertical_clone(
   int cell_width = _rt_format[tex->format].size * tex->size.w;
   int full_width = cell_width * dim.w;
   int cell_size = cell_width * tex->size.h;
-  int source_size_bytes = cell_size * tex->layers;
+  int source_size_bytes = cell_size * (int)tex->layers;
 
   byte* data = malloc(source_size_bytes);
   assert(data);
@@ -453,7 +466,7 @@ Texture tex_from_image_atlas(Image image, vec2i dim) {
   *ret = (struct texture_t) {
     .name = str_copy(image->filename),
     .size = v2i(image->width / dim.x, image->height / dim.h),
-    .format = _tex_format_from_image(image),
+    .format = img_format(image),
     .layers = dim.x * dim.y,
   };
 
@@ -490,7 +503,7 @@ Texture tex_from_image_atlas(Image image, vec2i dim) {
 
   // Don't make mipmaps for very small textures, and set them up to use
   //    "nearest" filtering, mostly to make sure the error texture is sharp.
-  if (image->width < 5 || image->height < 5) {
+  if (ret->size.w < 5 || ret->size.h < 5) {
     ret->filtering = TEX_FILTERING_CLAMP;
   }
   // Generate mipmaps for any texture that's a valid power of 2 and set up
@@ -507,13 +520,13 @@ Texture tex_from_image_atlas(Image image, vec2i dim) {
   , _rt_format[ret->format].internal
   , ret->size.w
   , ret->size.h
-  , ret->layers
+  , (GLsizei)ret->layers
   );
 
   glTexSubImage3D(GL_TEXTURE_2D_ARRAY
-  , 0                                       // Mipmap level
-  , 0, 0, 0                                 // x, y, z offsets
-  , ret->size.w, ret->size.h, ret->layers   // width/height/depth of change
+  , 0                                             // Mipmap level
+  , 0, 0, 0                                       // x, y, z offsets
+  , ret->size.w, ret->size.h, (GLint)ret->layers  // volume of change
   , _rt_format[ret->format].format
   , _rt_format[ret->format].type
   , vertical_atlas
@@ -531,9 +544,7 @@ Texture tex_from_image_atlas(Image image, vec2i dim) {
     free(atlas_data);
   }
 
-//#ifndef __WASM__
   glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
-//#endif
 
   glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
 
@@ -542,7 +553,7 @@ Texture tex_from_image_atlas(Image image, vec2i dim) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-Texture tex_generate_atlas(tex_format_t format, vec2i size, int layers) {
+Texture tex_generate_atlas(tex_format_t format, vec2i size, index_t layers) {
   assert(format >= 0 && format < TF_SUPPORTED_MAX);
   assert(size.x > 0 && size.y > 0);
   assert(layers > 0);
@@ -561,19 +572,33 @@ Texture tex_generate_atlas(tex_format_t format, vec2i size, int layers) {
   glBindTexture(GL_TEXTURE_2D_ARRAY, ret->handle);
 
   GLsizei mip_levels = 1;
+
+  // Don't make mipmaps for very small textures, and set them up to use
+  //    "nearest" filtering, mostly to make sure the error texture is sharp.
+  if (size.w < 5 || size.h < 5) {
+    ret->filtering = TEX_FILTERING_CLAMP;
+  }
+  // Generate mipmaps for any texture that's a valid power of 2 and set up
+  //    proper mipmap filtering.
+  else if (is_pow2(size.w) && is_pow2(size.h)) {
+    ret->filtering = TEX_FILTERING_LINEAR;
+    ret->has_mips = true;
+    mip_levels = (GLsizei)log2f((float)MIN(ret->size.w, ret->size.h));
+    assert(mip_levels > 0);
+  }
+
   glTexStorage3D(GL_TEXTURE_2D_ARRAY
   , mip_levels
   , _rt_format[format].internal
   , size.w
   , size.h
-  , layers
+  , (GLsizei)layers
   );
 
-  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  _tex_set_filtering(GL_TEXTURE_2D_ARRAY, ret->filtering, ret->has_mips);
+  _tex_set_wrapping(GL_TEXTURE_2D_ARRAY, ret->wrapping);
+
   glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
   glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
 
@@ -584,7 +609,7 @@ Texture tex_generate_atlas(tex_format_t format, vec2i size, int layers) {
 // Sets a single image in an atlas - must match size and format
 ////////////////////////////////////////////////////////////////////////////////
 
-void tex_set_atlas_layer(Texture tex, int layer, Image image) {
+void tex_set_atlas_layer(Texture tex, index_t layer, Image image) {
   assert(tex);
   assert(tex->handle);
   assert(tex->layers > 0);
@@ -598,9 +623,9 @@ void tex_set_atlas_layer(Texture tex, int layer, Image image) {
   glBindTexture(GL_TEXTURE_2D_ARRAY, tex->handle);
 
   glTexSubImage3D(GL_TEXTURE_2D_ARRAY
-  , 0                           // Mipmap level
-  , 0, 0, layer                 // x, y, z offsets
-  , tex->size.w, tex->size.h, 1 // width/height/depth of change
+  , 0                               // Mipmap level
+  , 0, 0, (GLint)layer              // x, y, z offsets
+  , image->size.w, image->size.h, 1 // width/height/depth of change
   , _rt_format[tex->format].format
   , _rt_format[tex->format].type
   , image->data
@@ -611,18 +636,75 @@ void tex_set_atlas_layer(Texture tex, int layer, Image image) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void tex_gen_mips(Texture tex) {
+void tex_set_atlas_layer_color(Texture tex, index_t layer, color4 colorf) {
   assert(tex);
   assert(tex->handle);
   assert(tex->layers > 0);
+  assert(layer >= 0);
+  assert(layer < tex->layers);
+
+  vec4b color = v4cv(colorf);
 
   glBindTexture(GL_TEXTURE_2D_ARRAY, tex->handle);
-  glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
 
-  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameteri(
-    GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR
+  index_t count = tex->size.w * tex->size.h;
+  index_t fmt_size = _rt_format[tex->format].size;
+  assert(fmt_size == b3bytes || fmt_size == b4bytes);
+
+  void* mem_start = malloc(count * fmt_size);
+  assert(mem_start);
+
+  if (fmt_size == b3bytes) {
+    vec3b* mem = mem_start;
+    for (index_t i = 0; i < count; ++i) {
+      *mem = color.rgb;
+      ++mem;
+    }
+  }
+  else {
+    vec4b* mem = mem_start;
+    for (index_t i = 0; i < count; ++i) {
+      *mem = color;
+      ++mem;
+    }
+  }
+
+#ifdef __WASM__
+  void* mem_start_cache = mem_start;
+  mem_start = js_buffer_create(mem_start, count * fmt_size);
+#endif
+
+  glTexSubImage3D(GL_TEXTURE_2D_ARRAY
+  , 0
+  , 0, 0, (GLint)layer
+  , tex->size.w, tex->size.h, 1
+  , _rt_format[tex->format].format
+  , _rt_format[tex->format].type
+  , mem_start
   );
 
+#ifdef __WASM__
+  js_buffer_delete(mem_start);
+  mem_start = mem_start_cache;
+#endif
+
+  free(mem_start);
+
   glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void tex_generate_mips(Texture tex) {
+  assert(tex);
+  assert(tex->handle);
+
+  GLenum target = _tex_gl_target_type(tex);
+
+  glBindTexture(target, tex->handle);
+  glGenerateMipmap(target);
+
+  _tex_set_filtering(target, tex->filtering, tex->has_mips);
+
+  glBindTexture(target, 0);
 }
