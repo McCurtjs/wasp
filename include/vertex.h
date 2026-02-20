@@ -39,37 +39,45 @@ typedef enum vert_format_t {
   VF_UV,            // vert_uv_t
   VF_UV_NORM,       // vert_uv_norm_t
   VF_UV_NORM_COLOR, // vert_uv_norm_color_t
+  VF_SPRITES,       // vert_sprites_t
   VF_SUPPORTED_MAX
 } vert_format_t;
 
 typedef struct vert_base_t {
-  vec3 pos;
+  vec3  pos;
 } vert_base_t;
 
 typedef struct vert_color_t {
-  vec3 pos;
-  vec3 color;
+  vec3  pos;
+  vec3  color;
 } vert_color_t;
 
 typedef struct vert_uv_t {
-  vec3 pos;
-  vec2 uv;
+  vec3  pos;
+  vec2  uv;
 } vert_uv_t;
 
 typedef struct vert_uv_norm_t {
-  vec3 pos;
-  vec2 uv;
-  vec3 norm;
-  vec4 tangent;
+  vec3  pos;
+  vec2  uv;
+  vec3  norm;
+  vec4  tangent;
 } vert_uv_norm_t;
 
 typedef struct vert_uv_norm_color_t {
-  vec3 pos;
-  vec2 uv;
-  vec3 norm;
-  vec4 tangent;
-  vec3 color;
+  vec3  pos;
+  vec2  uv;
+  vec3  norm;
+  vec4  tangent;
+  vec3  color;
 } vert_uv_norm_color_t;
+
+typedef struct vert_sprites_t {
+  vec2  pos;
+  vec2  uv;
+  vec3  norm;
+  vec3b color;
+} vert_sprites_t;
 
 void vert_bind(vert_format_t);
 void vert_bind_as(vert_format_t actual, vert_format_t as);

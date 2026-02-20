@@ -28,28 +28,15 @@
 #include "file.h"
 #include "array.h"
 #include "model.h"
-
-typedef struct {
-  vec3 pos;
-  vec3 norm;
-  vec2 uv;
-  vec4 tangent;
-} obj_vertex_t;
-
-typedef struct {
-  vec3 pos;
-  vec3 norm;
-  vec2 uv;
-  vec4 tangent;
-  vec3 color;
-} obj_vertex_color_t;
+#include "vertex.h"
 
 typedef struct model_obj_t {
   Array verts;
   Array indices;
-  bool has_vertex_color;
+  vert_format_t format;
 } model_obj_t;
 
+// Resulting format can be either VF_UV_NORM or VF_UV_NORM_COLOR
 model_obj_t file_load_obj(File file);
 
 #endif

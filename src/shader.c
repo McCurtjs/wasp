@@ -1,7 +1,7 @@
 /*******************************************************************************
 * MIT License
 *
-* Copyright (c) 2025 Curtis McCoy
+* Copyright (c) 2026 Curtis McCoy
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -55,20 +55,20 @@ typedef struct gl_shader_t {
 } gl_shader_t;
 
 typedef struct Shader_Internal {
-  slice_t       name;
-  bool          ready;
+  slice_t   name;
+  bool      ready;
 
   // hidden values
-  uint          program_handle;
-  String        name_internal;
-  String        vert_filename;
-  String        frag_filename;
-  HMap          uniforms;
+  uint      program_handle;
+  String    name_internal;
+  String    vert_filename;
+  String    frag_filename;
+  HMap      uniforms;
 } Shader_Internal;
 
-#define SHADER_INTERNAL \
-  Shader_Internal* s = (Shader_Internal*)(s_in); \
-  assert(s)
+#define SHADER_INTERNAL                                                       \
+  Shader_Internal* s = (Shader_Internal*)(s_in);                              \
+  assert(s)                                                                   //
 
 HMap _shader_parts = NULL;
 HMap _all_shaders = NULL;

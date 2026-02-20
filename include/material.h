@@ -61,7 +61,7 @@ typedef struct _opaque_Material_t {
       float         weight_metalness;
     };
   };
-  mat_params_t params;
+  mat_params_t      params;
   bool        CONST ready;
 }* Material;
 

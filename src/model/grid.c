@@ -34,6 +34,7 @@
 
 typedef struct Model_Internal_Grid {
   model_type_t type;
+  vert_format_t format;
   index_t vert_count;
   index_t index_count;
   bool ready;
@@ -144,8 +145,8 @@ Model model_new_grid(model_grid_param_t param) {
   GLsizeiptr colors_size = sizeof(*colors) * grid->vert_count;
   glBindBuffer(GL_ARRAY_BUFFER, grid->colors);
   glBufferData(GL_ARRAY_BUFFER, colors_size, colors, GL_STATIC_DRAW);
-  glEnableVertexAttribArray(1);
-  glVertexAttribPointer(1, sizeof(*colors), GL_UNSIGNED_BYTE, GL_TRUE, 0, 0);
+  glEnableVertexAttribArray(4);
+  glVertexAttribPointer(4, sizeof(*colors), GL_UNSIGNED_BYTE, GL_TRUE, 0, 0);
 
   free(points);
   free(colors);

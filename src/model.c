@@ -57,26 +57,24 @@ static void _model_render_instanced(const Model model, index_t count) {
 // Function routing based on object types
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef void (*model_bind_fn_t)(const Model model);
-typedef void (*model_render_fn_t)(Model model);
-typedef void (*model_render_inst_fn_t)(const Model model, index_t count);
+typedef void (model_bind_fn_t)(const Model model);
+typedef void (model_render_fn_t)(Model model);
+typedef void (model_render_inst_fn_t)(const Model model, index_t count);
 
 // Internal model binding and render functions defined in ./models directory
-extern void _model_bind_prim_cube(const Model model);
-extern void _model_bind_prim_cube_color(const Model model);
-extern void _model_bind_prim_frame(const Model model);
-extern void _model_bind_sprites(const Model sprites);
-extern void _model_bind_mesh(const Model mesh);
-extern void _model_render_grid(Model grid);
-extern void _model_render_prim(Model prim);
-extern void _model_render_prim_strip(Model prim);
-extern void _model_render_sprites(Model sprites);
-extern void _model_render_mesh(Model mesh);
+extern model_bind_fn_t    _model_bind_primitive;
+extern model_bind_fn_t    _model_bind_sprites;
+extern model_bind_fn_t    _model_bind_mesh;
+extern model_render_fn_t  _model_render_grid;
+extern model_render_fn_t  _model_render_prim;
+extern model_render_fn_t  _model_render_prim_strip;
+extern model_render_fn_t  _model_render_sprites;
+extern model_render_fn_t  _model_render_mesh;
 
 typedef struct model_management_fns_t {
-  model_bind_fn_t bind;
-  model_render_fn_t render_single;
-  model_render_inst_fn_t render_inst;
+  model_bind_fn_t*        bind;
+  model_render_fn_t*      render_single;
+  model_render_inst_fn_t* render_inst;
 } model_management_fns_t;
 
 static model_management_fns_t model_management_fns[MODEL_TYPES_COUNT] = {
@@ -84,34 +82,34 @@ static model_management_fns_t model_management_fns[MODEL_TYPES_COUNT] = {
   { 0 },
 
   // MODEL_GRID - Grid rendering
-  { .render_single = _model_render_grid,
+  { .render_single  = _model_render_grid,
   },
 
   // MODEL_CUBE - Basic cube primitive (with normals and tangents)
-  { .bind = (model_bind_fn_t)_model_bind_prim_cube
-  , .render_single = (model_render_fn_t)_model_render_prim
-  , .render_inst = (model_render_inst_fn_t)_model_render_instanced
+  { .bind           = _model_bind_primitive
+  , .render_single  = _model_render_prim
+  , .render_inst    = _model_render_instanced
   },
 
   // MODEL_CUBE_COLOR - Debug-cube object with vertex color, no normals
-  { .bind = (model_bind_fn_t)_model_bind_prim_cube_color
-  , .render_single = (model_render_fn_t)_model_render_prim_strip
+  { .bind           = _model_bind_primitive
+  , .render_single  = _model_render_prim_strip
   },
 
   // MODEL_FRAME - Full-screen frame model for deferred rendering
-  { .bind = (model_bind_fn_t)_model_bind_prim_frame
-  , .render_single = (model_render_fn_t)_model_render_prim
+  { .bind           = _model_bind_primitive
+  , .render_single  = _model_render_prim
   },
 
   // MODEL_SPRITES - Accumulated collection of sprites
-  { .bind = (model_bind_fn_t)_model_bind_sprites
-  , .render_single = (model_render_fn_t)_model_render_sprites
+  { .bind           = _model_bind_sprites
+  , .render_single  = _model_render_sprites
   },
 
   // MODEL_MESH - Basic mesh type loaded from .obj file
-  { .bind = (model_bind_fn_t)_model_bind_mesh
-  , .render_single = (model_render_fn_t)_model_render_mesh
-  , .render_inst = (model_render_inst_fn_t)_model_render_instanced
+  { .bind           = _model_bind_mesh
+  , .render_single  = _model_render_mesh
+  , .render_inst    = _model_render_instanced
   }
 };
 
@@ -134,7 +132,7 @@ void model_bind(const Model model) {
     return;
   }
 
-  model_bind_fn_t bind_fn = model_management_fns[model_type].bind;
+  model_bind_fn_t* bind_fn = model_management_fns[model_type].bind;
 
   if (!bind_fn) {
     str_log("[Model.bind] No binding function for model type: ", model_type);
@@ -163,7 +161,7 @@ void model_render(Model model) {
     return;
   }
 
-  model_render_fn_t render_fn = model_management_fns[model_type].render_single;
+  model_render_fn_t* render_fn = model_management_fns[model_type].render_single;
 
   if (!render_fn) {
     str_log("[Model.render] No basic renderer for type: {}", model_type);
@@ -197,9 +195,9 @@ void model_render_instanced(const Model model, index_t count) {
     return;
   }
 
-  model_render_inst_fn_t inst_fn = model_management_fns[model_type].render_inst;
+  model_render_inst_fn_t* ins_fn = model_management_fns[model_type].render_inst;
 
-  if (!inst_fn) {
+  if (!ins_fn) {
     str_log
     ( "[Model.render_inst] No instanced renderer for type: {}"
     , model_type
@@ -207,5 +205,5 @@ void model_render_instanced(const Model model, index_t count) {
     return;
   }
 
-  inst_fn(model, count);
+  ins_fn(model, count);
 }

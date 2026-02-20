@@ -37,6 +37,7 @@
 
 typedef struct Model_Internal_Primitive {
   model_type_t type;
+  vert_format_t format;
   index_t vert_count;
   index_t index_count;
   bool ready;
@@ -54,14 +55,15 @@ static Model _model_new_cube(void) {
   Model_Internal_Primitive* model = malloc(sizeof(Model_Internal_Primitive));
   assert(model);
 
-  GLsizeiptr size = sizeof(cube2_verts);
+  GLsizeiptr size = sizeof(primitive_cube_uv_norm);
   GLuint vbo;
   glGenBuffers(1, &vbo);
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  glBufferData(GL_ARRAY_BUFFER, size, cube2_verts, GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, size, primitive_cube_uv_norm, GL_STATIC_DRAW);
 
   *model = (Model_Internal_Primitive) {
     .type = MODEL_CUBE,
+    .format = VF_UV_NORM,
     .vert_count = 36,
     .index_count = 0,
     .ready = true,
@@ -73,40 +75,6 @@ static Model _model_new_cube(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-
-void _model_bind_prim_cube(Model model) {
-  Model_Internal_Primitive* cube = (Model_Internal_Primitive*)model;
-  assert(cube->type == MODEL_CUBE);
-  assert(cube->ready);
-  assert(cube->vbo);
-
-  GLsizei stride = 12 * sizeof(float);
-
-  glBindBuffer(GL_ARRAY_BUFFER, cube->vbo);
-
-  // position
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, v3floats, GL_FLOAT, GL_FALSE, stride, 0);
-
-  // uv
-  glEnableVertexAttribArray(1);
-  const void* offset = (void*)24;
-  glVertexAttribPointer(1, v2floats, GL_FLOAT, GL_FALSE, stride, offset);
-
-  // normal
-  glEnableVertexAttribArray(2);
-  offset = (void*)12;
-  glVertexAttribPointer(2, v3floats, GL_FLOAT, GL_FALSE, stride, offset);
-
-  // tangent
-  glEnableVertexAttribArray(3);
-  offset = (void*)32;
-  glVertexAttribPointer(3, v4floats, GL_FLOAT, GL_FALSE, stride, offset);
-
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // Vertex-color sample cube
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -114,22 +82,15 @@ static Model _model_new_cube_color(void) {
   Model_Internal_Primitive* model = malloc(sizeof(Model_Internal_Primitive));
   assert(model);
 
-  size_t size = sizeof(cube_pos) + sizeof(cube_color);
-  byte* temp = malloc(size);
-  assert(temp);
-
-  memcpy(temp, cube_pos, sizeof(cube_pos));
-  memcpy(temp + sizeof(cube_pos), cube_color, sizeof(cube_color));
-
+  GLsizeiptr size = sizeof(primitive_cube_color);
   GLuint vbo;
   glGenBuffers(1, &vbo);
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  glBufferData(GL_ARRAY_BUFFER, size, temp, GL_STATIC_DRAW);
-
-  free(temp);
+  glBufferData(GL_ARRAY_BUFFER, size, primitive_cube_color, GL_STATIC_DRAW);
 
   *model = (Model_Internal_Primitive) {
     .type = MODEL_CUBE_COLOR,
+    .format = VF_COLOR,
     .vert_count = 14,
     .index_count = 0,
     .ready = true,
@@ -141,28 +102,6 @@ static Model _model_new_cube_color(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-
-void _model_bind_prim_cube_color(Model model) {
-  Model_Internal_Primitive* prim = (Model_Internal_Primitive*)model;
-  assert(prim->type == MODEL_CUBE_COLOR);
-  assert(prim->ready);
-  assert(prim->vbo);
-
-  glBindBuffer(GL_ARRAY_BUFFER, prim->vbo);
-
-  // position
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, v3floats, GL_FLOAT, GL_FALSE, v3bytes, 0);
-
-  // vertex colors
-  void* offset = (void*)sizeof(cube_pos);
-  glEnableVertexAttribArray(1);
-  glVertexAttribPointer(1, v4floats, GL_FLOAT, GL_FALSE, v4bytes, offset);
-
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // Single-triangle for full-screen rendering/deferred
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -170,14 +109,15 @@ static Model _model_new_frame(void) {
   Model_Internal_Primitive* model = malloc(sizeof(Model_Internal_Primitive));
   assert(model);
 
-  GLsizeiptr size = sizeof(frame_verts);
+  GLsizeiptr size = sizeof(primitive_frame);
   GLuint vbo;
   glGenBuffers(1, &vbo);
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  glBufferData(GL_ARRAY_BUFFER, size, frame_verts, GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, size, primitive_frame, GL_STATIC_DRAW);
 
   *model = (Model_Internal_Primitive) {
     .type = MODEL_FRAME,
+    .format = VF_POS_ONLY,
     .vert_count = 3,
     .index_count = 0,
     .ready = true,
@@ -186,23 +126,6 @@ static Model _model_new_frame(void) {
   };
 
   return (Model)model;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-void _model_bind_prim_frame(Model model) {
-  Model_Internal_Primitive* frame = (Model_Internal_Primitive*)model;
-  assert(frame->type == MODEL_FRAME);
-  assert(frame->ready);
-  assert(frame->vbo);
-
-  glBindBuffer(GL_ARRAY_BUFFER, frame->vbo);
-
-  // position
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, v3floats, GL_FLOAT, GL_FALSE, v3bytes, 0);
-
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -227,6 +150,23 @@ Model model_new_primitive(model_type_t type) {
       break;
   }
   return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Generic binding function for primitive types
+////////////////////////////////////////////////////////////////////////////////
+
+void _model_bind_primitive(Model model) {
+  Model_Internal_Primitive* prim = (Model_Internal_Primitive*)model;
+  assert(prim->type == MODEL_CUBE
+      || prim->type == MODEL_CUBE_COLOR
+      || prim->type == MODEL_FRAME
+  );
+  assert(prim->ready);
+  assert(prim->vbo);
+
+  glBindBuffer(GL_ARRAY_BUFFER, prim->vbo);
+  vert_bind(prim->format);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

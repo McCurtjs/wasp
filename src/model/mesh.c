@@ -36,16 +36,10 @@
 
 typedef struct Model_Internal_Mesh {
   model_type_t type;
+  vert_format_t format;
   index_t vert_count;
   index_t index_count;
   bool ready;
-
-  union {
-    model_mesh_t mesh;
-    struct {
-      bool use_color;
-    };
-  };
 
   // Secrets
 
@@ -76,13 +70,13 @@ Model model_new_from_obj(File file) {
 
   model->type = MODEL_MESH;
   model_obj_t obj = file_load_obj(file);
-  model->use_color = obj.has_vertex_color;
 
   if (!obj.verts || !obj.verts->size) {
     assert(0);
     goto new_obj_cleanup;
   }
 
+  model->format = obj.format;
   model->vert_count = obj.verts->size;
   model->index_count = obj.indices->size;
 
@@ -128,37 +122,7 @@ void _model_bind_mesh(const Model model) {
 
   glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
-
-  GLsizei vert_size = mesh->use_color
-    ? sizeof(obj_vertex_color_t)
-    : sizeof(obj_vertex_t);
-
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(
-    0, v3floats, GL_FLOAT, GL_FALSE, vert_size, &((obj_vertex_t*)0)->pos
-  );
-
-  glEnableVertexAttribArray(1);
-  glVertexAttribPointer(
-    1, v2floats, GL_FLOAT, GL_FALSE, vert_size, &((obj_vertex_t*)0)->uv
-  );
-
-  glEnableVertexAttribArray(2);
-  glVertexAttribPointer(
-    2, v3floats, GL_FLOAT, GL_FALSE, vert_size, &((obj_vertex_t*)0)->norm
-  );
-
-  glEnableVertexAttribArray(3);
-  glVertexAttribPointer(
-    3, v4floats, GL_FLOAT, GL_FALSE, vert_size, &((obj_vertex_t*)0)->tangent
-  );
-
-  if (mesh->use_color) {
-    glEnableVertexAttribArray(4);
-    glVertexAttribPointer(4, v3floats, GL_FLOAT, GL_FALSE, vert_size
-    , &((obj_vertex_color_t*)0)->color
-    );
-  }
+  vert_bind(model->format);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

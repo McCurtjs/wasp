@@ -32,15 +32,9 @@
 // Sprites
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct sprite_vertex_t {
-  vec2 pos;
-  vec2 uv;
-  vec3 norm;
-  color3b tint;
-} sprite_vertex_t;
-
 typedef struct Model_Internal_Sprites {
   model_type_t type;
+  vert_format_t format;
   index_t vert_count;
   index_t index_count;
   bool ready;
@@ -63,11 +57,12 @@ Model model_new_sprites(vec2i grid) {
 
   *sprites = (Model_Internal_Sprites) {
     .type = MODEL_SPRITES,
+    .format = VF_SPRITES,
     .vert_count = 0,
     .index_count = 0,
     .ready = true,
     .grid = grid,
-    .verts = arr_new(sprite_vertex_t),
+    .verts = arr_new(vert_sprites_t),
     .vbo = vbo,
     .vao = 0,
   };
@@ -83,28 +78,7 @@ void _model_bind_sprites(const Model model) {
   assert(sprites->vbo);
 
   glBindBuffer(GL_ARRAY_BUFFER, sprites->vbo);
-
-  GLsizei stride = (GLsizei)sizeof(sprite_vertex_t);
-
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(
-    0, v2floats, GL_FLOAT, GL_FALSE, stride, &((sprite_vertex_t*)0)->pos
-  );
-
-  glEnableVertexAttribArray(1);
-  glVertexAttribPointer(
-    1, v2floats, GL_FLOAT, GL_FALSE, stride, &((sprite_vertex_t*)0)->uv
-  );
-
-  glEnableVertexAttribArray(2);
-  glVertexAttribPointer(
-    2, v3floats, GL_FLOAT, GL_FALSE, stride, &((sprite_vertex_t*)0)->norm
-  );
-
-  glEnableVertexAttribArray(3);
-  glVertexAttribPointer(
-    3, b3bytes, GL_UNSIGNED_BYTE, GL_TRUE, stride, &((sprite_vertex_t*)0)->tint
-  );
+  vert_bind(sprites->format);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -166,34 +140,34 @@ void model_sprites_add(
   }
 
   scale = v2scale(scale, 0.5);
-  sprite_vertex_t BL, TL, TR, BR;
+  vert_sprites_t BL, TL, TR, BR;
 
-  BL = (sprite_vertex_t) {
+  BL = (vert_sprites_t) {
     .pos  = v2add(pos, v2neg(scale)),
     .uv   = v2f(corner.x, corner.y + extent.y),
     .norm = v3z,
-    .tint = b4white.rgb,
+    .color = b4white.rgb,
   };
 
-  TR = (sprite_vertex_t) {
+  TR = (vert_sprites_t) {
     .pos  = v2add(pos, scale),
     .uv   = v2f(corner.x + extent.x, corner.y),
     .norm = v3z,
-    .tint = b4white.rgb,
+    .color = b4white.rgb,
   };
 
-  TL = (sprite_vertex_t) {
+  TL = (vert_sprites_t) {
     .pos  = v2add(pos, v2f(-scale.x, scale.y)),
     .uv   = corner,
     .norm = v3z,
-    .tint = b4white.rgb,
+    .color = b4white.rgb,
   };
 
-  BR = (sprite_vertex_t) {
+  BR = (vert_sprites_t) {
     .pos  = v2add(pos, v2f(scale.x, -scale.y)),
     .uv   = v2add(corner, extent),
     .norm = v3z,
-    .tint = b4white.rgb,
+    .color = b4white.rgb,
   };
 
   arr_write_back(spr->verts, &TR);

@@ -19,7 +19,7 @@ typedef struct {
 } obj_face_elem_t;
 
 model_obj_t file_load_obj(File file) {
-  model_obj_t model = { 0 };
+  model_obj_t model = { .format = VF_UV_NORM };
 
   Array verts = arr_new(obj_vertex_part_t);
   Array norms = arr_new(vec3);
@@ -53,7 +53,7 @@ model_obj_t file_load_obj(File file) {
 
             // optional vertex color
             if (i != line.length) {
-              model.has_vertex_color = true;
+              model.format = VF_UV_NORM_COLOR;
               slice_to_float(slice_token_space(line, &i).token, &vert->color.r);
               slice_to_float(slice_token_space(line, &i).token, &vert->color.g);
               slice_to_float(slice_token_space(line, &i).token, &vert->color.b);
@@ -138,9 +138,12 @@ model_obj_t file_load_obj(File file) {
   }
 
   model.indices = arr_new_reserve(uint, faces->size);
-  model.verts = model.has_vertex_color
-    ? arr_new(obj_vertex_color_t)
-    : arr_new(obj_vertex_t);
+
+  switch (model.format) {
+    case VF_UV_NORM: model.verts = arr_new(vert_uv_norm_t); break;
+    case VF_UV_NORM_COLOR: model.verts = arr_new(vert_uv_norm_color_t); break;
+    default: assert(false); break;
+  }
 
   // Collect face index values into into shared vertex data and the index list.
   HMap vmap = map_new(obj_face_elem_t, uint, NULL, NULL);
@@ -152,10 +155,10 @@ model_obj_t file_load_obj(File file) {
       obj_vertex_part_t* vert = arr_ref(verts, f->vert - 1);
       *(uint*)e.value = (uint)model.verts->size;
       arr_write_back(model.indices, e.value);
-      arr_write_back(model.verts, &(obj_vertex_color_t) {
+      arr_write_back(model.verts, &(vert_uv_norm_color_t) {
         .pos = vert->pos,
-        .norm = *((vec3*)arr_ref(norms, f->norm - 1)),
         .uv = *((vec2*)arr_ref(uvs, f->uv - 1)),
+        .norm = *((vec3*)arr_ref(norms, f->norm - 1)),
         .tangent = v4zero,
         .color = vert->color,
       });
@@ -188,7 +191,7 @@ model_obj_t file_load_obj(File file) {
       uint i1 = indices[i + 1];
       uint i2 = indices[i + 2];
 
-      obj_vertex_t* vtx[3] = {
+      vert_uv_norm_t* vtx[3] = {
         arr_ref(model.verts, i0),
         arr_ref(model.verts, i1),
         arr_ref(model.verts, i2)
@@ -234,7 +237,7 @@ model_obj_t file_load_obj(File file) {
     }
 
     for (index_t i = 0; i < model.verts->size; ++i) {
-      obj_vertex_t* vtx = arr_ref(model.verts, i);
+      vert_uv_norm_t* vtx = arr_ref(model.verts, i);
       vtx->tangent.xyz = v3norm(vtx->tangent.xyz);
     }
   }

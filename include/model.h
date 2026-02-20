@@ -30,6 +30,7 @@
 #include "array.h"
 #include "file.h"
 #include "texture.h"
+#include "vertex.h"
 
 typedef enum model_type_t {
   MODEL_NONE = 0,
@@ -77,23 +78,19 @@ typedef struct model_box_t {
   const vec3i subdivs;
 } model_box_t;
 
-typedef struct model_mesh_t {
-  const bool has_vertex_color;
-} model_mesh_t;
-
 typedef struct model_sprites_t {
   vec2i grid;
 } model_sprites_t;
 
 typedef struct _opaque_Model_t {
   const model_type_t type;
+  const vert_format_t format;
   const index_t vert_count;
   const index_t index_count;
   const bool ready;
 
   union {
     model_grid_t grid;
-    model_mesh_t mesh;
     model_sprites_t sprites;
   };
 }* Model;

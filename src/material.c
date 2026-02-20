@@ -30,7 +30,7 @@
 
 #include <stdlib.h>
 
-typedef struct mat_images_t{
+typedef struct mat_images_t {
   struct mat_images_t* next;
   union {
     Image images[MAT_MAP_COUNT];
@@ -49,7 +49,7 @@ typedef struct Material_Internal {
   // hidden values
   String  name_internal;
   slice_t ext;
-  mat_images_t* img;
+  mat_images_t* img; // TODO: replace with dynamic Array
 //Image img_emissive; ?
 } Material_Internal;
 
