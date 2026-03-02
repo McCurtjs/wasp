@@ -30,6 +30,7 @@
 #include "model.h"
 #include "material.h"
 #include "entity.h"
+#include "instance_attributes.h"
 
 typedef struct _opaque_Game_t* Game;
 typedef struct renderer_t renderer_t;
@@ -40,25 +41,25 @@ typedef struct render_group_t render_group_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 // Called once for each entity that's flagged for update
-typedef slotkey_t (*renderer_entity_update_fn_t)(renderer_t*, Entity);
+typedef slotkey_t (*renderer_entity_update_fn_t)(Entity);
 
 // Called when entity is created/registered with the renderer
 typedef slotkey_t (*renderer_entity_register_fn_t)(Entity, Game);
 
 // Called when entity is deleted/unregistered from the renderer
-typedef void (*renderer_entity_unregister_fn_t)(Entity);
+typedef void      (*renderer_entity_unregister_fn_t)(Entity);
 
-// Used in the default instanced render callback to bind shader attributes
-typedef void (*renderer_instance_attributes_bind_fn_t)(Shader, render_group_t*);
+// Called when directly accessing per-entity instance attributes
+typedef void*     (*renderer_entity_attributes_fn_t)(Entity, bool modify);
 
 // Called when a render group has instances updated (non-negative update range)
-typedef void (*renderer_instance_update_fn_t)(render_group_t*);
+typedef void      (*renderer_instance_update_fn_t)(render_group_t*);
 
 // Called once per frame after the entities are processed 
-typedef void (*renderer_render_fn_t)(renderer_t*, Game);
+typedef void      (*renderer_render_fn_t)(renderer_t*, Game);
 
 // Called when the renderer is destroyed
-typedef void (*renderer_delete_fn_t)(renderer_t**);
+typedef void      (*renderer_delete_fn_t)(renderer_t**);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Key type for distinguishing each render by model/material set
@@ -85,7 +86,7 @@ typedef struct render_group_t {
     struct {
       Model model;
       Material material;
-      bool is_static;
+      size_t is_static;
     };
   };
   PackedMap instances;
@@ -109,16 +110,15 @@ typedef struct render_group_t {
 #undef con_type
 
 typedef struct renderer_t {
-  const char* const name;
-  renderer_entity_register_fn_t entity_register;
+  const char* const               name;
+  renderer_entity_register_fn_t   entity_register;
   renderer_entity_unregister_fn_t entity_unregister;
-  renderer_entity_update_fn_t entity_update;
-  renderer_instance_attributes_bind_fn_t attribute_bind;
-  renderer_instance_update_fn_t instance_update;
-  renderer_render_fn_t render;
-  HMap_rg groups;
-  Shader shader;
-  index_t instance_size;
+  renderer_entity_update_fn_t     entity_update;
+  renderer_entity_attributes_fn_t entity_attributes;
+  renderer_instance_update_fn_t   instance_update;
+  renderer_render_fn_t            render;
+  HMap_rg                         groups;
+  Shader                          shader;
 } renderer_t;
 
 void      renderer_clear_instances(renderer_t*);
@@ -128,18 +128,11 @@ void      renderer_entity_update(Entity);
 void      renderer_entity_unregister(Entity);
 
 slotkey_t renderer_callback_entity_register(Entity, Game);
-slotkey_t renderer_callback_entity_update(renderer_t*, Entity);
+slotkey_t renderer_callback_entity_update(Entity);
 void      renderer_callback_entity_unregister(Entity);
+void*     renderer_callback_entity_attributes(Entity, bool modify);
 void      renderer_callback_instance_update(render_group_t*);
 void      renderer_callback_render(renderer_t*, Game);
-
-////////////////////////////////////////////////////////////////////////////////
-// Default layout used by provided registration callbacks
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct instance_attribute_default_t {
-  mat4 transform; // world-space
-} instance_attribute_default_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Span type for defining collection of renderers for a pipeline

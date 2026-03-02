@@ -34,7 +34,7 @@
 
 typedef struct Model_Internal_Sprites {
   model_type_t type;
-  vert_format_t format;
+  vertex_format_t format;
   index_t vert_count;
   index_t index_count;
   bool ready;
@@ -62,7 +62,7 @@ Model model_new_sprites(vec2i grid) {
     .index_count = 0,
     .ready = true,
     .grid = grid,
-    .verts = arr_new(vert_sprites_t),
+    .verts = arr_new(vertex_sprites_t),
     .vbo = vbo,
     .vao = 0,
   };
@@ -78,7 +78,7 @@ void _model_bind_sprites(const Model model) {
   assert(sprites->vbo);
 
   glBindBuffer(GL_ARRAY_BUFFER, sprites->vbo);
-  vert_bind(sprites->format);
+  vertex_bind(sprites->format);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -140,30 +140,30 @@ void model_sprites_add(
   }
 
   scale = v2scale(scale, 0.5);
-  vert_sprites_t BL, TL, TR, BR;
+  vertex_sprites_t BL, TL, TR, BR;
 
-  BL = (vert_sprites_t) {
+  BL = (vertex_sprites_t) {
     .pos  = v2add(pos, v2neg(scale)),
     .uv   = v2f(corner.x, corner.y + extent.y),
     .norm = v3z,
     .color = b4white.rgb,
   };
 
-  TR = (vert_sprites_t) {
+  TR = (vertex_sprites_t) {
     .pos  = v2add(pos, scale),
     .uv   = v2f(corner.x + extent.x, corner.y),
     .norm = v3z,
     .color = b4white.rgb,
   };
 
-  TL = (vert_sprites_t) {
+  TL = (vertex_sprites_t) {
     .pos  = v2add(pos, v2f(-scale.x, scale.y)),
     .uv   = corner,
     .norm = v3z,
     .color = b4white.rgb,
   };
 
-  BR = (vert_sprites_t) {
+  BR = (vertex_sprites_t) {
     .pos  = v2add(pos, v2f(scale.x, -scale.y)),
     .uv   = v2add(corner, extent),
     .norm = v3z,

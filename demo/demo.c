@@ -52,6 +52,7 @@ static renderer_t _renderer_pbr = {
   .entity_register = renderer_callback_entity_register,
   .entity_update = renderer_callback_entity_update,
   .entity_unregister = renderer_callback_entity_unregister,
+  .entity_attributes = renderer_callback_entity_attributes,
   .instance_update = renderer_callback_instance_update,
   .render = renderer_callback_render,
 };
@@ -219,6 +220,7 @@ bool wasp_preload(Game game) {
   demo.shaders.frame = shader_new_load_async(S("frame"));
   demo.shaders.warhol = shader_new_load_async(S("warhol"));
   demo.shaders.light_inst = shader_new(S("light_inst"));
+  demo.shaders.light_inst->attrib_format = AF_MATERIAL_TINT;
   shader_file_frag(demo.shaders.light_inst, S("light"));
   shader_load_async(demo.shaders.light_inst);
 

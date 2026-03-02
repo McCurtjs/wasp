@@ -33,7 +33,7 @@
 typedef struct model_obj_t {
   Array verts;
   Array indices;
-  vert_format_t format;
+  vertex_format_t format;
 } model_obj_t;
 
 // Resulting format can be either VF_UV_NORM or VF_UV_NORM_COLOR

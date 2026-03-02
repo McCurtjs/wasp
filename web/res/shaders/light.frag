@@ -5,8 +5,9 @@ precision highp float;
 
 in vec4 vPos;
 in vec2 vUV;
-in vec3 vColor;
+in vec3 vTintColor;
 in mat3 vTangentTransform;
+flat in int vMaterialIndex;
 
 uniform highp sampler2DArray samp_tex;
 uniform highp sampler2DArray samp_norm;
@@ -34,13 +35,13 @@ vec2 oct_encode(vec3 n) {
 // Write out to G-buffer
 
 void main() {
-  vec3 uv = vec3(vUV.x, 1.0 - vUV.y, 7.0);
+  vec3 uv = vec3(vUV.x, 1.0 - vUV.y, float(vMaterialIndex));
 
   // Get base texture color - discard fully transparent fragments
   vec4 albedo = texture(samp_tex, uv);
 
   if (albedo.w == 0.0) discard;
-  frag_color = albedo.xyz * vColor;
+  frag_color = albedo.xyz * vTintColor;
 
   // Extract material properties and apply weights
   frag_props.r = texture(samp_rough, uv).r * in_weights.g; // roughness value

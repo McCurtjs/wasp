@@ -58,6 +58,7 @@ typedef struct entity_desc_t {
 
   Model               model;
   Material            material;
+  int                 material_index;
 
   union {
     transform_t       transform;
@@ -68,7 +69,7 @@ typedef struct entity_desc_t {
     };
   };
 
-  color3              tint;
+  color4b             tint;
   bool                is_static;
   bool                is_hidden;
 
@@ -132,6 +133,11 @@ mat4      entity_transform(Entity);
 void      entity_set_renderer(Entity, renderer_t*);
 void      entity_set_hidden(Entity, bool is_hidden);
 void      entity_set_static(Entity, bool is_static);
+
+void      entity_set_tint(Entity, color4b tint_color);
+color4b   entity_get_tint(Entity);
+void      entity_set_material_index(Entity, index_t);
+index_t   entity_get_material_index(Entity);
 
 void      entity_set_position(Entity, vec3 new_pos);
 void      entity_set_rotation(Entity, quat new_rot);

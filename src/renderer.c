@@ -79,7 +79,7 @@ void renderer_entity_update(Entity entity) {
   renderer_t* renderer = entity->renderer;
   assert(renderer || !entity->render_id.hash);
   if (!renderer || !renderer->entity_update) return;
-  slotkey_t new_id = renderer->entity_update(renderer, entity);
+  slotkey_t new_id = renderer->entity_update(entity);
   if (new_id.hash != entity->render_id.hash) entity->render_id = new_id;
 }
 
@@ -134,7 +134,6 @@ static void _render_group_expand_update_range(
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "utility.h"
 slotkey_t renderer_callback_entity_register(Entity e, Game game) {
   assert(e);
   assert(e->renderer);
@@ -147,8 +146,9 @@ slotkey_t renderer_callback_entity_register(Entity e, Game game) {
   res_ensure_rg_t group_slot = map_rg_ensure(e->renderer->groups, key);
 
   if (group_slot.is_new) {
+    attribute_format_t attrib_format = e->renderer->shader->attrib_format;
     *group_slot.value = (render_group_t) {
-      .instances = pmap_new(instance_attribute_default_t),
+      .instances = ipmap_new(attribute_size(attrib_format)),
       .material = e->material,
       .model = e->model,
       .is_static = e->is_static,
@@ -162,7 +162,7 @@ slotkey_t renderer_callback_entity_register(Entity e, Game game) {
   PackedMap instances = group_slot.value->instances;
   bool expanded = instances->size == instances->capacity;
   slotkey_t ret = pmap_insert(instances,
-    &(instance_attribute_default_t) {
+    &(attribute_base_t) {
       .transform = entity_transform(e),
     }
   );
@@ -180,12 +180,11 @@ slotkey_t renderer_callback_entity_register(Entity e, Game game) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-#include <string.h>
-slotkey_t renderer_callback_entity_update(renderer_t* renderer, entity_t* e) {
-  UNUSED(renderer);
-  assert(renderer);
+
+slotkey_t renderer_callback_entity_update(Entity e) {
   assert(e);
-  assert(renderer == e->renderer);
+  assert(e->renderer);
+  assert(e->renderer->shader);
   assert(e->render_id.hash);
 
   if (e->is_dirty_static) {
@@ -199,12 +198,37 @@ slotkey_t renderer_callback_entity_update(renderer_t* renderer, entity_t* e) {
   assert(group);
   assert(group->instances);
 
-  instance_attribute_default_t* att = pmap_ref(group->instances, e->render_id);
+  attribute_base_t* att = pmap_ref(group->instances, e->render_id);
   assert(att);
 
+  // Update default supported attribute values
   att->transform = entity_transform(e);
+
   _render_group_expand_update_range(group, sk_index(e->render_id));
   return e->render_id;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void* renderer_callback_entity_attributes(Entity e, bool update) {
+  assert(e);
+  assert(e->renderer);
+  if (e->is_hidden || !e->render_id.hash) return NULL;
+  assert(e->render_id.hash);
+
+  render_group_key_t key = { e->model, e->material, !!e->is_static };
+  render_group_t* group = map_rg_ref(e->renderer->groups, key);
+  assert(group);
+  assert(group->instances);
+
+  void* attributes = pmap_ref(group->instances, e->render_id);
+  assert(attributes);
+
+  if (update) {
+    _render_group_expand_update_range(group, sk_index(e->render_id));
+  }
+
+  return attributes;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -253,8 +277,10 @@ void renderer_callback_instance_update(render_group_t* group) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Instanced rendering/draw call
+////////////////////////////////////////////////////////////////////////////////
 
-static void _renderer_bind_default_attributes(Shader s, render_group_t* group) {
+static void _renderer_create_vao(Shader s, render_group_t* group) {
   assert(s);
   assert(group);
   assert(group->model);
@@ -275,28 +301,7 @@ static void _renderer_bind_default_attributes(Shader s, render_group_t* group) {
   , group->is_static ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW
   );
 
-  GLsizei stride = sizeof(instance_attribute_default_t);
-  GLsizei base = shader_attribute_loc(s, "model_matrix");
-  GLuint i = base;
-
-  glEnableVertexAttribArray(i);
-  glVertexAttribPointer(i, 4, GL_FLOAT, false, stride, (void*)(0 * v4bytes));
-  glVertexAttribDivisor(i, 1);
-
-  glEnableVertexAttribArray(++i);
-  glVertexAttribPointer(i, 4, GL_FLOAT, false, stride, (void*)(1 * v4bytes));
-  glVertexAttribDivisor(i, 1);
-
-  glEnableVertexAttribArray(++i);
-  glVertexAttribPointer(i, 4, GL_FLOAT, false, stride, (void*)(2 * v4bytes));
-  glVertexAttribDivisor(i, 1);
-
-  glEnableVertexAttribArray(++i);
-  glVertexAttribPointer(i, 4, GL_FLOAT, false, stride, (void*)(3 * v4bytes));
-  glVertexAttribDivisor(i, 1);
-
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
-  glBindVertexArray(0);
+  shader_bind_attributes(s);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -311,13 +316,6 @@ void renderer_callback_render(renderer_t* renderer, Game game) {
   assert(shader);
   shader_bind(renderer->shader);
 
-  // get uniform/attribute locations for active material
-  int loc_sampler_tex = shader_uniform_loc(shader, "samp_tex");
-  int loc_sampler_norm = shader_uniform_loc(shader, "samp_norm");
-  int loc_sampler_rough = shader_uniform_loc(shader, "samp_rough");
-  int loc_sampler_metal = shader_uniform_loc(shader, "samp_metal");
-  int loc_props = shader_uniform_loc(shader, "in_weights");
-
   // apply globally shared uniforms
   int loc_proj_view = shader_uniform_loc(shader, "in_pv_matrix");
   int loc_view = shader_uniform_loc(shader, "in_view_matrix");
@@ -328,32 +326,17 @@ void renderer_callback_render(renderer_t* renderer, Game game) {
   render_group_t* map_foreach(group, renderer->groups) {
     if (!group->instances || !group->instances->size) continue;
 
-    // matset_apply(renderer->materials);
-    tex_apply(group->material->map_diffuse, 0, loc_sampler_tex);
-    tex_apply(group->material->map_normals, 1, loc_sampler_norm);
-    tex_apply(group->material->map_roughness, 2, loc_sampler_rough);
-    tex_apply(group->material->map_metalness, 3, loc_sampler_metal);
-    glUniform3fv(loc_props, 1, group->material->weights.f);
+    shader_set_material(renderer->shader, group->material);
 
     // if the group's VAO hasn't been set, create it
     if (!group->vao) {
-      _renderer_bind_default_attributes(shader, group);
-
-      if (renderer->attribute_bind) {
-        renderer->attribute_bind(shader, group);
-      }
+      _renderer_create_vao(shader, group);
+    }
+    else {
+      glBindVertexArray(group->vao);
     }
 
-    glBindVertexArray(group->vao);
     model_render_instanced(group->model, group->instances->size);
     glBindVertexArray(0);
-    /*
-    for (int i = 0; i < 4; ++i) {
-      glActiveTexture(GL_TEXTURE0 + i);
-      glBindTexture(GL_TEXTURE_2D, 0);
-    }
-    glActiveTexture(GL_TEXTURE0 + 5);
-    glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
-    */
   }
 }

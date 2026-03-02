@@ -34,7 +34,7 @@
 
 typedef struct Model_Internal_Grid {
   model_type_t type;
-  vert_format_t format;
+  vertex_format_t format;
   index_t vert_count;
   index_t index_count;
   bool ready;

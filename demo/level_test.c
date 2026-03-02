@@ -169,7 +169,7 @@ scene_unload_fn_t scene_load_gears(Game game) {
     .name = S("Big Crate"),
     .model = demo->models.box,
     .material = demo->materials.renderite,
-    .tint = v3f(0.8f, 0.3f, 0.6f),
+    .tint = v4cv(v4f(0.8f, 0.3f, 0.6f, 1.0f)),
     .pos = v3f(5, 0.5f, 0),
     .scale = 3.f,
     .onrender = render_pbr,
@@ -209,10 +209,15 @@ scene_unload_fn_t scene_load_gears(Game game) {
       material = demo->materials.atlas;
       //*/
 
+      int mindex = i + j;
+      if (mindex < 0) mindex *= -1;
+      mindex %= material->layers;
       entity_add(&(entity_desc_t) {
         .name = S("Ground Cube"),
         .model = demo->models.box,
         .material = material,
+        .tint = b4white,
+        .material_index = mindex,
         .pos = pos,
         .rot = q4axang(axis, angle),
         .scale = 19.0f,
@@ -279,7 +284,7 @@ scene_unload_fn_t scene_load_wizard(Game game) {
     .name = S("Target"),
     .model = demo->models.gear,
     .onrender = render_pbr,
-    .tint = c4black.rgb,
+    .tint = b4black,
     .material = demo->materials.renderite,
     .rot = q4axang(v3x, d2r(90.f)),
     .scale = 0.06f,
@@ -412,7 +417,7 @@ scene_unload_fn_t scene_load_monument(Game game) {
     .name = S("Sungear"),
     .model = demo->models.gear,
     .onrender = render_pbr,
-    .tint = c4white.rgb,
+    .tint = b4white,
     .material = demo->materials.renderite,
     .pos = v3add(sun_pos, v3f(0, 30, 0)),
     .rot = q4axang(v3x, d2r(-90.f)),

@@ -40,12 +40,12 @@ typedef struct vert_format_desc_t {
 } vert_format_desc_t;
 
 static const vert_format_desc_t _vert_format[VF_SUPPORTED_MAX] = {
-  { sizeof(vert_base_t) },
-  { sizeof(vert_color_t) },
-  { sizeof(vert_uv_t) },
-  { sizeof(vert_uv_norm_t) },
-  { sizeof(vert_uv_norm_color_t) },
-  { sizeof(vert_sprites_t) }
+  { sizeof(vertex_base_t) },
+  { sizeof(vertex_color_t) },
+  { sizeof(vertex_uv_t) },
+  { sizeof(vertex_uv_norm_t) },
+  { sizeof(vertex_uv_norm_color_t) },
+  { sizeof(vertex_sprites_t) }
 };
 
 #define SLOT_POS  0 // v3f Vertex position
@@ -54,8 +54,8 @@ static const vert_format_desc_t _vert_format[VF_SUPPORTED_MAX] = {
 #define SLOT_TANG 3 // v4f Vertex tangent
 #define SLOT_TINT 4 // v3f tint color (should be v3b or v4b)
 
-static inline void _vert_bind_base(vert_format_t format) {
-  const vert_base_t* base = NULL;
+static inline void _vertex_bind_base(vertex_format_t format) {
+  const vertex_base_t* base = NULL;
   const GLsizei stride = _vert_format[format].size;
   GLint channels = format == VF_SPRITES ? v2floats : v3floats;
 
@@ -65,8 +65,8 @@ static inline void _vert_bind_base(vert_format_t format) {
   );
 }
 
-static inline void _vert_bind_Color(void) {
-  const vert_color_t* base = NULL;
+static inline void _vertex_bind_color(void) {
+  const vertex_color_t* base = NULL;
   const GLsizei stride = sizeof(*base);
 
   glEnableVertexAttribArray(SLOT_TINT);
@@ -75,8 +75,8 @@ static inline void _vert_bind_Color(void) {
   );
 }
 
-static inline void _vert_bind_uv(void) {
-  const vert_uv_t* base = NULL;
+static inline void _vertex_bind_uv(void) {
+  const vertex_uv_t* base = NULL;
   const GLsizei stride = sizeof(*base);
 
   glEnableVertexAttribArray(SLOT_UV);
@@ -85,8 +85,8 @@ static inline void _vert_bind_uv(void) {
   );
 }
 
-static inline void _vert_bind_uv_norm(void) {
-  const vert_uv_norm_t* base = NULL;
+static inline void _vertex_bind_uv_norm(void) {
+  const vertex_uv_norm_t* base = NULL;
   const GLsizei stride = sizeof(*base);
 
   glEnableVertexAttribArray(SLOT_UV);
@@ -105,8 +105,8 @@ static inline void _vert_bind_uv_norm(void) {
   );
 }
 
-static inline void _vert_bind_uv_norm_color(void) {
-  const vert_uv_norm_color_t* base = NULL;
+static inline void _vertex_bind_uv_norm_color(void) {
+  const vertex_uv_norm_color_t* base = NULL;
   const GLsizei stride = sizeof(*base);
 
   glEnableVertexAttribArray(SLOT_UV);
@@ -130,8 +130,8 @@ static inline void _vert_bind_uv_norm_color(void) {
   );
 }
 
-static inline void _vert_bind_sprites(void) {
-  const vert_sprites_t* base = NULL;
+static inline void _vertex_bind_sprites(void) {
+  const vertex_sprites_t* base = NULL;
   const GLsizei stride = sizeof(*base);
 
   glEnableVertexAttribArray(SLOT_POS);
@@ -155,19 +155,24 @@ static inline void _vert_bind_sprites(void) {
   );
 }
 
-void vert_bind(vert_format_t format) {
+void vertex_bind(vertex_format_t format) {
   assert(format >= 0 && format < VF_SUPPORTED_MAX);
 
   // Every vertex format binds the position in slot 0
-  _vert_bind_base(format);
+  _vertex_bind_base(format);
 
   switch (format) {
-    case VF_POS_ONLY:                                   return;
-    case VF_COLOR:          _vert_bind_Color();         return;
-    case VF_UV:             _vert_bind_uv();            return;
-    case VF_UV_NORM:        _vert_bind_uv_norm();       return;
-    case VF_UV_NORM_COLOR:  _vert_bind_uv_norm_color(); return;
-    case VF_SPRITES:        _vert_bind_sprites();       return;
-    default:                assert(false);              return;
+    case VF_POS_ONLY:                                     break;
+    case VF_COLOR:          _vertex_bind_color();         break;
+    case VF_UV:             _vertex_bind_uv();            break;
+    case VF_UV_NORM:        _vertex_bind_uv_norm();       break;
+    case VF_UV_NORM_COLOR:  _vertex_bind_uv_norm_color(); break;
+    case VF_SPRITES:        _vertex_bind_sprites();       break;
+    default:                assert(false);                break;
   }
+}
+
+index_t vertex_size(vertex_format_t format) {
+  assert(format >= 0 && format < VF_SUPPORTED_MAX);
+  return _vert_format[format].size;
 }

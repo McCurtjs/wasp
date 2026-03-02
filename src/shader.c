@@ -22,20 +22,24 @@
 * SOFTWARE.
 */
 
+#define MCLIB_INTERNAL_IMPL
 #include "shader.h"
-
-#include <string.h>
-#include <stdlib.h>
+#undef MCLIB_INTERNAL_IMPL
 
 #include "str.h"
 #include "file.h"
+#include "material.h"
+#include "map.h"
+
+#undef CONST
+
+#include <string.h>
+#include <stdlib.h>
 
 #include "gl.h"
 #include "wasm.h"
 
 #include "data/inline_shaders.h"
-
-#include "map.h"
 
 enum shader_part_type_t {
   ST_UNKNOWN,
@@ -55,8 +59,7 @@ typedef struct gl_shader_t {
 } gl_shader_t;
 
 typedef struct Shader_Internal {
-  slice_t   name;
-  bool      ready;
+  struct _opaque_Shader_t pub;
 
   // hidden values
   uint      program_handle;
@@ -113,7 +116,7 @@ bool _gl_shader_build(gl_shader_t* s, slice_t buffer) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool _gl_shader_link(Shader_Internal* s, gl_shader_t* vert, gl_shader_t* frag) {
-  if (s->ready || !vert->ready || !frag->ready) return 0;
+  if (s->pub.ready || !vert->ready || !frag->ready) return 0;
 
   GLint status = 0;
 
@@ -125,7 +128,7 @@ bool _gl_shader_link(Shader_Internal* s, gl_shader_t* vert, gl_shader_t* frag) {
   glGetProgramiv(s->program_handle, GL_LINK_STATUS, &status);
 
   if (status == GL_TRUE) {
-    s->ready = true;
+    s->pub.ready = true;
     return true;
   }
 
@@ -195,20 +198,23 @@ Shader shader_new(slice_t name) {
   String name_str = str_copy(name);
 
   *ret = (Shader_Internal) {
-    .name = name_str->slice,
-    .ready = false,
+    .pub = {
+      .name = name_str->slice,
+      .attrib_format = AF_NONE,
+      .ready = false,
+    },
 
     .program_handle = 0,
     .name_internal = name_str,
     .vert_filename = NULL,
     .frag_filename = NULL,
-    .uniforms = NULL
+    .uniforms = NULL,
   };
 
   // set up uniforms map
   ret->uniforms = map_new(slice_t, GLint, slice_hash_vptr, slice_compare_vptr);
 
-  map_insert(_all_shaders, &ret->name, &ret);
+  map_insert(_all_shaders, &ret->pub.name, &ret);
 
   if (str_eq(name, "basic")) {
     _shader_build_basic((Shader)ret);
@@ -247,8 +253,8 @@ void shader_load_async(Shader s_in) {
   SHADER_INTERNAL;
 
   if (s->program_handle) {
-    str_log("[Shader.load] Shader alrady loaded: {}", s->name);
-    if (s->ready) return;
+    str_log("[Shader.load] Shader alrady loaded: {}", s->pub.name);
+    if (s->pub.ready) return;
   }
 
   if (!_shader_parts) {
@@ -258,7 +264,7 @@ void shader_load_async(Shader s_in) {
   }
 
   if (!s->vert_filename) {
-    s->vert_filename = str_format("./res/shaders/{}.vert", s->name);
+    s->vert_filename = str_format("./res/shaders/{}.vert", s->pub.name);
   }
 
   res_ensure_t vert_ens = map_ensure(_shader_parts, s->vert_filename);
@@ -275,7 +281,7 @@ void shader_load_async(Shader s_in) {
   }
 
   if (!s->frag_filename) {
-    s->frag_filename = str_format("./res/shaders/{}.frag", s->name);
+    s->frag_filename = str_format("./res/shaders/{}.frag", s->pub.name);
   }
 
   res_ensure_t frag_ens = map_ensure(_shader_parts, s->frag_filename);
@@ -294,14 +300,14 @@ void shader_load_async(Shader s_in) {
 
 void shader_file_vert(Shader s_in, slice_t override) {
   SHADER_INTERNAL;
-  assert(!s->ready);
+  assert(!s->pub.ready);
   assert(!s->vert_filename);
   s->vert_filename = str_format("./res/shaders/{}.vert", override);
 }
 
 void shader_file_frag(Shader s_in, slice_t override) {
   SHADER_INTERNAL;
-  assert(!s->ready);
+  assert(!s->pub.ready);
   assert(!s->frag_filename);
   s->frag_filename = str_format("./res/shaders/{}.frag", override);
 }
@@ -312,7 +318,7 @@ void shader_file_frag(Shader s_in, slice_t override) {
 
 void shader_build(Shader s_in) {
   SHADER_INTERNAL;
-  if (s->ready) return;
+  if (s->pub.ready) return;
 
   gl_shader_t* vert = map_ref(_shader_parts, s->vert_filename);
   gl_shader_t* frag = map_ref(_shader_parts, s->frag_filename);
@@ -346,21 +352,21 @@ void shader_build(Shader s_in) {
 
   if (!vert->ready || !frag->ready) {
     str_log("[Shader.build] Failed component not ready: {} for {}",
-      vert->ready ? "vertex" : "fragment", s->name
+      vert->ready ? "vertex" : "fragment", s->pub.name
     );
     return;
   }
 
   if (!_gl_shader_link(s, vert, frag)) {
-    str_log("[Shader.build] Failed to link shader: {}", s->name);
+    str_log("[Shader.build] Failed to link shader: {}", s->pub.name);
     return;
   }
 
   str_log("[Shader.build] Built \"{}\" using\n  vert: {}\n  frag: {}"
-  , s->name, vert->filename, frag->filename
+  , s->pub.name, vert->filename, frag->filename
   );
 
-  s->ready = true;
+  s->pub.ready = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -377,8 +383,34 @@ void shader_build_all(void) {
 
 void shader_bind(Shader s_in) {
   SHADER_INTERNAL;
-  assert(s->ready);
+  assert(s->pub.ready);
   glUseProgram(s->program_handle);
+}
+
+void shader_bind_attributes(Shader s_in) {
+  SHADER_INTERNAL;
+  assert(s_in->ready);
+  attribute_bind(s->pub.attrib_format, s_in);
+}
+
+void shader_set_material(Shader s_in, Material material) {
+  SHADER_INTERNAL;
+  assert(s_in->ready);
+  assert(material);
+
+  // get uniform/attribute locations for active material
+  int loc_sampler_tex =   shader_uniform_loc(s_in, "samp_tex");
+  int loc_sampler_norm =  shader_uniform_loc(s_in, "samp_norm");
+  int loc_sampler_rough = shader_uniform_loc(s_in, "samp_rough");
+  int loc_sampler_metal = shader_uniform_loc(s_in, "samp_metal");
+  int loc_props =         shader_uniform_loc(s_in, "in_weights");
+
+  // matset_apply(renderer->materials);
+  tex_apply(material->map_diffuse, 0, loc_sampler_tex);
+  tex_apply(material->map_normals, 1, loc_sampler_norm);
+  tex_apply(material->map_roughness, 2, loc_sampler_rough);
+  tex_apply(material->map_metalness, 3, loc_sampler_metal);
+  glUniform3fv(loc_props, 1, material->weights.f);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -387,7 +419,7 @@ void shader_bind(Shader s_in) {
 
 int shader_uniform_loc(Shader s_in, const char* name) {
   SHADER_INTERNAL;
-  assert(s->ready);
+  assert(s->pub.ready);
 
   slice_t name_slice = slice_from_c_str(name);
   res_ensure_t slot = map_ensure(s->uniforms, &name_slice);
@@ -409,7 +441,7 @@ int shader_uniform_loc(Shader s_in, const char* name) {
 
 int shader_attribute_loc(Shader s_in, const char* name) {
   SHADER_INTERNAL;
-  assert(s->ready);
+  assert(s->pub.ready);
 
   slice_t name_slice = slice_from_c_str(name);
   res_ensure_t slot = map_ensure(s->uniforms, &name_slice);
@@ -457,17 +489,17 @@ void _gl_shader_update_program(Shader s_in, gl_shader_t* part) {
   if (!frag) frag = map_ref(_shader_parts, s->frag_filename);
 
   Shader_Internal temp = *s;
-  temp.ready = false;
+  temp.pub.ready = false;
   temp.program_handle = 0;
 
   if (!_gl_shader_link(&temp, vert, frag)) {
-    str_log("[Shader.watch] Failed to re-link shader: {}", s->name);
+    str_log("[Shader.watch] Failed to re-link shader: {}", s->pub.name);
     return;
   }
 
   glDeleteProgram(s->program_handle);
 
-  str_log("[Shader.watch] Re-linked: {}", s->name);
+  str_log("[Shader.watch] Re-linked: {}", s->pub.name);
 
   int err = glGetError();
   if (err) {

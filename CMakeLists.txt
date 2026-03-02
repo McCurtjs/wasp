@@ -51,6 +51,7 @@ target_sources(Wasp PRIVATE
   src/graphics.c
   src/image.c
   src/input.c
+  src/instance_attributes.c
   src/material.c
   src/model.c
   src/render_target.c
@@ -75,6 +76,7 @@ target_sources(Wasp PRIVATE
   include/gl.h
   include/image.h
   include/input.h
+  include/instance_attributes.h
   include/light.h
   include/material.h
   include/model.h

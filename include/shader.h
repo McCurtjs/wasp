@@ -27,25 +27,31 @@
 
 #include "types.h"
 #include "slice.h"
+#include "instance_attributes.h"
+
+typedef struct _opaque_Material_t* Material;
 
 typedef struct _opaque_Shader_t {
-  const slice_t name;
-  const index_t uniforms;
-  const bool ready;
+  slice_t             CONST name;
+  attribute_format_t        attrib_format;
+  bool                CONST ready;
 }* Shader;
 
 Shader  shader_new(slice_t name);
 Shader  shader_new_load_async(slice_t name);
-void    shader_file_vert(Shader shader, slice_t override);
-void    shader_file_frag(Shader shader, slice_t override);
-void    shader_load_async(Shader shader);
-void    shader_build(Shader shader);
+void    shader_file_vert(Shader, slice_t override);
+void    shader_file_frag(Shader, slice_t override);
+void    shader_load_async(Shader);
+void    shader_build(Shader);
 void    shader_build_all(void);
-void    shader_bind(Shader shader);
+void    shader_bind(Shader);
+void    shader_bind_attributes(Shader);
+void    shader_set_uniform(Shader);
+void    shader_set_material(Shader, Material);
 void    shader_delete(Shader* shader);
 
-int     shader_uniform_loc(Shader shader, const char* name);
-int     shader_attribute_loc(Shader shader, const char* name);
+int     shader_uniform_loc(Shader, const char* name);
+int     shader_attribute_loc(Shader, const char* name);
 
 void    shader_check_updates(void);
 

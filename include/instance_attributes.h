@@ -22,66 +22,58 @@
 * SOFTWARE.
 */
 
-#ifndef WASP_VERTEX_H_
-#define WASP_VERTEX_H_
+#ifndef WASP_INSTANCE_ATTRIBUTES_H_
+#define WASP_INSTANCE_ATTRIBUTES_H_
 
-// Describes different vertex structures and their descriptors
+// Describes the layouts of different instance attribute formats
 
 #include "vec.h"
 #include "mat.h"
 
+typedef struct _opaque_Shader_t* Shader;
+
 ////////////////////////////////////////////////////////////////////////////////
-// Vertex descriptors
+// Instance attribute descriptors
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum vertex_format_t {
-  VF_POS_ONLY,      // vertex_base_t
-  VF_COLOR,         // vertex_color_t
-  VF_UV,            // vertex_uv_t
-  VF_UV_NORM,       // vertex_uv_norm_t
-  VF_UV_NORM_COLOR, // vertex_uv_norm_color_t
-  VF_SPRITES,       // vertex_sprites_t
-  VF_SUPPORTED_MAX
-} vertex_format_t;
+typedef enum attribute_format_t {
+  AF_NONE,            // no associated per-instnace attributes
+  AF_TRANSFORM_ONLY,  // attribute_base_t
+  AF_TINT,            // attribute_tint_t
+  AF_MATERIAL,        // attribute_material_t
+  AF_MATERIAL_TINT,   // attribute_material_tint_t
+  AF_SUPPORTED_MAX
+} attribute_format_t;
 
-typedef struct vertex_base_t {
-  vec3  pos;
-} vertex_base_t;
+typedef struct attribute_base_t {
+  mat4    transform;
+} attribute_base_t;
 
-typedef struct vertex_color_t {
-  vec3  pos;
-  vec3  color;
-} vertex_color_t;
+typedef struct attribute_tint_t {
+  mat4    transform;
+  color4b tint;
+} attribute_tint_t;
 
-typedef struct vertex_uv_t {
-  vec3  pos;
-  vec2  uv;
-} vertex_uv_t;
+typedef struct attribute_material_t {
+  mat4    transform;
+  int     material_index;
+} attribute_material_t;
 
-typedef struct vertex_uv_norm_t {
-  vec3  pos;
-  vec2  uv;
-  vec3  norm;
-  vec4  tangent;
-} vertex_uv_norm_t;
+typedef struct attribute_material_tint_t {
+  mat4    transform;
+  int     material_index;
+  color4b tint;
+} attribute_material_tint_t;
 
-typedef struct vertex_uv_norm_color_t {
-  vec3  pos;
-  vec2  uv;
-  vec3  norm;
-  vec4  tangent;
-  vec3  color;
-} vertex_uv_norm_color_t;
+void      attribute_bind(attribute_format_t, Shader);
+void      attribute_bind_as(attribute_format_t actual, attribute_format_t as);
 
-typedef struct vertex_sprites_t {
-  vec2  pos;
-  vec2  uv;
-  vec3  norm;
-  vec3b color;
-} vertex_sprites_t;
+index_t   attribute_size(attribute_format_t);
 
-void    vertex_bind(vertex_format_t);
-index_t vertex_size(vertex_format_t);
-void    vertex_bind_as(vertex_format_t actual, vertex_format_t as);
+bool      attribute_has_tint(attribute_format_t);
+bool      attribute_has_material_index(attribute_format_t);
+
+color4b*  attribute_ref_tint(attribute_format_t format, void* att);
+int*      attribute_ref_material_index(attribute_format_t format, void* att);
 
 #endif

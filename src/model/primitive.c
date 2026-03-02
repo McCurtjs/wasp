@@ -37,7 +37,7 @@
 
 typedef struct Model_Internal_Primitive {
   model_type_t type;
-  vert_format_t format;
+  vertex_format_t format;
   index_t vert_count;
   index_t index_count;
   bool ready;
@@ -166,7 +166,7 @@ void _model_bind_primitive(Model model) {
   assert(prim->vbo);
 
   glBindBuffer(GL_ARRAY_BUFFER, prim->vbo);
-  vert_bind(prim->format);
+  vertex_bind(prim->format);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

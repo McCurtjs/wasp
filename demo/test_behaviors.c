@@ -300,7 +300,7 @@ static void _wizard_baddies(Game game, entity_t* e, float dt) {
       .material = game->demo->materials.crate,
       .pos = pos,
       .scale = 2.0f,
-      .tint = v3f(1.0f, 0.6f, 0.6f),
+      .tint = v4cv(v4f(1.0f, 0.6f, 0.6f, 1.0f)),
       .renderer = renderer_pbr,
       .behavior = behavior_baddy,
     });
@@ -654,6 +654,29 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
         igText("Renderer: %s", entity->renderer->name);
         igText("Shader: %s", entity->renderer->shader->name.begin);
         igText("Render id: %d - %llu", sk_index(entity->render_id), sk_unique(entity->render_id));
+
+        attribute_format_t attrib_format = entity->renderer->shader->attrib_format;
+
+        if (attribute_has_tint(attrib_format)) {
+          color4 color = v4vc(entity_get_tint(entity));
+
+          igText("Tint Color:");
+          if (igSliderFloat4("##ety_tint", color.f, 0.f, 1.f, "%.3f", 0)) {
+            entity_set_tint(entity, v4cv(color));
+          }
+        }
+
+        if (attribute_has_material_index(attrib_format)
+        &&  entity->material && entity->material->layers > 0
+        ) {
+          int index = (int)entity_get_material_index(entity);
+          int layers = (int)entity->material->layers;
+
+          igText("Material Index:");
+          if (igSliderInt("##ety_mat_index", &index, 0, layers-1, NULL, 0)) {
+            entity_set_material_index(entity, index);
+          }
+        }
       }
       else if (entity->onrender) {
         igText("Render: local fn");

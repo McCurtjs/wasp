@@ -84,7 +84,7 @@ typedef struct model_sprites_t {
 
 typedef struct _opaque_Model_t {
   const model_type_t type;
-  const vert_format_t format;
+  const vertex_format_t format;
   const index_t vert_count;
   const index_t index_count;
   const bool ready;

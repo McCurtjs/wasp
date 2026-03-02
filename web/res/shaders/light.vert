@@ -5,20 +5,22 @@ layout(location = 0) in vec4 position;
 layout(location = 1) in vec2 uv;
 layout(location = 2) in vec4 normal;
 layout(location = 3) in vec4 tangent;
-layout(location = 4) in vec3 color;
+layout(location = 4) in vec3 color; // vertex color
 
 uniform mat4 in_pvm_matrix;
 uniform mat4 in_normal_matrix;
 
 out vec4 vNormal;
 out vec2 vUV;
-out vec3 vColor;
+out vec3 vTintColor;
 out mat3 vTangentTransform;
+flat out int vMaterialIndex;
 
 void main() {
   gl_Position = in_pvm_matrix * position;
   vUV = uv;
-  vColor = vec3(1.0) - color;
+  vTintColor = vec3(1.0) - color;
+  vMaterialIndex = 0;
 
   // Calculate tangent space transform
   mat3 normal_matrix = mat3(in_normal_matrix);

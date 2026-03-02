@@ -426,14 +426,6 @@ slotkey_t entity_add(const entity_desc_t* proto) {
   Game_Internal* game = game_get_local_internal();
   assert(proto);
 
-  vec3 tint = proto->tint;
-  if (tint.x == 0.0f
-  &&  tint.y == 0.0f
-  &&  tint.z == 0.0f
-  ) {
-    tint = v3ones;
-  }
-
   slotkey_t key;
   entity_t* entity = smap_entity_emplace(game->entities, &key);
 
@@ -465,7 +457,6 @@ slotkey_t entity_add(const entity_desc_t* proto) {
   entity->name = proto->name.begin ? str_copy(proto->name) : str_empty;
   entity->id = key;
 
-
   // Register new entity's behavior function if it has one
   if (entity->behavior) {
     behavior_key_t bkey = { .entity_id = key, .behavior = entity->behavior };
@@ -481,6 +472,9 @@ slotkey_t entity_add(const entity_desc_t* proto) {
   // Register it with a renderer if it has one
   if (entity->renderer) {
     renderer_entity_register(entity->renderer, entity);
+
+    entity_set_tint(entity, proto->tint);
+    entity_set_material_index(entity, proto->material_index);
   }
 
   // Run on-create callback
@@ -562,7 +556,7 @@ void entity_set_renderer(Entity entity, renderer_t* renderer) {
   }
 }
 
-static inline void _entity_set_dirty(Entity entity) {
+static void _entity_set_dirty(Entity entity) {
   if (!entity->is_dirty_renderer) {
     Game_Internal* game = game_get_local_internal();
     entity->is_dirty_renderer = true;
@@ -589,6 +583,76 @@ void entity_set_static(Entity entity, bool is_static) {
   entity->is_dirty_static = !entity->is_dirty_static;
   _entity_set_dirty(entity);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct {
+  void* attributes;
+  attribute_format_t format;
+} attribs_t;
+
+static inline attribs_t _entity_attribs(
+  Entity entity, bool modify, bool(*attribute_has_check)(attribute_format_t)
+) {
+  assert(entity);
+  renderer_t* renderer = entity->renderer;
+
+  assert(renderer);
+  assert(renderer->shader);
+  attribute_format_t attrib_format = renderer->shader->attrib_format;
+
+  if (!renderer->entity_attributes || !attribute_has_check(attrib_format)) {
+    return (attribs_t) { NULL, attrib_format };
+  }
+
+  return (attribs_t) {
+    .attributes = renderer->entity_attributes(entity, modify),
+    .format = attrib_format,
+  };
+}
+
+void entity_set_tint(Entity entity, color4b tint) {
+  attribs_t ref = _entity_attribs(entity, true, attribute_has_tint);
+  if (!ref.attributes) return;
+
+  color4b* color = attribute_ref_tint(ref.format, ref.attributes);
+  if (!color) return;
+  *color = tint;
+}
+
+color4b entity_get_tint(Entity entity) {
+  attribs_t ref = _entity_attribs(entity, false, attribute_has_tint);
+  if (!ref.attributes) return b4white;
+
+  color4b* color = attribute_ref_tint(ref.format, ref.attributes);
+  if (!color) return b4white;
+  return *color;
+}
+
+void entity_set_material_index(Entity entity, index_t index) {
+  assert(index >= 0);
+  attribs_t ref = _entity_attribs(entity, true, attribute_has_material_index);
+  if (!ref.attributes) return;
+
+  assert(entity->material);
+  assert(index < entity->material->layers);
+
+  int* mat = attribute_ref_material_index(ref.format, ref.attributes);
+  if (!mat) return;
+  *mat = (int)index;
+}
+
+index_t entity_get_material_index(Entity entity) {
+  attribs_t ref = _entity_attribs(entity, false, attribute_has_material_index);
+  if (!ref.attributes) return 0;
+  assert(entity->material);
+
+  int* index = attribute_ref_material_index(ref.format, ref.attributes);
+  if (!index) return 0;
+  return (index_t)*index;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 
 void entity_set_position(Entity entity, vec3 new_pos) {
   assert(entity);

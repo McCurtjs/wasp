@@ -140,8 +140,8 @@ model_obj_t file_load_obj(File file) {
   model.indices = arr_new_reserve(uint, faces->size);
 
   switch (model.format) {
-    case VF_UV_NORM: model.verts = arr_new(vert_uv_norm_t); break;
-    case VF_UV_NORM_COLOR: model.verts = arr_new(vert_uv_norm_color_t); break;
+    case VF_UV_NORM: model.verts = arr_new(vertex_uv_norm_t); break;
+    case VF_UV_NORM_COLOR: model.verts = arr_new(vertex_uv_norm_color_t); break;
     default: assert(false); break;
   }
 
@@ -155,7 +155,7 @@ model_obj_t file_load_obj(File file) {
       obj_vertex_part_t* vert = arr_ref(verts, f->vert - 1);
       *(uint*)e.value = (uint)model.verts->size;
       arr_write_back(model.indices, e.value);
-      arr_write_back(model.verts, &(vert_uv_norm_color_t) {
+      arr_write_back(model.verts, &(vertex_uv_norm_color_t) {
         .pos = vert->pos,
         .uv = *((vec2*)arr_ref(uvs, f->uv - 1)),
         .norm = *((vec3*)arr_ref(norms, f->norm - 1)),
@@ -191,7 +191,7 @@ model_obj_t file_load_obj(File file) {
       uint i1 = indices[i + 1];
       uint i2 = indices[i + 2];
 
-      vert_uv_norm_t* vtx[3] = {
+      vertex_uv_norm_t* vtx[3] = {
         arr_ref(model.verts, i0),
         arr_ref(model.verts, i1),
         arr_ref(model.verts, i2)
@@ -237,7 +237,7 @@ model_obj_t file_load_obj(File file) {
     }
 
     for (index_t i = 0; i < model.verts->size; ++i) {
-      vert_uv_norm_t* vtx = arr_ref(model.verts, i);
+      vertex_uv_norm_t* vtx = arr_ref(model.verts, i);
       vtx->tangent.xyz = v3norm(vtx->tangent.xyz);
     }
   }
