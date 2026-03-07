@@ -48,23 +48,31 @@ tex_params_t tex_params_default = {
 
 typedef struct tex_format_desc_t {
   int     size;
+  int     channels;
   GLenum  format;
   GLenum  internal;
   GLenum  type;
 } tex_format_desc_t;
 
 static const tex_format_desc_t _rt_format[TF_SUPPORTED_MAX] = {
-  { 3,  GL_RGB,   GL_RGB8,      GL_UNSIGNED_BYTE },
-  { 4,  GL_RGBA,  GL_RGBA8,     GL_UNSIGNED_BYTE },
-  { 1,  GL_RED,   GL_R8,        GL_UNSIGNED_BYTE },
-  { 8,  GL_RGBA,  GL_RGBA16F,   GL_FLOAT },
-  { 4,  GL_RG,    GL_RG16F,     GL_FLOAT },
-  { 12, GL_RGB,   GL_RGB32F,    GL_FLOAT },
-  { 16, GL_RGBA,  GL_RGBA32F,   GL_FLOAT },
-  { 4,  GL_RED,   GL_R32F,      GL_FLOAT },
-  { 4,  GL_RGBA,  GL_RGB10_A2,  GL_UNSIGNED_INT_2_10_10_10_REV },
-  { 4,  GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT32F,  GL_FLOAT }
+  { 3,  3,  GL_RGB,   GL_RGB8,      GL_UNSIGNED_BYTE },
+  { 4,  4,  GL_RGBA,  GL_RGBA8,     GL_UNSIGNED_BYTE },
+  { 1,  1,  GL_RED,   GL_R8,        GL_UNSIGNED_BYTE },
+  { 8,  4,  GL_RGBA,  GL_RGBA16F,   GL_FLOAT },
+  { 4,  2,  GL_RG,    GL_RG16F,     GL_FLOAT },
+  { 12, 3,  GL_RGB,   GL_RGB32F,    GL_FLOAT },
+  { 16, 4,  GL_RGBA,  GL_RGBA32F,   GL_FLOAT },
+  { 4,  1,  GL_RED,   GL_R32F,      GL_FLOAT },
+  { 4,  4,  GL_RGBA,  GL_RGB10_A2,  GL_UNSIGNED_INT_2_10_10_10_REV },
+  { 4,  1,  GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT32F,  GL_FLOAT }
 };
+
+#ifdef _MSC_VER
+// Disable warning for the return line:
+//    C33010: "Unchecked lower bound for enum format used as index"
+// The bound is always checked (in an assert) but it complains anyway.
+# pragma warning ( disable : 33010 )
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 // Internal function versions
@@ -164,7 +172,7 @@ Texture tex_from_image(Image image) {
   , 0 // border (always 0)
   , _rt_format[ret->format].format
   , _rt_format[ret->format].type
-  , image->data
+  , image->handle
   );
 
   err = glGetError();
@@ -417,39 +425,6 @@ void tex_delete(Texture* texture) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Texture array functions
-////////////////////////////////////////////////////////////////////////////////
-
-static byte* _tex_arr_vertical_clone(
-  Texture tex, const byte* image_data, vec2i dim
-) {
-  int cell_width = _rt_format[tex->format].size * tex->size.w;
-  int full_width = cell_width * dim.w;
-  int cell_size = cell_width * tex->size.h;
-  int source_size_bytes = cell_size * (int)tex->layers;
-
-  byte* data = malloc(source_size_bytes);
-  assert(data);
-
-  byte* iter_target = data;
-  for (int dy = 0; dy < dim.y; ++dy) {
-    for (int dx = 0; dx < dim.x; ++dx) {
-      const byte* source = image_data
-        + dx * cell_width
-        + dy * full_width * tex->size.h;
-
-      for (int y = 0; y < tex->size.h; ++y) {
-        memcpy(iter_target, source, cell_width);
-        source += full_width;
-        iter_target += cell_width;
-      }
-    }
-  }
-
-  return data;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // Creates a texture atlas from an image sectioned into a grid
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -473,31 +448,8 @@ Texture tex_from_image_atlas(Image image, vec2i dim) {
   glGenTextures(1, &ret->handle);
   glBindTexture(GL_TEXTURE_2D_ARRAY, ret->handle);
 
-  // If the image is already a vertical atlas, we can use it directly
-  void* atlas_data = NULL;
-  const void* vertical_atlas = NULL;
-  if (dim.x == 1) {
-    vertical_atlas = image->data;
-  }
-  // If it isn't already a vertical atlas, we need to make one
-  else {
-#ifndef __WASM__
-    atlas_data = _tex_arr_vertical_clone(ret, image->data, dim);
-    vertical_atlas = atlas_data;
-#else
-    size_t channels = (size_t)_rt_format[ret->format].size;
-    size_t size_bytes = 
-      ret->size.x * ret->size.y * ret->layers * _rt_format[ret->format].size;
-
-    void* image_data_copy = malloc(size_bytes);
-    assert(image_data_copy);
-    img_copy_data(image_data_copy, image, channels);
-    atlas_data = _tex_arr_vertical_clone(ret, image_data_copy, dim);
-    free(image_data_copy);
-
-    vertical_atlas = js_buffer_create(atlas_data, size_bytes);
-#endif
-  }
+  // We want the image data to be in a vertical strip to load all at once
+  img_repack_vertical(&image, dim);
 
   GLsizei mip_levels = 1;
 
@@ -529,20 +481,13 @@ Texture tex_from_image_atlas(Image image, vec2i dim) {
   , ret->size.w, ret->size.h, (GLint)ret->layers  // volume of change
   , _rt_format[ret->format].format
   , _rt_format[ret->format].type
-  , vertical_atlas
+  , image->handle
   );
 
   _tex_set_filtering(GL_TEXTURE_2D_ARRAY, ret->filtering, ret->has_mips);
   _tex_set_wrapping(GL_TEXTURE_2D_ARRAY, ret->wrapping);
 
   glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-
-  if (atlas_data) {
-#ifdef __WASM__
-    js_buffer_delete(vertical_atlas);
-#endif
-    free(atlas_data);
-  }
 
   glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
 
@@ -619,78 +564,47 @@ void tex_set_atlas_layer(Texture tex, index_t layer, Image image) {
   assert(image->ready);
   assert(image->width == tex->size.w);
   assert(image->height == tex->size.h);
+  assert(tex->format == TF_RGB_8
+      || tex->format == TF_RGBA_8
+      || tex->format == TF_R_8
+  );
+
+  Image img = image;
+  img_set_channels(&img, _rt_format[tex->format].channels);
 
   glBindTexture(GL_TEXTURE_2D_ARRAY, tex->handle);
 
   glTexSubImage3D(GL_TEXTURE_2D_ARRAY
   , 0                               // Mipmap level
   , 0, 0, (GLint)layer              // x, y, z offsets
-  , image->size.w, image->size.h, 1 // width/height/depth of change
+  , img->width, img->height, 1      // width/height/depth of change
   , _rt_format[tex->format].format
   , _rt_format[tex->format].type
-  , image->data
+  , img->handle
   );
 
   glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+
+  // it's possible for a default image to get copied, if that happens, clean up
+  //    the duplicated image here.
+  if (img != image) img_delete(&img);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void tex_set_atlas_layer_color(Texture tex, index_t layer, color4 colorf) {
+void tex_set_atlas_layer_color(Texture tex, index_t layer, color4 color) {
   assert(tex);
   assert(tex->handle);
   assert(tex->layers > 0);
   assert(layer >= 0);
   assert(layer < tex->layers);
 
-  vec4b color = v4cv(colorf);
+  int channels = _rt_format[tex->format].channels;
 
-  glBindTexture(GL_TEXTURE_2D_ARRAY, tex->handle);
+  Image color_image = img_from_color(color, tex->size, channels);
+  tex_set_atlas_layer(tex, layer, color_image);
 
-  index_t count = tex->size.w * tex->size.h;
-  index_t fmt_size = _rt_format[tex->format].size;
-  assert(fmt_size == b3bytes || fmt_size == b4bytes);
-
-  void* mem_start = malloc(count * fmt_size);
-  assert(mem_start);
-
-  if (fmt_size == b3bytes) {
-    vec3b* mem = mem_start;
-    for (index_t i = 0; i < count; ++i) {
-      *mem = color.rgb;
-      ++mem;
-    }
-  }
-  else {
-    vec4b* mem = mem_start;
-    for (index_t i = 0; i < count; ++i) {
-      *mem = color;
-      ++mem;
-    }
-  }
-
-#ifdef __WASM__
-  void* mem_start_cache = mem_start;
-  mem_start = js_buffer_create(mem_start, count * fmt_size);
-#endif
-
-  glTexSubImage3D(GL_TEXTURE_2D_ARRAY
-  , 0
-  , 0, 0, (GLint)layer
-  , tex->size.w, tex->size.h, 1
-  , _rt_format[tex->format].format
-  , _rt_format[tex->format].type
-  , mem_start
-  );
-
-#ifdef __WASM__
-  js_buffer_delete(mem_start);
-  mem_start = mem_start_cache;
-#endif
-
-  free(mem_start);
-
-  glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+  img_delete(&color_image);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

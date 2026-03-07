@@ -27,12 +27,38 @@
 #include "str.h"
 
 ////////////////////////////////////////////////////////////////////////////////
-// Data section for default built-in image values
+// Data section for setup and loading of static hardcoded image data
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef __WASM__
+# define IMG_SET_HANDLE(IMG, DATA_SIZE) \
+    IMG->handle = js_buffer_create(IMG->data, DATA_SIZE)
+#else
+# define IMG_SET_HANDLE(IMG, DATA_SIZE) IMG->handle = IMG->data
+#endif
+
+static Image _img_load_default_helper(Image image) {
+  if (!image->ready) {
+    image->ready = true;
+
+#ifdef __WASM__
+    image->handle = js_buffer_create(image->data, image->channels);
+#else
+    image->handle = image->data;
+#endif
+  }
+  return image;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Default "error" texture checkerboard pattern
 ////////////////////////////////////////////////////////////////////////////////
 
 #define F 255
-struct image_t img_default = {
+struct image_t _img_default_error = {
+  .type = IMG_ERROR,
   .filename = (String)&slice_empty,
+  .handle = NULL,
   .data = (byte[]) {
     0,0,0, F,0,F, 0,0,0, F,0,F,
     F,0,F, 0,0,0, F,0,F, 0,0,0,
@@ -42,44 +68,55 @@ struct image_t img_default = {
   .width = 4,
   .height = 4,
   .channels = 3,
-  .ready = true,
-  .blend = false,
-  .type = IMG_ERROR,
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 
-struct image_t img_default_white = {
+static Image _img_load_default_error(void) {
+  return _img_load_default_helper(&_img_default_error);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Default one-pixel white image
+////////////////////////////////////////////////////////////////////////////////
+
+struct image_t _img_default_white = {
+  .type = IMG_DEFAULT,
   .filename = (String)&slice_empty,
+  .handle = NULL,
   .data = (byte[]) { F, F, F },
   .width = 1,
   .height = 1,
   .channels = 3,
-#ifdef __WASM__
-  .ready = false,
-#else
-  .ready = true,
-#endif
-  .blend = false,
-  .type = IMG_DEFAULT
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 
-struct image_t img_default_normal = {
+Image img_load_default_white(void) {
+  return _img_load_default_helper(&_img_default_white);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Default one-pixel image representing a flat normal map
+////////////////////////////////////////////////////////////////////////////////
+
+struct image_t _img_default_normal = {
+  .type = IMG_DEFAULT,
   .filename = (String)&slice_empty,
+  .handle = NULL,
   .data = (byte[]) { 127, 127, 255 },
   .width = 1,
   .height = 1,
   .channels = 3,
-#ifdef __WASM__
-  .ready = false,
-#else
-  .ready = true,
-#endif
-  .blend = false,
-  .type = IMG_DEFAULT
 };
+
+////////////////////////////////////////////////////////////////////////////////
+
+Image img_load_default_normal(void) {
+  return _img_load_default_helper(&_img_default_normal);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 
 #ifndef __WASM__
 # define STB_IMAGE_IMPLEMENTATION
@@ -104,20 +141,20 @@ void export(img_open_async_done) (
   Image img, int width, int height, bool success
 ) {
   assert(img);
+  assert(image->type == IMG_HANDLE);
+
   if (success) {
+    str_log("  Loaded ({}): {} x {}", (size_t)img->handle, width, height);
     img->width = width;
     img->height = height;
-    str_log("  Loaded ({}): {} x {}", (size_t)img->data, width, height);
+    img->channels = 4;
+    img->ready = true;
   }
   else {
-    *img = img_default;
-    int buffer_size = img->width * img->height * img->channels;
-    img->data = js_buffer_create(img_default.data, buffer_size);
-    str_log("  Failed ({}): using default", (size_t)img->data);
+    js_image_delete(img->handle);
+    *img = _img_load_default_error();
+    str_log("  Failed ({}): using default", (size_t)img->handle);
   }
-
-  img->channels = 4;
-  img->ready = true;
 }
 
 #endif
@@ -136,38 +173,38 @@ Image img_load_async_str(String filename) {
 
   *ret = (struct image_t) {
     .filename = filename,
-    .type = IMG_FROM_FILE,
+    .type = IMG_HANDLE,
+    .ready = false,
     .blend = true,
   };
 
-  ret->data = js_image_open(ret, ret->filename->begin, ret->filename->length);
-  str_log("  Async ID: {}", (size_t)ret->data);
+  ret->handle = js_image_open(ret, ret->filename->begin, ret->filename->length);
+  str_log("  Async ID: {}", (size_t)ret->handle);
+  return ret;
 #else
   struct image_t img = {
     .filename = filename,
-    .type = IMG_FROM_FILE,
+    .type = IMG_HANDLE,
     .ready = true,
     .blend = true,
   };
 
-  img.data = stbi_load(
+  img.handle = stbi_load(
     img.filename->begin, &img.width, &img.height, &img.channels, 0
   );
 
-  if (!img.data) {
+  if (!img.handle) {
     str_delete(&img.filename);
-    ret = &img_default;
     str_log("  Failed: {} - using default", stbi_failure_reason());
+    return _img_load_default_error();
   }
-  else {
-    ret = malloc(sizeof(*ret));
-    assert(ret);
-    *ret = img;
-    str_log("  Loaded: {} x {} ({})", ret->width, ret->height, ret->channels);
-  }
-#endif
 
+  ret = malloc(sizeof(*ret));
+  assert(ret);
+  *ret = img;
+  str_log("  Loaded: {} x {} ({})", ret->width, ret->height, ret->channels);
   return ret;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,70 +214,147 @@ Image img_load_async(slice_t filename) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Gets a default one-pixel white image
-////////////////////////////////////////////////////////////////////////////////
-
-Image img_load_default_white(void) {
-#ifdef __WASM__
-  if (!img_default_white.ready) {
-    img_default_white.ready = true;
-    img_default_white.data = js_buffer_create(
-      img_default_white.data, img_default_white.channels
-    );
-  }
-#endif
-  return (Image)&img_default_white;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Gets a default one-pixel image representing a flat normal map
-////////////////////////////////////////////////////////////////////////////////
-
-Image img_load_default_normal(void) {
-#ifdef __WASM__
-  if (!img_default_normal.ready) {
-    img_default_normal.ready = true;
-    img_default_normal.data = js_buffer_create(
-      img_default_normal.data, img_default_normal.channels
-    );
-  }
-#endif
-  return (Image)&img_default_normal;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // Initialize an image from an array of bytes
 ////////////////////////////////////////////////////////////////////////////////
 
-Image img_from_bytes(const byte* data, int width, int height, int channels) {
-  assert(data);
+Image img_from_bytes(const byte* source, vec2i size, int channels) {
+  assert(source);
+  assert(channels > 0 && channels <= 4);
+  assert(size.w > 0 && size.h > 0);
 
-  index_t data_size = width * height * channels;
+  index_t count = size.w * size.h;
+  index_t data_size = count * channels;
 
-  Image ret = malloc(sizeof(*ret) + data_size);
+  Image ret = malloc(sizeof(*ret));
   assert(ret);
+
+  void* data = malloc(data_size);
+  assert(data);
 
   *ret = (struct image_t) {
     .filename = str_empty,
-    .data = (void*)(ret + 1),
-    .width = width,
-    .height = height,
+    .data = data,
+    .size = size,
+    .channels = channels,
     .type = IMG_DATA,
     .blend = true,
   };
 
-  memcpy(ret->data, data, data_size);
+  memcpy(ret->data, source, data_size);
 
-  #ifdef __WASM__
-  ret->data = js_buffer_create(ret->data, data_size);
-  #endif
+  IMG_SET_HANDLE(ret, data_size);
 
   ret->ready = true;
-  return (Image)ret;
+  return ret;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+Image img_from_color(color4 colorf, vec2i size, int channels) {
+  assert(channels > 0 && channels <= 4);
+  assert(size.w > 0 && size.h > 0);
+
+  vec4b color = v4cv(colorf);
+
+  index_t count = size.w * size.h;
+  index_t data_size = count * channels;
+
+  Image ret = malloc(sizeof(*ret));
+  assert(ret);
+
+  void* data = malloc(data_size);
+  assert(data);
+
+  *ret = (struct image_t){
+    .filename = str_empty,
+    .handle = data,
+    .data = data,
+    .size = size,
+    .channels = channels,
+    .type = IMG_DATA,
+    .blend = true,
+  };
+
+  switch (channels) {
+
+    case 4: {
+      vec4b* mem = data;
+      for (index_t i = 0; i < count; ++i, ++mem) {
+        *mem = color;
+      }
+    } break;
+
+    case 3: {
+      vec3b* mem = data;
+      for (index_t i = 0; i < count; ++i, ++mem) {
+        *mem = color.rgb;
+      }
+    } break;
+
+    case 1: {
+      // use the color's luminosity for
+      byte lum = (byte)c4lum(colorf);
+      memset(data, lum, data_size);
+    } break;
+
+    default: {
+      assert(false);
+    } break;
+
+  }
+
+  IMG_SET_HANDLE(ret, data_size);
+
+  ret->ready = true;
+  return ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Deletes an images memory
+////////////////////////////////////////////////////////////////////////////////
+
+void _img_free(Image img) {
+#ifdef __WASM__
+  switch (img->type) {
+
+    case IMG_DEFAULT:
+      break;
+
+    case IMG_ERROR:
+      break;
+
+    case IMG_HANDLE:
+      js_image_delete(img->handle);
+      break;
+
+    case IMG_DATA:
+      js_buffer_delete(img->handle);
+      free(img->data);
+      break;
+  }
+#else
+  switch (img->type) {
+
+    case IMG_DEFAULT:
+      break;
+
+    case IMG_ERROR:
+      break;
+
+    case IMG_HANDLE:
+      stbi_image_free(img->handle);
+      break;
+
+    case IMG_DATA:
+      free(img->data);
+      break;
+  }
+#endif
+
+  img->handle = NULL;
+  img->data = NULL;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 void img_delete(Image* pimg) {
@@ -248,71 +362,145 @@ void img_delete(Image* pimg) {
   Image img = *pimg;
   str_delete(&img->filename);
 
-#ifdef __WASM__
-  switch (img->type) {
-    case IMG_FROM_FILE:
-      js_image_delete(img->data);
-      break;
-
-    case IMG_DATA:
-    case IMG_ERROR:
-      js_buffer_delete(img->data);
-      break;
-
-    case IMG_DEFAULT:
-      assert(false);
-      break;
+  _img_free(img);
+  if (img->type != IMG_DEFAULT && img->type != IMG_ERROR) {
+    free(img);
   }
-  free(img);
-#else
-  switch (img->type) {
-    case IMG_FROM_FILE:
-      stbi_image_free(img->data);
-      free(img);
-      break;
-
-    case IMG_DATA:
-      free(img);
-      break;
-
-    case IMG_DEFAULT:
-    case IMG_ERROR:
-      break;
-  }
-#endif
 
   *pimg = NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Copies the image data to an array with the designated number of channels
+// Image data manipulation functions to release handles and change data format
 ////////////////////////////////////////////////////////////////////////////////
 
-void img_copy_data(void* dst, Image img, int channels) {
-  assert(img);
-  assert(dst);
+void img_resolve(Image* pimg) {
+  assert(pimg && *pimg);
+  Image img = *pimg;
   assert(img->ready);
-  assert(img->data);
-  assert(channels > 0 && channels <= 4);
-  assert(channels <= img->channels);
+  assert(img->handle);
 
+  switch (img->type) {
+
+    case IMG_DATA:
+      break;
+
+    case IMG_ERROR:
+    case IMG_DEFAULT:
+      *pimg = img_from_bytes(img->data, img->size, img->channels);
+
+    case IMG_HANDLE: {
 #ifdef __WASM__
-  js_image_extract(dst, img->data, channels);
+      assert(!img->data);
+      size_t size_bytes = img->size.x * img->size.y * img->channels;
+      img->data = malloc(size_bytes);
+      js_image_extract(img->data, img->handle, img->channels);
+      js_image_delete(img->handle);
+      IMG_SET_HANDLE(img, size_bytes);
+      img->type = IMG_DATA;
 #else
-  size_t size_bytes = img->width * img->height * img->channels;
-  byte* dst_bytes = dst;
-  const byte* src_bytes = img->data;
+      img->data = img->handle;
+#endif
+    } break;
 
-  if (channels == img->channels) {
-    memcpy(dst, img->data, size_bytes);
-    return;
   }
+}
 
-  size_t img_channels = img->channels;
-  for (size_t s = 0, d = 0; s < size_bytes; s += img_channels, d += channels) {
-    for (size_t i = 0; i < channels; ++i) {
-      dst_bytes[d + i] = src_bytes[s + i];
+////////////////////////////////////////////////////////////////////////////////
+
+void img_set_layout(Image* pimg, vec2i size, int channels) {
+  UNUSED(pimg);
+  UNUSED(size);
+  UNUSED(channels);
+  // TODO
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void img_set_size(Image* pimg, vec2i size) {
+  UNUSED(pimg);
+  UNUSED(size);
+  // TODO
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void img_set_channels(Image* pimg, int channels) {
+  assert(pimg && *pimg);
+  Image img = *pimg;
+  assert(img->ready);
+  assert(channels > 0 && channels <= 4);
+  if (img->channels == channels) return;
+  img_resolve(&img);
+
+  size_t size_bytes = img->width * img->height * channels;
+  byte* dst_data = malloc(size_bytes);
+  assert(dst_data);
+
+  for (size_t s = 0, d = 0; d < size_bytes; s += img->channels, d += channels) {
+    color4b pixel;
+    byte* src = (byte*)img->data + s;
+    switch (img->channels) {
+      case 4: pixel = *(color4b*)src;             break;
+      case 3: pixel = v34b(*(color3b*)src, 255);  break;
+      case 1: pixel = v4b(*src, *src, *src, 255); break;
+      default: assert(false); pixel = b4black;    break;
+    }
+
+    byte* dst = (byte*)dst_data + d;
+    switch (channels) {
+      case 4: *(color4b*)dst = pixel;     break;
+      case 3: *(color3b*)dst = pixel.rgb; break;
+      case 1: *dst = b4lum(pixel);        break;
+      default: assert(false);             break;
     }
   }
-#endif
+
+  _img_free(img);
+  img->type = IMG_DATA;
+  img->data = dst_data;
+  IMG_SET_HANDLE(img, data_size);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Rearranges an image from a 2d grid of tiles into a vertical stack
+////////////////////////////////////////////////////////////////////////////////
+
+void img_repack_vertical(Image* pimg, vec2i dim) {
+  assert(pimg && *pimg);
+  Image img = *pimg;
+  assert(img->ready);
+  assert(img->handle);
+  assert(dim.x > 0 && dim.y > 0);
+  if (dim.x == 1) return;
+  img_resolve(&img);
+
+  size_t size_bytes = img->width * img->height * img->channels;
+  byte* data = malloc(size_bytes);
+  assert(data);
+
+  vec2i tile = i2div(img->size, dim);
+  int cell_width = img->channels * tile.w;
+  int cell_size = cell_width * tile.h;
+  int full_width = cell_width * dim.w;
+
+  byte* iter_target = data;
+  for (int dy = 0; dy < dim.y; ++dy) {
+    for (int dx = 0; dx < dim.x; ++dx) {
+      const byte* source = (byte*)img->data
+        + dx * cell_width
+        + dy * full_width * tile.h;
+
+      for (int y = 0; y < tile.h; ++y) {
+        memcpy(iter_target, source, cell_width);
+        source += full_width;
+        iter_target += cell_width;
+      }
+    }
+  }
+
+  _img_free(img);
+  img->type = IMG_DATA;
+  img->data = data;
+  IMG_SET_HANDLE(img, size_bytes);
 }

@@ -33,13 +33,15 @@
 typedef enum img_type_t {
   IMG_DEFAULT,
   IMG_ERROR,
-  IMG_FROM_FILE,
+  IMG_HANDLE,
   IMG_DATA,
 } img_type_t;
 
 typedef struct image_t {
+  img_type_t    CONST type;
   String        CONST filename;
-  CONST void  * CONST data;
+  CONST void*   CONST handle;
+  CONST void*   CONST data;
   union {
     vec2i       CONST size;
     struct {
@@ -50,7 +52,6 @@ typedef struct image_t {
   int           CONST channels;
   bool          CONST ready;
   bool                blend;
-  img_type_t    CONST type;
 }* Image;
 
 //Image2 img_new(width/height);
@@ -58,7 +59,16 @@ Image img_load_async_str(String filename);
 Image img_load_async(slice_t filename);
 Image img_load_default_white(void);
 Image img_load_default_normal(void);
+Image img_from_bytes(const byte* data, vec2i size, int channels);
+Image img_from_color(color4, vec2i size, int channels);
+Image img_copy(Image);
+//Image img_copy_resize(Image, vec2i size, int channels);
 void  img_delete(Image* image);
+void  img_resolve(Image*);
+void  img_set_layout(Image*, vec2i size, int channels);
+void  img_set_size(Image*, vec2i size);
+void  img_set_channels(Image*, int channels);
+void  img_repack_vertical(Image*, vec2i dim);
 void  img_copy_data(void* dst, Image image, int dst_channels);
 
 #endif

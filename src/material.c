@@ -165,6 +165,10 @@ void mat_load_multi_async(Material m_in, view_slice_t filenames) {
   if (m->pub.ready || m->img) return;
 
   m->pub.layers = view_slice_size(filenames);
+  if (m->pub.layers == 1) {
+    vec2i dim = m->pub.params.atlas_dimensions;
+    m->pub.layers = dim.x * dim.y;
+  }
 
   assert(m->pub.layers > 0);
 
@@ -241,10 +245,21 @@ void mat_build(Material m_in) {
   else {
     // Initial setup of each map we're using
     for (int i = 0; i < MAT_MAP_COUNT; ++i) {
-      if (img->images[i]) {
-        assert(img->images[i]->ready);
+      vec2i size = i2zero;
+
+      mat_images_t* node = img;
+      while (node) {
+        assert(node->images[i]->ready);
+        vec2i img_size = node->images[i]->size;
+        if (img_size.x > size.x || img_size.y > size.y) {
+          size = img_size;
+        }
+        node = node->next;
+      }
+
+      if (size.x != 0) {
         m->pub.maps[i] = tex_generate_atlas(
-          img_format(img->images[i]), img->images[i]->size, m->pub.layers
+          img_format(img->images[i]), size, m->pub.layers
         );
       }
     }

@@ -88,8 +88,8 @@ void APIENTRY glDebugOutput
 
   switch (type) {
     case GL_DEBUG_TYPE_ERROR:               type_str = S("Error"); break;
-    case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: type_str = S("Deprecated Behaviour"); break;
-    case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:  type_str = S("Undefined Behaviour"); break;
+    case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: type_str = S("Deprecated Behavior"); break;
+    case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:  type_str = S("Undefined Behavior"); break;
     case GL_DEBUG_TYPE_PORTABILITY:         type_str = S("Portability"); break;
     case GL_DEBUG_TYPE_PERFORMANCE:         type_str = S("Performance"); break;
     case GL_DEBUG_TYPE_MARKER:              type_str = S("Marker"); break;

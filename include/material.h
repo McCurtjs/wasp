@@ -100,9 +100,9 @@ Material  mat_new_atlas_load(slice_t name, mat_params_t, vec2i dim);
 // \brief Begins loading all materials that aren't already loading
 void      mat_load_all_async(void);
 
+void      mat_build(Material);
 Material  mat_get(slice_t name);
 void      mat_set_ext(Material, slice_t file_extension);
-void      mat_build(Material);
 void      mat_build_all(void);
 void      mat_delete(Material* material);
 

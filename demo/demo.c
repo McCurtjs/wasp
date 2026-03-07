@@ -167,7 +167,7 @@ static void cheesy_loading_animation(Game game, float dt) {
 bool wasp_preload(Game game) {
   UNUSED(game);
 
-  //*
+  /*
   slice_t _tex_names[] = {
     S("grass_green"),
     S("grass_rocky"),
@@ -181,11 +181,11 @@ bool wasp_preload(Game game) {
 
   span_slice_t tex_names = span_slice(_tex_names, ARRAY_COUNT(_tex_names));
 
-  demo.materials.atlas = mat_new(S("atlas"), mat_params_norm);
+  demo.materials.atlas = mat_new(S("atlas"), mat_params_pbr);
   mat_load_multi_async(demo.materials.atlas, tex_names.view);
 
   /*/
-  demo.materials.atlas = mat_new_atlas_load(
+  demo.materials.atlas = mat_new_atlas(
     S("test_sprites"), mat_params_diffuse, v2i(4, 4)
   );
   demo.materials.atlas->weight_roughness = 0.3f;

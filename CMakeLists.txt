@@ -88,6 +88,7 @@ target_sources(Wasp PRIVATE
   include/vertex.h
   include/wasm.h
   include/wasp.h
+  lib/stb/stb_image.h
 )
 
 compile_opts(Wasp)
@@ -97,6 +98,7 @@ source_group("Source Files\\Loaders" src/loaders/.*\.c)
 source_group("Source Files\\Model" src/model/.*\.c)
 source_group("Header Files\\Loaders" src/loaders/.*\.h)
 source_group("Header Files\\Inline" src/data/.*\.h)
+source_group("Header Files\\STB" lib/stb/.*\.h)
 
 # Include Galogen library for OpenGL function loading
 add_library(Galogen)
