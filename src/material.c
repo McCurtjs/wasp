@@ -142,6 +142,17 @@ Material mat_get(slice_t name) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+Array_slice mat_get_names(void) {
+  if (!_all_materials) return NULL;
+  Array_slice ret = arr_slice_new_reserve(_all_materials->size);
+  Material* map_foreach(material, _all_materials) {
+    arr_slice_push_back(ret, (*material)->name);
+  }
+  return ret;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 void mat_set_ext(Material m_in, slice_t ext) {
   MATERIAL_INTERNAL;
   m->ext = ext;
@@ -322,21 +333,3 @@ void mat_build_all(void) {
     mat_build(*material);
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-// Material sets
-////////////////////////////////////////////////////////////////////////////////
-
-/*
-typedef struct MaterialSet_Internal {
-  struct _opaque_MaterialSet_t pub;
-} MaterialSet_Internal;
-
-#define MATSET_INTERNAL \
-  MaterialSet_Internal* ms = (MaterialSet_Internal*)(m_in); \
-  assert(ms)
-//*/

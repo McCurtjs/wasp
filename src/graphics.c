@@ -75,6 +75,10 @@ void gfx_delete(Graphics* gfx) {
 
 static void _renderer_update_instances(renderer_t* renderer) {
   render_group_t* map_foreach(group, renderer->groups) {
+    if (group->instances->size == 0) {
+      // TODO: clean up GPU resources from empty groups
+      continue;
+    }
 
     if (group->update_full) {
       assert(group->instances->size <= SK_INDEX_MAX);

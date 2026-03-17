@@ -29,7 +29,7 @@
 
 #include "texture.h"
 #include "vec.h"
-#include "span_slice.h"
+#include "array_slice.h"
 
 typedef struct mat_params_t {
   bool  use_diffuse_map;
@@ -77,35 +77,36 @@ typedef struct _opaque_Material_t {
 #define   mat_params_pbr         ((mat_params_t){ 1, 1, 1, 1, si2ones })
 
 // \brief Creates a new and empty material with the given params
-Material  mat_new(slice_t name, mat_params_t);
+Material    mat_new(slice_t name, mat_params_t);
 
 // \brief Creates an empty material with the given params and atlas dimensions
-Material  mat_new_atlas(slice_t name, mat_params_t, vec2i dim);
+Material    mat_new_atlas(slice_t name, mat_params_t, vec2i dim);
 
 // \brief Begins loading material using the material name as the filename
-void      mat_load_async(Material);
+void        mat_load_async(Material);
 
 // \brief Loads material with filename override (may differ from material name)
 //void    mat_load_file_async(Material, slice_t filename);
 
 // \brief Loads atlas where each texture is from a separate image
-void      mat_load_multi_async(Material, view_slice_t filenames);
+void        mat_load_multi_async(Material, view_slice_t filenames);
 
 // \brief Same as calling `mat_new` then `mat_load_async`.
-Material  mat_new_load(slice_t name, mat_params_t);
+Material    mat_new_load(slice_t name, mat_params_t);
 
 // \brief Same as calling `mat_new_atlas` then `mat_load_async`.
-Material  mat_new_atlas_load(slice_t name, mat_params_t, vec2i dim);
+Material    mat_new_atlas_load(slice_t name, mat_params_t, vec2i dim);
 
 // \brief Begins loading all materials that aren't already loading
-void      mat_load_all_async(void);
+void        mat_load_all_async(void);
 
-void      mat_build(Material);
-Material  mat_get(slice_t name);
-void      mat_set_ext(Material, slice_t file_extension);
-void      mat_build_all(void);
-void      mat_delete(Material* material);
+void        mat_build(Material);
+Material    mat_get(slice_t name);
+Array_slice mat_get_names(void);
+void        mat_set_ext(Material, slice_t file_extension);
+void        mat_build_all(void);
+void        mat_delete(Material* material);
 
-void      mat_bind(Material);
+void        mat_bind(Material);
 
 #endif

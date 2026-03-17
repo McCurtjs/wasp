@@ -629,6 +629,28 @@ color4b entity_get_tint(Entity entity) {
   return *color;
 }
 
+void entity_set_material(Entity entity, Material material) {
+  assert(entity);
+  assert(material);
+  if (material == entity->material) return;
+  index_t mat_index = 0;
+  if (entity->renderer) {
+    if (entity->material) {
+      renderer_entity_unregister(entity);
+      mat_index = entity_get_material_index(entity);
+    }
+    entity->material = material;
+    renderer_entity_register(entity->renderer, entity);
+    if (mat_index >= material->layers) {
+      assert(material->layers > 0);
+      mat_index = material->layers - 1;
+    }
+  }
+  else {
+    entity->material = material;
+  }
+}
+
 void entity_set_material_index(Entity entity, index_t index) {
   assert(index >= 0);
   attribs_t ref = _entity_attribs(entity, true, attribute_has_material_index);
@@ -700,13 +722,13 @@ void entity_translate(Entity entity, vec3 dir) {
 
 void entity_rotate(Entity entity, quat rotation) {
   assert(entity);
-  entity->rot = q4mul(entity->rot, rotation);
+  entity->rot = q4norm(q4mul(entity->rot, rotation));
   _entity_set_dirty(entity);
 }
 
 void entity_rotate_a(Entity entity, vec3 axis, float angle) {
   assert(entity);
-  entity->rot = q4mul(entity->rot, q4axang(axis, angle));
+  entity->rot = q4norm(q4mul(entity->rot, q4axang(axis, angle)));
   _entity_set_dirty(entity);
 }
 

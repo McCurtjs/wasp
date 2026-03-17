@@ -82,6 +82,13 @@ static uint _process_mouse_btn_up(Game game, SDL_MouseButtonEvent* button) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+static uint _process_mouse_wheel(Game game, SDL_MouseWheelEvent* wheel) {
+  game->input.mouse.scroll = wheel->y;
+  return SDL_APP_CONTINUE;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 static uint _process_mouse_motion(Game game, SDL_MouseMotionEvent* motion) {
   game->input.mouse.pos = v2f(motion->x, motion->y);
 
@@ -147,6 +154,9 @@ uint event_process_system(Game game, void* system_event) {
 
     case SDL_EVENT_MOUSE_BUTTON_UP:
       return _process_mouse_btn_up(game, &event->button);
+
+    case SDL_EVENT_MOUSE_WHEEL:
+      return _process_mouse_wheel(game, &event->wheel);
 
     case SDL_EVENT_MOUSE_MOTION:
       return _process_mouse_motion(game, &event->motion);

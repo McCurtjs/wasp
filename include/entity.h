@@ -119,6 +119,7 @@ typedef struct entity_t {
 }* Entity;
 
 slotkey_t entity_add(const entity_desc_t* entity);
+slotkey_t entity_clone(const Entity); // TODO
 void      entity_remove(slotkey_t entity_id);
 index_t   entity_count(void);
 Entity    entity_ref(slotkey_t entity_id);
@@ -136,6 +137,7 @@ void      entity_set_static(Entity, bool is_static);
 
 void      entity_set_tint(Entity, color4b tint_color);
 color4b   entity_get_tint(Entity);
+void      entity_set_material(Entity, Material);
 void      entity_set_material_index(Entity, index_t);
 index_t   entity_get_material_index(Entity);
 

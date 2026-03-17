@@ -103,11 +103,11 @@ Model model_new_from_obj(File file);
 
 void  model_delete(Model* model);
 
-void model_render(Model model);
-void model_bind(const Model model);
-void model_render_instanced(const Model model, index_t count);
+void  model_render(Model model);
+void  model_bind(const Model model);
+void  model_render_instanced(const Model model, index_t count);
 
-void model_sprites_add(
-  Model spr, vec2 pos, vec2 scale, index_t frame, bool mirror);
+void  model_sprites_add(
+        Model spr, vec2 pos, vec2 scale, index_t frame, bool mirror);
 
 #endif

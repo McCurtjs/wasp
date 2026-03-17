@@ -163,6 +163,10 @@ extern void glVertexAttribPointer(
   GLsizei stride, const void* pointer
 );
 
+extern void glVertexAttribIPointer(
+  GLuint index, GLint size, GLenum type, GLsizei stride, const void* pointer
+);
+
 extern void glEnableVertexAttribArray(GLuint index);
 
 extern void glDisableVertexAttribArray(GLuint index);

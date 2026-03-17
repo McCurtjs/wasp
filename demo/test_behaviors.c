@@ -30,9 +30,19 @@
 
 #define CAMERA_SPEED 0.8f
 
+vec3 game_screen_to_ray(Game game) {
+  return camera_screen_to_ray(
+    &game->camera, game->window, game->input.mouse.pos
+  );
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Behavior for controlling camera rotation and movement
 ////////////////////////////////////////////////////////////////////////////////
+
+#include <math.h>
+
+#define CAM_ANGLE_THRESHOLD 0.4f
 
 void behavior_camera_test(Game game, entity_t* e, float dt) {
   UNUSED(e);
@@ -42,25 +52,60 @@ void behavior_camera_test(Game game, entity_t* e, float dt) {
   float xrot = d2r(-game->input.mouse.move.y * 180 / (float)game->window.h);
   float yrot = d2r(-game->input.mouse.move.x * 180 / (float)game->window.x);
 
-  //if (game->input.pressed.lmb) {
-  if (input_pressed(IN_CLICK)) {
+  if (input_pressed(IN_CAM_ROTATE)) {
     vec3 angles = v3f(xrot, yrot, 0);
     camera_orbit(&game->camera, demo->target, angles.xy);
+  }
+
+  if (input_pressed(IN_CAM_DRAG)) {
+    vec3 ray = game_screen_to_ray(game);
+    vec2 m_prev = v2sub(game->input.mouse.pos, game->input.mouse.move);
+    vec3 ray_prev = camera_screen_to_ray(&game->camera, game->window, m_prev);
+    float t, k;
+    vec3 plane = v3y;
+    if (fabs(v3dot(game->camera.front.xyz, v3x)) > 1.0f - CAM_ANGLE_THRESHOLD) {
+      plane = v3x;
+    }
+    else if (fabs(v3dot(game->camera.front.xyz, v3y)) < CAM_ANGLE_THRESHOLD) {
+      plane = v3z;
+    }
+    if (v3ray_plane(game->camera.pos.xyz, ray, demo->target, plane, &t)
+    &&  v3ray_plane(game->camera.pos.xyz, ray_prev, demo->target, plane, &k)
+    ) {
+      vec3 old_pos = v3add(demo->target, v3scale(ray, t));
+      vec3 new_pos = v3add(demo->target, v3scale(ray_prev, k));
+      vec3 offset = v3sub(new_pos, old_pos);
+      if (v3mag(offset) > 1000.0f) {
+        offset = v3rescale(offset, 1000.0f);
+      }
+
+      demo->target = v3add(demo->target, offset);
+      game->camera.pos.xyz = v3add(game->camera.pos.xyz, offset);
+    }
   }
 
   vec3 view_dir = v3sub(game->demo->target, game->camera.pos.xyz);
   float cam_speed = CAMERA_SPEED * dt * v3mag(view_dir);
 
+  float zoom = game->input.mouse.scroll * 30.f;
+
+  if (input_pressed(IN_JUMP)) zoom += 1;
+  if (input_pressed(IN_DOWN)) zoom -= 1;
+
+  if (zoom != 0) {
+    game->camera.pos.xyz = v3add(
+      game->camera.pos.xyz, v3scale(game->camera.front.xyz, zoom * cam_speed)
+    );
+  }
+
   if (input_pressed(IN_JUMP)) //game->input.pressed.forward)
     game->camera.pos.xyz = v3add(
-      game->camera.pos.xyz,
-      v3scale(game->camera.front.xyz, cam_speed)
+      game->camera.pos.xyz, v3scale(game->camera.front.xyz, cam_speed)
     );
 
   if (input_pressed(IN_DOWN)) //game->input.pressed.back)
     game->camera.pos.xyz = v3add(
-      game->camera.pos.xyz,
-      v3scale(game->camera.front.xyz, -cam_speed)
+      game->camera.pos.xyz, v3scale(game->camera.front.xyz, -cam_speed)
     );
 
   if (input_pressed(IN_RIGHT)) { //game->input.pressed.right) {
@@ -77,7 +122,7 @@ void behavior_camera_test(Game game, entity_t* e, float dt) {
     demo->target = v3add(demo->target, left);
   }
 
-  // Other random inputs that aren't actaully related to camera motion
+  // Other random inputs that aren't actually related to camera motion
 
   if (input_pressed(IN_SNAP_LIGHT)) {
     demo->light_pos = game->camera.pos;
@@ -94,12 +139,6 @@ void behavior_camera_test(Game game, entity_t* e, float dt) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-
-vec3 game_screen_to_ray(Game game) {
-  return camera_screen_to_ray(
-    &game->camera, game->window, game->input.mouse.pos
-  );
-}
 
 void behavior_wizard_level(Game game, entity_t* e, float dt) {
   UNUSED(dt);
@@ -439,11 +478,16 @@ static void _normalize_floats_fixed(float* floats, int count, int fixed_ind) {
   }
 }
 
-struct editor_state_t {
-  bool hide_scene_list;
-} editor_state;
-
 #endif // ifndef __WASM__
+
+#include <float.h>
+
+typedef enum editor_mode_t {
+  EM_SELECT,
+  EM_TRANSLATE,
+  EM_ROTATE,
+  EM_CREATE
+} editor_mode_t;
 
 void behavior_grid_toggle(Game game, entity_t* e, float dt) {
   UNUSED(dt);
@@ -483,11 +527,21 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
   ImVec2_c v2imzero = { 0 };
   ImVec2_c v2imwinsize = { 250, (float)game->window.h };
   ImVec2_c v2imsubmenu = { 234 };
+  ImVec2_c v2imbtnsize = { 20, 20 };
+  ImVec4_c v4imbtnselcolor = { 0, 0.4f, 0.8f, 1 };
 
-  ImGuiWindowFlags flags
+  ImGuiWindowFlags flags_information
     = ImGuiWindowFlags_NoMove
     | ImGuiWindowFlags_NoResize
+    | ImGuiWindowFlags_NoScrollbar
     //| ImGuiWindowFlags_AlwaysAutoResize
+    ;
+
+  ImGuiWindowFlags flags_inspector
+    = ImGuiWindowFlags_NoMove
+    | ImGuiWindowFlags_NoResize
+    | ImGuiWindowFlags_NoCollapse
+    | ImGuiWindowFlags_NoScrollbar
     ;
 
   ImGuiChildFlags child_flags
@@ -497,18 +551,24 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
     | ImGuiChildFlags_AutoResizeX
     ;
 
+  ImGuiTooltipFlags tooltip_flags
+    = ImGuiHoveredFlags_DelayNormal
+    ;
+
   static slotkey_t selected = { 0 };
+
+  static editor_mode_t edit_mode = EM_SELECT;
+
   igSetNextWindowPos(v2imzero, ImGuiCond_Appearing, v2imzero);
   igSetNextWindowSize(v2imwinsize, ImGuiCond_Always);
 
-  if (igBegin("Information", NULL, flags)) {
-    igText("FPS: %.3f", 1.0f / game->frame_time);
-    igText("Lights: %d", light_count());
+  if (igBegin("Information", NULL, flags_information)) {
+    float screen_y = igGetCursorScreenPos().y;
 
-    igText("Scene");
-    igBeginChild_Str("panel_scene", v2imsubmenu, child_flags, 0);
+    igText("Scene:");
     const char* scenes[] = { "1 - Editor", "2 - Magicks", "3 - Flight" };
-    if (igBeginCombo("##scene_select", scenes[game->scene], 0)) {
+    igPushItemWidth(-1);
+    if (igBeginCombo("##scene_select", scenes[game->scene], ImGuiComboFlags_NoArrowButton)) {
       for (int i = 0; i < ARRAY_COUNT(scenes); ++i) {
         if (igSelectable_Bool(scenes[i], i == game->scene, 0, v2imzero)) {
           game->next_scene = i;
@@ -516,16 +576,80 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
       }
       igEndCombo();
     }
+    igPopItemWidth();
+
+    igText("Tools:");
+    igBeginChild_Str("panel_tools", v2imsubmenu, child_flags, 0);
+    editor_mode_t new_mode = edit_mode;
+
+    if (edit_mode == EM_SELECT) igPushStyleColor_Vec4(ImGuiCol_Button, v4imbtnselcolor);
+    if (igButton("S", v2imbtnsize)) {
+      new_mode = EM_SELECT;
+    }
+    if (igIsItemHovered(tooltip_flags)) igSetTooltip("Select mode");
+    if (edit_mode == EM_SELECT) igPopStyleColor(1);
+
+    igSameLine(0, 5);
+
+    if (edit_mode == EM_TRANSLATE) igPushStyleColor_Vec4(ImGuiCol_Button, v4imbtnselcolor);
+    if (igButton("T", v2imbtnsize)) {
+      new_mode = EM_TRANSLATE;
+    }
+    if (igIsItemHovered(tooltip_flags)) igSetTooltip("Translate mode");
+    if (edit_mode == EM_TRANSLATE) igPopStyleColor(1);
+
+    igSameLine(0, 5);
+
+    if (edit_mode == EM_ROTATE) igPushStyleColor_Vec4(ImGuiCol_Button, v4imbtnselcolor);
+    if (igButton("R", v2imbtnsize)) {
+      new_mode = EM_ROTATE;
+    }
+    if (igIsItemHovered(tooltip_flags)) igSetTooltip("Rotate mode");
+    if (edit_mode == EM_ROTATE) igPopStyleColor(1);
+
+    igSameLine(0, 5);
+
+    if (edit_mode == EM_CREATE) igPushStyleColor_Vec4(ImGuiCol_Button, v4imbtnselcolor);
+    if (igButton("C", v2imbtnsize)) {
+      new_mode = EM_CREATE;
+    }
+    if (igIsItemHovered(tooltip_flags)) igSetTooltip("Create mode");
+    if (edit_mode == EM_CREATE) igPopStyleColor(1);
+
     igEndChild();
 
-    igText("Entities: %d", entity_count());
-    igBeginChild_Str("panel_entities", v2imsubmenu, child_flags, 0);
-    igCheckbox("Pause scene list update", &editor_state.hide_scene_list);
-    entity_t* entity = entity_ref(selected);
-    const char* selected_str = entity ? entity->name->begin : "<None>";
-    //if (igBeginCombo("##entity_select", selected_str, 0)) {
-    if (igBeginListBox("##entity_select", v2imzero)) {
-      if (!editor_state.hide_scene_list) {
+    edit_mode = new_mode;
+
+    if (igCollapsingHeader_BoolPtr("Stats", NULL, ImGuiTreeNodeFlags_DefaultOpen)) {
+      igBeginChild_Str("panel_stats", v2imsubmenu, child_flags, 0);
+      igText("FPS: %.3f", 1.0f / game->frame_time);
+      igText("Entities: %d", entity_count());
+      igText("Lights: %d", light_count());
+      igEndChild();
+    }
+
+    if (igCollapsingHeader_BoolPtr("Shortcuts", NULL, 0)) {
+      igBeginChild_Str("panel_help", v2imsubmenu, child_flags, 0);
+      igText("[O] Move camera");
+      igText("[I] Rotate camera");
+      igText("[C] Snap to selection");
+      igText("[R] Set light pos");
+      igEndChild();
+    }
+
+    if (igCollapsingHeader_BoolPtr("Entities", NULL, ImGuiTreeNodeFlags_DefaultOpen)) {
+      float y = igGetCursorScreenPos().y;
+      float h = (float)game->window.h - 5;
+      igBeginChild_Str("panel_entities", (ImVec2_c) { 234, h - y }, child_flags, 0);
+      entity_t* entity = entity_ref(selected);
+      const char* selected_str = entity ? entity->name->begin : "<None>";
+      //if (igBeginCombo("##entity_select", selected_str, 0)) {
+
+      igPushItemWidth(-1);
+      if (igBeginListBox("##entity_select", (ImVec2_c) {-FLT_MIN, -FLT_MIN} )) {
+        if (igSelectable_Bool("<None>", selected.hash == 0, 0, v2imzero)) {
+          selected = SK_NULL;
+        }
         for (slotkey_t id = SK_NULL; entity = entity_next(&id), entity;) {
           bool is_selected = entity->id.hash == selected.hash;
           String label = str_format("{}##{}", entity->name, sk_unique(id));
@@ -534,16 +658,18 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
           }
           str_delete(&label);
         }
+        //igEndCombo();
+        igEndListBox();
       }
-      //igEndCombo();
-      igEndListBox();
-    }
 
-    igEndChild();
+      igPopItemWidth();
+      igEndChild();
+    }
   }
   igEnd();
 
-  if (igBegin("Information", NULL, flags)) {
+  bool information_open = igBegin("Information", NULL, flags_inspector);
+  if (information_open) {
     if (game->scene == 2) {
       igText("Scene Info");
       igBeginChild_Str("panel_monument", v2imsubmenu, child_flags, 0);
@@ -569,24 +695,55 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
   }
   igEnd();
 
-  ImVec2_c top_right = (ImVec2_c){ (float)game->window.w, 0 };
+  if (!information_open) return;
+
+  if (selected.hash == 0) {
+    return;
+  }
+
   entity_t* entity = entity_ref(selected);
+
+  if (!entity) return;
+
+  bool do_center = false;
+  bool do_delete = false;
+
+  if (input_triggered(IN_CAM_CENTER)) {
+    do_center = true;
+  }
+
+  if (input_triggered(IN_DELETE_OBJECT)) {
+    do_delete = true;
+  }
+
+  ImVec2_c top_right = (ImVec2_c){ (float)game->window.w, 0 };
   igSetNextWindowPos(top_right, ImGuiCond_Always, (ImVec2_c) { 1, 0 });
   igSetNextWindowSize(v2imwinsize, ImGuiCond_Always);
 
-  bool entity_panel_open = false;
-  if (igBegin("Entity", &entity_panel_open, flags)) {
+  if (igBegin("Entity", NULL, flags_inspector)) {
 
     if (entity) {
-      igText("Entity: %d - %llu", sk_index(entity->id), sk_unique(entity->id));
+      igText("ID: %d - %llu", sk_index(entity->id), sk_unique(entity->id));
 
       {
         char name_buffer[1000];
         memcpy(name_buffer, entity->name->begin, MIN(1000, entity->name->size+1));
-        if (igInputText("Name", name_buffer, 1000, 0, NULL, NULL)) {
+        igPushItemWidth(-1);
+        if (igInputText("##Name", name_buffer, 1000, 0, NULL, NULL)) {
           str_delete(&entity->name);
           entity->name = str_copy(name_buffer);
         }
+        igPopItemWidth();
+      }
+
+      if (igButton("Center", v2imzero)) {
+        do_center = true;
+      }
+
+      igSameLine(0, 5);
+
+      if (igButton("Delete", v2imzero)) {
+        do_delete = true;
       }
 
       bool fake_hidden = entity->is_hidden;
@@ -595,112 +752,159 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
       }
 
       bool fake_static = entity->is_static;
-      igCheckbox("Static", &fake_static);
-
-      igText("Transform:");
-      igPushItemWidth(-1);
-      igBeginChild_Str("panel_transform", v2imsubmenu, child_flags, 0);
-
-      igText("Position:");
-      vec3 fake_pos = entity->pos;
-      if (igInputFloat3("##ety_position",
-        fake_pos.f, "%.3f", ImGuiInputTextFlags_AlwaysOverwrite)
-      ) {
-        entity_set_position(entity, fake_pos);
+      if (igCheckbox("Static", &fake_static)) {
+        entity_set_static(entity, fake_static);
       }
 
-      igText("Rotation (quaternion):");
-      quat rotation = entity->rot;
-      if (igSliderFloat4("##ety_rotation", rotation.f, -1.f, 1.f, "%.3f", 0)) {
-        int changed = 0;
-        for (int i = 1; i < q4floats; ++i)
-          if (rotation.f[i] != entity->rot.f[i]) changed = i;
-        _normalize_floats_fixed(rotation.f, 4, changed);
-        entity_set_rotation(entity, rotation);
+      if (igCollapsingHeader_BoolPtr("Transform", NULL, ImGuiTreeNodeFlags_DefaultOpen)) {
+        igPushItemWidth(-1);
+        igBeginChild_Str("panel_transform", v2imsubmenu, child_flags, 0);
+
+        igText("Position:");
+        vec3 fake_pos = entity->pos;
+        if (igInputFloat3("##ety_position",
+          fake_pos.f, "%.3f", ImGuiInputTextFlags_AlwaysOverwrite)
+          ) {
+          entity_set_position(entity, fake_pos);
+        }
+
+        igText("Rotation (quaternion):");
+        quat rotation = entity->rot;
+        if (igSliderFloat4("##ety_rotation", rotation.f, -1.f, 1.f, "%.3f", 0)) {
+          int changed = 0;
+          for (int i = 1; i < q4floats; ++i)
+            if (rotation.f[i] != entity->rot.f[i]) changed = i;
+          _normalize_floats_fixed(rotation.f, 4, changed);
+          entity_set_rotation(entity, rotation);
+        }
+
+        igText("Rotation (axis-angle):");
+        vec3 axis = v3norm(q4axis(entity->rot));
+        vec3 test = axis;
+        float angle = q4angle(entity->rot);
+        if (igSliderFloat3("##ety_rot_axis", axis.f, -1.f, 1.f, "%.2f", 0)) {
+          int changed = 0;
+          for (int i = 1; i < v3floats; ++i)
+            if (axis.f[i] != test.f[i]) changed = i;
+          _normalize_floats_fixed(axis.f, 3, changed);
+          entity_set_rotation_a(entity, axis, angle);
+        }
+
+        if (igSliderFloat("##ety_rot_angle", &angle, 0, TAU, "%.2f", 0)) {
+          entity_set_rotation_a(entity, axis, angle);
+        }
+
+
+        igText("Scale (uniform):");
+        float scale = entity->scale;
+        if (igInputFloat("##ety_scale", &scale, 0.1f, 1.0f, "%.2f", 0)) {
+          entity_set_scale(entity, scale);
+        }
+
+        igEndChild();
+        igPopItemWidth();
       }
 
-      igText("Rotation (axis-angle):");
-      vec3 axis = v3norm(q4axis(entity->rot));
-      vec3 test = axis;
-      float angle = q4angle(entity->rot);
-      if (igSliderFloat3("##ety_rot_axis", axis.f, -1.f, 1.f, "%.2f", 0)) {
-        int changed = 0;
-        for (int i = 1; i < v3floats; ++i)
-          if (axis.f[i] != test.f[i]) changed = i;
-        _normalize_floats_fixed(axis.f, 3, changed);
-        entity_set_rotation_a(entity, axis, angle);
-      }
 
-      if (igSliderFloat("##ety_rot_angle", &angle, 0, TAU, "%.2f", 0)) {
-        entity_set_rotation_a(entity, axis, angle);
-      }
+      if (igCollapsingHeader_BoolPtr("Rendering", NULL, ImGuiTreeNodeFlags_DefaultOpen)) {
+        igPushItemWidth(-1);
+        igBeginChild_Str("panel_rendering", v2imsubmenu, child_flags, 0);
 
+        if (entity->renderer) {
+          igText("Renderer: %s", entity->renderer->name);
+          igText("Shader: %s", entity->renderer->shader->name.begin);
+          igText("Render id: %d - %llu", sk_index(entity->render_id), sk_unique(entity->render_id));
+        }
 
-      igText("Scale (uniform):");
-      float scale = entity->scale;
-      if (igInputFloat("##ety_scale", &scale, 0.1f, 1.0f, "%.2f", 0)) {
-        entity_set_scale(entity, scale);
-      }
+        if (entity->onrender) {
+          igText("Renderer: onrender");
+        }
 
-      igEndChild();
-      igPopItemWidth();
-
-
-      igText("Rendering:");
-      igPushItemWidth(-1);
-
-      igBeginChild_Str("panel_rendering", v2imsubmenu, child_flags, 0);
-      if (entity->renderer) {
-        igText("Renderer: %s", entity->renderer->name);
-        igText("Shader: %s", entity->renderer->shader->name.begin);
-        igText("Render id: %d - %llu", sk_index(entity->render_id), sk_unique(entity->render_id));
-
-        attribute_format_t attrib_format = entity->renderer->shader->attrib_format;
-
-        if (attribute_has_tint(attrib_format)) {
-          color4 color = v4vc(entity_get_tint(entity));
-
-          igText("Tint Color:");
-          if (igSliderFloat4("##ety_tint", color.f, 0.f, 1.f, "%.3f", 0)) {
-            entity_set_tint(entity, v4cv(color));
+        if (entity->model) {
+          const char* model_types[MODEL_TYPES_COUNT] = {
+            "None",
+            "Grid",
+            "Cube",
+            "Cube_Color",
+            "Frame",
+            "Sprites",
+            "Mesh"
+          };
+          model_type_t type = entity->model->type;
+          if (type >= 0 && type < MODEL_TYPES_COUNT) {
+            igText("Model type: %s", model_types[type]);
           }
         }
 
-        if (attribute_has_material_index(attrib_format)
-        &&  entity->material && entity->material->layers > 0
-        ) {
-          int index = (int)entity_get_material_index(entity);
-          int layers = (int)entity->material->layers;
+        if (entity->material) {
+          igText("Material:");
+          Array_slice material_names = mat_get_names();
 
-          igText("Material Index:");
-          if (igSliderInt("##ety_mat_index", &index, 0, layers-1, NULL, 0)) {
-            entity_set_material_index(entity, index);
+          if (!arr_slice_is_null_or_empty(material_names)) {
+            if (igBeginCombo("##material_select", entity->material->name.begin, 0)) {
+              slice_t* arr_foreach(name, material_names) {
+                bool is_selected = slice_eq(*name, entity->material->name);
+                if (igSelectable_Bool(name->begin, is_selected, 0, v2imzero)) {
+                  Material new_material = mat_get(*name);
+                  entity_set_material(entity, new_material);
+                }
+              }
+              igEndCombo();
+            }
+          }
+
+          arr_slice_delete(&material_names);
+        }
+
+        if (entity->renderer) {
+          attribute_format_t attrib_format = entity->renderer->shader->attrib_format;
+
+          if (attribute_has_material_index(attrib_format)
+            && entity->material && entity->material->layers > 0
+            ) {
+            int index = (int)entity_get_material_index(entity);
+            int layers = (int)entity->material->layers;
+
+            igText("Material Index:");
+            if (igSliderInt("##ety_mat_index", &index, 0, layers - 1, NULL, 0)) {
+              entity_set_material_index(entity, index);
+            }
+          }
+
+          if (attribute_has_tint(attrib_format)) {
+            color4 color = v4vc(entity_get_tint(entity));
+
+            igText("Tint Color:");
+            if (igSliderFloat4("##ety_tint", color.f, 0.f, 1.f, "%.3f", 0)) {
+              entity_set_tint(entity, v4cv(color));
+            }
           }
         }
-      }
-      else if (entity->onrender) {
-        igText("Render: local fn");
-      }
-      else {
-        igText("Non-renderable");
-      }
 
-      if (entity->model) {
-        igText("Model type: %d", entity->model->type);
-      }
+        if (!entity->renderer && !entity->onrender) {
+          igText("Non-renderable");
+        }
 
-      if (entity->material) {
-        igText("Material: %s", entity->material->name.begin);
+        igEndChild();
+        igPopItemWidth();
       }
-
-      igEndChild();
-      igPopItemWidth();
     }
     else {
       igText("No entity selected");
     }
 
   }
+
+  if (do_center) {
+    vec3 target_ray = v3sub(game->demo->target, game->camera.pos.xyz);
+    game->demo->target = entity->pos;
+    game->camera.pos.xyz = v3sub(entity->pos, target_ray);
+  }
+
+  if (do_delete) {
+    entity_remove(entity->id);
+  }
+
   igEnd();
 #endif
 }
@@ -789,13 +993,17 @@ void behavior_attach_to_camera_target(Game game, entity_t* e, float dt) {
       game->demo->materials.renderite,
     };
 
-    entity_add(&(entity_desc_t) {
-      .model = game->demo->models.box,
-      .material = mats[(uint)e->pos.x % 6],
-      .pos = e->pos,
-      .scale = 10.0f,
-      .onrender = render_pbr,
-    });
+    vec3 ray = game_screen_to_ray(game);
+    float t;
+    if (v3ray_plane(game->camera.pos.xyz, ray, v3origin, v3up, &t)) {
+      entity_add(&(entity_desc_t) {
+        .model = game->demo->models.box,
+        .material = mats[(uint)e->pos.x % 6],
+        .pos = v3add(game->camera.pos.xyz, v3scale(ray, t)),
+        .scale = 10.0f,
+        .onrender = render_pbr,
+      });
+    }
   }
 }
 

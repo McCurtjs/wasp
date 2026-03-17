@@ -564,10 +564,7 @@ void tex_set_atlas_layer(Texture tex, index_t layer, Image image) {
   assert(image->ready);
   assert(image->width == tex->size.w);
   assert(image->height == tex->size.h);
-  assert(tex->format == TF_RGB_8
-      || tex->format == TF_RGBA_8
-      || tex->format == TF_R_8
-  );
+  assert(_rt_format[tex->format].type == GL_UNSIGNED_BYTE);
 
   Image img = image;
   img_set_channels(&img, _rt_format[tex->format].channels);
@@ -587,7 +584,9 @@ void tex_set_atlas_layer(Texture tex, index_t layer, Image image) {
 
   // it's possible for a default image to get copied, if that happens, clean up
   //    the duplicated image here.
-  if (img != image) img_delete(&img);
+  if (img != image) {
+    img_delete(&img);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

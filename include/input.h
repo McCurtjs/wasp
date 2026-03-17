@@ -47,6 +47,7 @@ typedef struct keybind_t {
 typedef struct input_mouse_t {
   vec2 pos;
   vec2 move;
+  float scroll;
 } input_mouse_t;
 
 typedef struct input_t {

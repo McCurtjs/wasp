@@ -113,7 +113,7 @@ void render_debug(Game game, entity_t* entity);
 void render_pbr(Game game, entity_t* entity);
 
 void render_debug3(renderer_t* renderer, Game game);
-
+ 
 extern renderer_t* renderer_pbr;
 extern renderer_t* renderer_basic;
 extern renderer_t* renderer_debug;
@@ -136,12 +136,15 @@ enum demo_key_t {
   IN_RIGHT,
   IN_KICK,
   IN_SNAP_LIGHT,
-  IN_CAMERA_LOCK,
 
   IN_CLICK,
   IN_CLICK_MOVE,
   IN_CREATE_OBJECT,
+  IN_DELETE_OBJECT,
   IN_ROTATE_LIGHT,
+  IN_CAM_DRAG,
+  IN_CAM_ROTATE,
+  IN_CAM_CENTER,
   IN_SHIFT,
   IN_RELOAD,
   IN_TOGGLE_SHADER,

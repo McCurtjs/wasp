@@ -61,6 +61,7 @@ Image img_load_default_white(void);
 Image img_load_default_normal(void);
 Image img_from_bytes(const byte* data, vec2i size, int channels);
 Image img_from_color(color4, vec2i size, int channels);
+Image img_pack_channels(Image r, Image g, Image b);
 Image img_copy(Image);
 //Image img_copy_resize(Image, vec2i size, int channels);
 void  img_delete(Image* image);
@@ -70,5 +71,7 @@ void  img_set_size(Image*, vec2i size);
 void  img_set_channels(Image*, int channels);
 void  img_repack_vertical(Image*, vec2i dim);
 void  img_copy_data(void* dst, Image image, int dst_channels);
+void  img_save(Image);
+void  img_save_as(Image, slice_t filename);
 
 #endif

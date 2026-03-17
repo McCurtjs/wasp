@@ -43,6 +43,7 @@ void input_update(input_t* input) {
     keybind->released = false;
   }
   input->mouse.move = v2zero;
+  input->mouse.scroll = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

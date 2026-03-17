@@ -26,26 +26,41 @@
 #include "image.h"
 #include "str.h"
 
-////////////////////////////////////////////////////////////////////////////////
-// Data section for setup and loading of static hardcoded image data
+#ifndef __WASM__
+# define STB_IMAGE_IMPLEMENTATION
+# include "stb_image.h"
+#else
+# include <string.h>
+# include <stdlib.h> // malloc, free
+# include "wasm.h"
+
+extern void* js_image_open(Image img, const char* src, uint src_len);
+extern void  js_image_delete(void* data_id);
+extern void  js_image_extract(void* dst, void* src, int dst_channels);
+
+extern void* js_buffer_create(const byte* bytes, uint size);
+extern void  js_buffer_delete(void* data_id);
+
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef __WASM__
 # define IMG_SET_HANDLE(IMG, DATA_SIZE) \
     IMG->handle = js_buffer_create(IMG->data, DATA_SIZE)
 #else
-# define IMG_SET_HANDLE(IMG, DATA_SIZE) IMG->handle = IMG->data
+# define IMG_SET_HANDLE(IMG, DATA_SIZE) \
+    IMG->handle = IMG->data
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+// Data section for setup and loading of static hardcoded image data
+////////////////////////////////////////////////////////////////////////////////
 
 static Image _img_load_default_helper(Image image) {
   if (!image->ready) {
     image->ready = true;
-
-#ifdef __WASM__
-    image->handle = js_buffer_create(image->data, image->channels);
-#else
-    image->handle = image->data;
-#endif
+    IMG_SET_HANDLE(image, image->channels);
   }
   return image;
 }
@@ -116,32 +131,16 @@ Image img_load_default_normal(void) {
   return _img_load_default_helper(&_img_default_normal);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
-#ifndef __WASM__
-# define STB_IMAGE_IMPLEMENTATION
-# include "stb_image.h"
-#else
-# include <string.h>
-# include <stdlib.h> // malloc, free
-# include "wasm.h"
-
-extern void* js_image_open(Image img, const char* src, uint src_len);
-extern void  js_image_delete(void* data_id);
-extern void  js_image_extract(void* dst, void* src, int dst_channels);
-
-extern void* js_buffer_create(const byte* bytes, uint size);
-extern void  js_buffer_delete(void* data_id);
-
+#ifdef __WASM__
 ////////////////////////////////////////////////////////////////////////////////
 // Callback to finalize asynchronous loading in WASM
 ////////////////////////////////////////////////////////////////////////////////
 
-void export(img_open_async_done) (
+void export(img_open_async_done)(
   Image img, int width, int height, bool success
-) {
+  ) {
   assert(img);
-  assert(image->type == IMG_HANDLE);
+  assert(img->type == IMG_HANDLE);
 
   if (success) {
     str_log("  Loaded ({}): {} x {}", (size_t)img->handle, width, height);
@@ -152,11 +151,10 @@ void export(img_open_async_done) (
   }
   else {
     js_image_delete(img->handle);
-    *img = _img_load_default_error();
+    *img = *_img_load_default_error();
     str_log("  Failed ({}): using default", (size_t)img->handle);
   }
 }
-
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -292,7 +290,7 @@ Image img_from_color(color4 colorf, vec2i size, int channels) {
     } break;
 
     case 1: {
-      // use the color's luminosity for
+      // use the color's luminosity for a grayscale image
       byte lum = (byte)c4lum(colorf);
       memset(data, lum, data_size);
     } break;
@@ -306,6 +304,55 @@ Image img_from_color(color4 colorf, vec2i size, int channels) {
   IMG_SET_HANDLE(ret, data_size);
 
   ret->ready = true;
+  return ret;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+Image img_pack_channels(Image r, Image g, Image b) {
+  assert(r || g || b);
+  vec2i size = i2ones;
+
+  if (r) {
+    size = v2i(MAX(size.w, r->width), MAX(size.h, r->height));
+    img_resolve(&r);
+  }
+  if (g) {
+    size = v2i(MAX(size.w, g->width), MAX(size.h, g->height));
+    img_resolve(&g);
+  }
+  if (b) {
+    size = v2i(MAX(size.w, b->width), MAX(size.h, b->height));
+    img_resolve(&b);
+  }
+
+  Image ret = img_from_color(c4white, size, 3);
+  assert(ret && ret->ready);
+
+  Image src[3] = { r, g, b };
+
+  for (int y = 0; y < size.y; ++y) {
+    for (int x = 0; x < size.y; ++x) {
+      color3b pixel = b4white.rgb;
+
+      for (int i = 0; i < 3; ++i) {
+        if (src[i] && x < src[i]->width && y < src[i]->height) {
+          byte* data = src[i]->data;
+          data += (y * ret->width + x) * src[i]->channels;
+
+          switch (src[i]->channels) {
+            case 1: pixel.i[i] = *data;                 break;
+            case 3: pixel.i[i] = b4lum(*(vec4b*)data);  break;
+            case 4: pixel.i[i] = b4lum(*(vec4b*)data);  break;
+            default: assert(false);                     break;
+          }
+        }
+      }
+
+      *((color3b*)ret->data + y * size.h + x) = pixel;
+    }
+  }
+
   return ret;
 }
 
@@ -459,7 +506,8 @@ void img_set_channels(Image* pimg, int channels) {
   _img_free(img);
   img->type = IMG_DATA;
   img->data = dst_data;
-  IMG_SET_HANDLE(img, data_size);
+  img->channels = channels;
+  IMG_SET_HANDLE(img, size_bytes);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -481,7 +529,6 @@ void img_repack_vertical(Image* pimg, vec2i dim) {
 
   vec2i tile = i2div(img->size, dim);
   int cell_width = img->channels * tile.w;
-  int cell_size = cell_width * tile.h;
   int full_width = cell_width * dim.w;
 
   byte* iter_target = data;
@@ -504,3 +551,61 @@ void img_repack_vertical(Image* pimg, vec2i dim) {
   img->data = data;
   IMG_SET_HANDLE(img, size_bytes);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// File saving
+////////////////////////////////////////////////////////////////////////////////
+
+void img_save(Image img) {
+  assert(img);
+  assert(img->filename);
+  img_save_as(img, img->filename->slice);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef __WASM__
+
+void img_save_as(Image img, slice_t filename) {
+  UNUSED(img);
+  UNUSED(filename);
+  assert(false);
+}
+
+#else
+
+# define STB_IMAGE_WRITE_IMPLEMENTATION
+# include "stb_image_write.h"
+
+void img_save_as(Image img, slice_t filename) {
+  assert(img);
+  assert(img->ready);
+  assert(filename.begin);
+
+  // copy string to make sure the slice is null-terminated
+  String file_str = str_copy(filename);
+  bool success = false;
+  int w = img->width;
+  int h = img->height;
+  int c = img->channels;
+
+  if (str_ends_with(filename, ".jpg")) {
+    success = stbi_write_jpg(file_str->begin, w, h, c, img->handle, 80);
+  }
+  else if (str_ends_with(filename, ".png")) {
+    success = stbi_write_png(file_str->begin, w, h, c, img->handle, w * c);
+  }
+  else {
+    assert(false);
+  }
+
+  if (!success) {
+    str_log("[Image.save] Failed to save file: {}\n  {}"
+    , filename, stbi_failure_reason()
+    );
+  }
+
+  str_delete(&file_str);
+}
+
+#endif

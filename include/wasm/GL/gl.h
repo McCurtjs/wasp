@@ -399,6 +399,8 @@ void    glDeleteVertexArrays(GLsizei n, const GLuint* arrays);
 void    glVertexAttribPointer(
           GLuint index, GLint size, GLenum type, GLboolean normalized,
           GLsizei stride, const void* pointer);
+void    glVertexAttribIPointer(
+          GLuint index, GLint size, GLenum type, GLsizei stride, const void* p);
 void    glEnableVertexAttribArray(GLuint index);
 void    glDisableVertexAttribArray(GLuint index);
 void    glVertexAttribDivisor(GLuint index, GLuint divisor);

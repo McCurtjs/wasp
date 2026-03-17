@@ -256,6 +256,10 @@ function wasm_import_gl(imports, game) {
     game.gl.vertexAttribPointer(index, size, type, norm, stride, ptr);
   }
 
+  imports["glVertexAttribIPointer"] = (index, size, type, stride, ptr) => {
+    game.gl.vertexAttribIPointer(index, size, type, stride, ptr);
+  }
+
   imports["glEnableVertexAttribArray"] = (index) => {
     game.gl.enableVertexAttribArray(index);
   }

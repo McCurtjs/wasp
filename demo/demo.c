@@ -80,11 +80,16 @@ static keybind_t input_map[] = {
   { .name = IN_RIGHT, .key = 'd' },
   { .name = IN_KICK, .key = SDLK_LEFT },
   { .name = IN_SNAP_LIGHT, .key = 'r' },
-  { .name = IN_CAMERA_LOCK, .key = 'c' },
   { .name = IN_CLICK, .key = SDL_BUTTON_LEFT, .mouse = true },
-  { .name = IN_CREATE_OBJECT, .key = SDL_BUTTON_RIGHT, .mouse = true },
+  { .name = IN_CREATE_OBJECT, .key = SDL_BUTTON_LEFT, .mouse = true },
+  { .name = IN_DELETE_OBJECT, .key = SDLK_DELETE },
   { .name = IN_CLICK_MOVE, .key = SDL_BUTTON_RIGHT, .mouse = true },
   { .name = IN_ROTATE_LIGHT, .key = 'e' },
+  { .name = IN_CAM_DRAG, .key = SDL_BUTTON_RIGHT, .mouse = true },
+  { .name = IN_CAM_DRAG, .key = 'o' },
+  { .name = IN_CAM_ROTATE, .key = SDL_BUTTON_MIDDLE, .mouse = true },
+  { .name = IN_CAM_ROTATE, .key = 'i' },
+  { .name = IN_CAM_CENTER, .key = 'c' },
   { .name = IN_SHIFT, .key = 16 },
   { .name = IN_RELOAD, .key = 'p' },
   { .name = IN_LEVEL_1, .key = '1' },
@@ -193,6 +198,17 @@ bool wasp_preload(Game game) {
   mat_set_ext(demo.materials.atlas, S("png"));
   //*/
 
+  /*
+  Image save_test = img_load_async(S("./res/textures/rustediron2_r.jpg"));
+  Image save_tes2 = img_load_async(S("./res/textures/rustediron2_m.jpg"));
+  //img_set_channels(&save_test, 1);
+  Image save_out = img_pack_channels(save_test, save_tes2, NULL);
+  img_save_as(save_out, S("./res/textures/rustediron2_packtest.jpg"));
+  img_delete(&save_test);
+  img_delete(&save_tes2);
+  img_delete(&save_out);
+  //*/
+
   file_model_gear = file_new(S("./res/models/gear.obj"));
 
   demo.materials.grass = mat_new(S("grass_rocky"), mat_params_norm_rough);
@@ -206,7 +222,7 @@ bool wasp_preload(Game game) {
   demo.materials.sands = mat_new(S("brass2"), mat_params_norm);
   demo.materials.sands->weight_roughness = 1.0f;
 
-  demo.materials.mudds = mat_new(S("rustediron2"), mat_params_rough_metal);
+  demo.materials.mudds = mat_new(S("rustediron2"), mat_params_pbr);
   demo.materials.mudds->weight_metalness = 1.0f;
 
   demo.materials.renderite = mat_new(S("renderite"), mat_params_none);
