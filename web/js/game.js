@@ -15,11 +15,8 @@ class Game {
     this.data_id = 0;
     this.data = {};
     this.initialized = false;
-    this.shader_vertex = null;
-    this.shader_fragment = null;
     this.await_count = 0;
     this.ready = false;
-    this.frame_time = 0;
     this.tests_only = false;
 
     this.utf8 = {
@@ -145,6 +142,15 @@ class Game {
       game.wasm.exports.wasm_push_keyboard_event(event_type, k, mod, e.repeat);
     }
 
+    let mouse_pos = (e) => {
+      let b = game.gl.canvas.getBoundingClientRect();
+      let dpi = window.devicePixelRatio;
+      return {
+        x: (e.clientX - b.x) * dpi,
+        y: (e.clientY - b.y) * dpi
+      };
+    };
+
     window.addEventListener('keydown', (e) => {
       keyboard_event(e, sdl.key_down);
     });
@@ -154,23 +160,26 @@ class Game {
     });
 
     game.gl.canvas.addEventListener('mousedown', (e) => {
+      let pos = mouse_pos(e);
       game.wasm.exports.wasm_push_mouse_button_event(
-        sdl.mouse_button_down, e.button + 1, e.offsetX, e.offsetY);
+        sdl.mouse_button_down, e.button + 1, pos.x, pos.y);
     });
 
     // attach to window so we still get "up" events when dragged out the window
     window.addEventListener('mouseup', (e) => {
-      let b = game.gl.canvas.getBoundingClientRect();
-      let pos = { x: e.clientX - b.x, y: e.clientY - b.y };
+      let pos = mouse_pos(e);
       game.wasm.exports.wasm_push_mouse_button_event(
         sdl.mouse_button_up, e.button + 1, pos.x, pos.y);
     });
 
     window.addEventListener('mousemove', (e) => {
-      let b = game.gl.canvas.getBoundingClientRect();
-      let pos = { x: e.clientX - b.x, y: e.clientY - b.y };
+      let pos = mouse_pos(e);
       game.wasm.exports.wasm_push_mouse_motion_event(
         pos.x, pos.y, e.movementX, e.movementY);
+    });
+
+    window.addEventListener('wheel', (e) => {
+      game.wasm.exports.wasm_push_mouse_wheel_event(e.deltaX, e.deltaY);
     });
   }
 };

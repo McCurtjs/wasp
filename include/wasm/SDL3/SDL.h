@@ -152,12 +152,28 @@ typedef struct SDL_MouseButtonEvent
   float y;            /**< Y coordinate, relative to window */
 } SDL_MouseButtonEvent;
 
+/**
+ * Mouse wheel event structure (event.wheel.*)
+ *
+ * \since This struct is available since SDL 3.2.0.
+ */
+typedef struct SDL_MouseWheelEvent
+{
+    SDL_EventType type; /**< SDL_EVENT_MOUSE_WHEEL */
+    Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
+    float x;            /**< The amount scrolled horizontally, positive to the right and negative to the left */
+    float y;            /**< The amount scrolled vertically, positive away from the user and negative toward the user */
+    Sint32 integer_x;   /**< The amount scrolled horizontally, accumulated to whole scroll "ticks" (added in 3.2.12) */
+    Sint32 integer_y;   /**< The amount scrolled vertically, accumulated to whole scroll "ticks" (added in 3.2.12) */
+} SDL_MouseWheelEvent;
+
 typedef union SDL_Event {
   Uint32 type;
   SDL_WindowEvent window;
   SDL_KeyboardEvent key;
   SDL_MouseMotionEvent motion;
   SDL_MouseButtonEvent button;
+  SDL_MouseWheelEvent wheel;
 
   Uint8 padding[32];
 } SDL_Event;

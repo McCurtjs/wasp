@@ -1,7 +1,7 @@
 /*******************************************************************************
 * MIT License
 *
-* Copyright (c) 2025 Curtis McCoy
+* Copyright (c) 2026 Curtis McCoy
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -68,6 +68,20 @@ void export(wasm_push_mouse_motion_event) (
     .y = y,
     .xrel = xrel,
     .yrel = yrel
+  };
+
+  event_process_system(game_get_active(), &event);
+}
+
+void export(wasm_push_mouse_wheel_event) (
+  int deltaX, int deltaY
+) {
+  SDL_MouseWheelEvent event = {
+    .type = SDL_EVENT_MOUSE_WHEEL,
+    .x = -(float)deltaX / 100.f,
+    .y = -(float)deltaY / 100.f,
+    .integer_x = deltaX,
+    .integer_y = deltaY,
   };
 
   event_process_system(game_get_active(), &event);
