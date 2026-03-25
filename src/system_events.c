@@ -31,8 +31,10 @@
 #include "render_target.h"
 
 ////////////////////////////////////////////////////////////////////////////////
+// Window system events
+////////////////////////////////////////////////////////////////////////////////
 
-static uint _process_window_resize(Game game, SDL_WindowEvent* window) {
+static void _process_window_resize(Game game, SDL_WindowEvent* window) {
   vec2i new_size = v2i(window->data1, window->data2);
   *(vec2i*)(&game->window) = new_size;
 
@@ -51,58 +53,133 @@ static uint _process_window_resize(Game game, SDL_WindowEvent* window) {
   camera_build(&game->camera);
 
   if (game->on_window_resize) game->on_window_resize(game);
-  return SDL_APP_CONTINUE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Mouse events
+////////////////////////////////////////////////////////////////////////////////
 
-static uint _process_mouse_btn_down(Game game, SDL_MouseButtonEvent* button) {
+static void _process_mouse_btn_down(Game game, SDL_MouseButtonEvent* button) {
+  if (button->which == SDL_TOUCH_MOUSEID && game->input.touch.begin) return;
+
   keybind_t* span_foreach(keybind, game->input.keymap) {
     if (keybind->mouse && keybind->key == button->button && !keybind->pressed) {
       keybind->triggered = true;
       keybind->pressed = true;
     }
   }
-
-  return SDL_APP_CONTINUE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint _process_mouse_btn_up(Game game, SDL_MouseButtonEvent* button) {
+static void _process_mouse_btn_up(Game game, SDL_MouseButtonEvent* button) {
+  if (button->which == SDL_TOUCH_MOUSEID && game->input.touch.begin) return;
+
   keybind_t* span_foreach(keybind, game->input.keymap) {
     if (keybind->mouse && keybind->key == button->button) {
       keybind->pressed = false;
       keybind->released = true;
     }
   }
-
-  return SDL_APP_CONTINUE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint _process_mouse_wheel(Game game, SDL_MouseWheelEvent* wheel) {
-  game->input.mouse.scroll = wheel->y;
-  return SDL_APP_CONTINUE;
-}
+static void _process_mouse_motion(Game game, SDL_MouseMotionEvent* motion) {
+  if (motion->which == SDL_TOUCH_MOUSEID && game->input.touch.begin) return;
 
-////////////////////////////////////////////////////////////////////////////////
-
-static uint _process_mouse_motion(Game game, SDL_MouseMotionEvent* motion) {
   game->input.mouse.pos = v2f(motion->x, motion->y);
 
   // you can get many mouse move inputs per frame, so accumulate motion
   game->input.mouse.move.x += motion->xrel;
   game->input.mouse.move.y += motion->yrel;
-
-  return SDL_APP_CONTINUE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint _process_key_down(Game game, SDL_KeyboardEvent* key) {
-  if (key->repeat) return SDL_APP_CONTINUE;
+static void _process_mouse_wheel(Game game, SDL_MouseWheelEvent* wheel) {
+  game->input.mouse.scroll = wheel->y;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Touch input events
+////////////////////////////////////////////////////////////////////////////////
+// Note: if multi-touch fingers aren't set, these will route to mouse inputs
+
+// Gets the first matching touch point for a given id
+static touch_t* _touch_get(span_fingers_t fingers, uint64_t id) {
+  touch_t* span_foreach(ret, fingers) {
+    if (ret->id == id) return ret;
+  }
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static void _process_finger_down(Game game, SDL_TouchFingerEvent* touch) {
+  if (!game->input.touch.begin) return;
+
+  // a touch id of 0 means "unused" - find the first unused slot for this event.
+  // if there are no unused slots we've gone over our multi-touch limit (defined
+  //    by the size of the touch_t span in game->input).
+  touch_t* input = _touch_get(game->input.touch, 0);
+  if (!input) return;
+
+  vec2 pos = v2f(touch->x, touch->y);
+
+  *input = (touch_t) {
+    .id = touch->fingerID,
+    .origin = pos,
+    .pos = pos,
+    .move = v2zero,
+    .pressure = touch->pressure,
+    .triggered = true,
+    .released = false,
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static void _process_finger_motion(Game game, SDL_TouchFingerEvent* touch) {
+  if (!game->input.touch.begin) return;
+
+  touch_t* slot = _touch_get(game->input.touch, touch->fingerID);
+  if (!slot) return;
+
+  slot->pos = v2f(touch->x, touch->y);
+  slot->move = v2f(touch->dx, touch->dy);
+  slot->pressure = touch->pressure;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static void _process_finger_up(Game game, SDL_TouchFingerEvent* touch) {
+  if (!game->input.touch.begin) return;
+
+  touch_t* input = _touch_get(game->input.touch, touch->fingerID);
+  if (!input) return;
+
+  input->released = true;
+  input->pos = v2f(touch->x, touch->y);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static void _process_finger_cancelled(Game game, SDL_TouchFingerEvent* touch) {
+  if (!game->input.touch.begin) return;
+
+  touch_t* input = _touch_get(game->input.touch, touch->fingerID);
+  if (!input) return;
+
+  *input = (touch_t){ 0 };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Keyboard inputs
+////////////////////////////////////////////////////////////////////////////////
+
+static void _process_key_down(Game game, SDL_KeyboardEvent* key) {
+  if (key->repeat) return;
 
   keybind_t* span_foreach(keybind, game->input.keymap) {
     if (key->key == (uint)keybind->key && !keybind->mouse) {
@@ -117,23 +194,21 @@ static uint _process_key_down(Game game, SDL_KeyboardEvent* key) {
       keybind->pressed = true;
     }
   }
-
-  return SDL_APP_CONTINUE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint _process_key_up(Game game, SDL_KeyboardEvent* key) {
+static void _process_key_up(Game game, SDL_KeyboardEvent* key) {
   keybind_t* span_foreach(keybind, game->input.keymap) {
     if (key->key == (uint)keybind->key && !keybind->mouse) {
       keybind->pressed = false;
       keybind->released = true;
     }
   }
-
-  return SDL_APP_CONTINUE;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Event dispatch
 ////////////////////////////////////////////////////////////////////////////////
 
 uint event_process_system(Game game, void* system_event) {
@@ -147,27 +222,52 @@ uint event_process_system(Game game, void* system_event) {
 #endif
 
     case SDL_EVENT_WINDOW_RESIZED:
-      return _process_window_resize(game, &event->window);
+      _process_window_resize(game, &event->window);
+      break;
 
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
-      return _process_mouse_btn_down(game, &event->button);
+      _process_mouse_btn_down(game, &event->button);
+      break;
 
     case SDL_EVENT_MOUSE_BUTTON_UP:
-      return _process_mouse_btn_up(game, &event->button);
+      _process_mouse_btn_up(game, &event->button);
+      break;
 
     case SDL_EVENT_MOUSE_WHEEL:
-      return _process_mouse_wheel(game, &event->wheel);
+      _process_mouse_wheel(game, &event->wheel);
+      break;
 
     case SDL_EVENT_MOUSE_MOTION:
-      return _process_mouse_motion(game, &event->motion);
+      _process_mouse_motion(game, &event->motion);
+      break;
+
+    case SDL_EVENT_FINGER_DOWN:
+      _process_finger_down(game, &event->tfinger);
+      break;
+
+    case SDL_EVENT_FINGER_MOTION:
+      _process_finger_motion(game, &event->tfinger);
+      break;
+
+    case SDL_EVENT_FINGER_UP:
+      _process_finger_up(game, &event->tfinger);
+      break;
+
+    case SDL_EVENT_FINGER_CANCELED:
+      _process_finger_cancelled(game, &event->tfinger);
+      break;
 
     case SDL_EVENT_KEY_DOWN:
-      return _process_key_down(game, &event->key);
+      _process_key_down(game, &event->key);
+      break;
 
     case SDL_EVENT_KEY_UP:
-      return _process_key_up(game, &event->key);
+      _process_key_up(game, &event->key);
+      break;
 
     default:
       return SDL_APP_CONTINUE;
   }
+
+  return SDL_APP_CONTINUE;
 }

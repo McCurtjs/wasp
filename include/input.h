@@ -44,6 +44,22 @@ typedef struct keybind_t {
 #undef con_type
 #undef con_prefix
 
+typedef struct touch_t {
+  uint64_t id;
+  vec2 origin;
+  vec2 pos;
+  vec2 move;
+  float pressure;
+  bool triggered;
+  bool released;
+} touch_t;
+
+#define con_type touch_t
+#define con_prefix fingers
+#include "span.h"
+#undef con_type
+#undef con_prefix
+
 typedef struct input_mouse_t {
   vec2 pos;
   vec2 move;
@@ -51,8 +67,9 @@ typedef struct input_mouse_t {
 } input_mouse_t;
 
 typedef struct input_t {
-  span_keymap_t keymap;
-  input_mouse_t mouse;
+  span_keymap_t   keymap;
+  span_fingers_t  touch;
+  input_mouse_t   mouse;
 } input_t;
 
 void input_update(input_t* input);
@@ -63,5 +80,7 @@ void input_pointer_unlock(void);
 bool input_triggered(int input_name);
 bool input_pressed(int input_name);
 bool input_released(int input_name);
+
+const touch_t* input_touch_first(void);
 
 #endif

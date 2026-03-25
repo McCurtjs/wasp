@@ -105,6 +105,8 @@ static keybind_t input_map[] = {
   { .name = IN_DECREASE_FAST, .key = SDLK_PAGEDOWN },
 };
 
+static touch_t touch_fingers[10];
+
 static scene_load_fn_t demo_scenes[] =
 { scene_load_gears
 , scene_load_wizard
@@ -283,6 +285,7 @@ bool wasp_load (Game game, int await_count, float dt) {
 
   // Assign static sets of game params
   game->input.keymap = span_keymap(input_map, ARRAY_COUNT(input_map));
+  game->input.touch = span_fingers(touch_fingers, ARRAY_COUNT(touch_fingers));
   game->scenes = span_scene(demo_scenes, ARRAY_COUNT(demo_scenes));
   game->graphics->renderers = span_renderer(renderers, ARRAY_COUNT(renderers));
 

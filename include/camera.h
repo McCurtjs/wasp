@@ -69,6 +69,8 @@ void camera_orbit(camera_t* camera, vec3 center, vec2 euler);
 void camera_orbit_local(camera_t* camera, vec3 center, vec3 euler);
 void camera_look_at(camera_t* camera, vec3 target);
 
+vec3 camera_ray(const camera_t* camera, vec2 offset);
+
 mat4 camera_view(const camera_t* camera);
 mat4 camera_projection_view(const camera_t* camera);
 vec2 camera_screen_to_ndc(vec2i screen, vec2 screen_pos);

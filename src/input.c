@@ -42,8 +42,18 @@ void input_update(input_t* input) {
     keybind->triggered = false;
     keybind->released = false;
   }
+
   input->mouse.move = v2zero;
   input->mouse.scroll = 0;
+
+  if (input->touch.begin) {
+    touch_t* span_foreach(slot, input->touch) {
+      slot->triggered = false;
+      if (slot->released) {
+        *slot = (touch_t){ 0 };
+      }
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -130,4 +140,26 @@ bool input_released(int input_name) {
     }
   }
   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Get whether the named input was released since the last frame
+////////////////////////////////////////////////////////////////////////////////
+
+#include <limits.h>
+
+const touch_t* input_touch_first(void) {
+  Game game = game_get_active();
+  if (!game->input.touch.begin) return NULL;
+
+  touch_t* ret = NULL;
+  touch_t* span_foreach(slot, game->input.touch) {
+    if (slot->id != 0) {
+      if (ret == NULL || slot->id < ret->id) {
+        ret = slot;
+      }
+    }
+  }
+
+  return ret;
 }

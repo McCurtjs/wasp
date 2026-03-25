@@ -50,7 +50,7 @@ void behavior_camera_test(Game game, entity_t* e, float dt) {
   demo_t* demo = game->demo;
 
   float xrot = d2r(-game->input.mouse.move.y * 180 / (float)game->window.h);
-  float yrot = d2r(-game->input.mouse.move.x * 180 / (float)game->window.x);
+  float yrot = d2r(-game->input.mouse.move.x * 180 / (float)game->window.w);
 
   if (input_pressed(IN_CAM_ROTATE)) {
     vec3 angles = v3f(xrot, yrot, 0);
@@ -714,6 +714,19 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
 
   if (input_triggered(IN_DELETE_OBJECT)) {
     do_delete = true;
+  }
+
+  const touch_t* touch = input_touch_first();
+  if (touch) {
+    vec2 pos_adj = v2f((float)game->window.x, (float)game->window.y);
+    pos_adj = v2mul(pos_adj, touch->pos);
+    vec3 ray = camera_screen_to_ray(
+      &game->camera, game->window, pos_adj
+    );
+    float t;
+    if (v3ray_plane(game->camera.pos.xyz, ray, v3origin, v3up, &t)) {
+      entity_set_position(entity, v3add(game->camera.pos.xyz, v3scale(ray, t)));
+    }
   }
 
   ImVec2_c top_right = (ImVec2_c){ (float)game->window.w, 0 };
