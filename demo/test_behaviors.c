@@ -762,8 +762,8 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
 
         igText("Position:");
         vec3 fake_pos = entity->pos;
-        if (igInputFloat3("##ety_position",
-          fake_pos.f, "%.3f", ImGuiInputTextFlags_AlwaysOverwrite)
+        if (igDragFloat3("##ety_position",
+          fake_pos.f, 0.1f, -99999.f, 99999.f, "%.2f", 0)
           ) {
           entity_set_position(entity, fake_pos);
         }
@@ -790,14 +790,14 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
           entity_set_rotation_a(entity, axis, angle);
         }
 
-        if (igSliderFloat("##ety_rot_angle", &angle, 0, TAU, "%.2f", 0)) {
+        if (igDragFloat("##ety_rot_angle", &angle, 0.01f, 0, TAU, "%.2f", ImGuiSliderFlags_WrapAround)) {
           entity_set_rotation_a(entity, axis, angle);
         }
 
 
         igText("Scale (uniform):");
         float scale = entity->scale;
-        if (igInputFloat("##ety_scale", &scale, 0.1f, 1.0f, "%.2f", 0)) {
+        if (igDragFloat("##ety_scale", &scale, 0.025f, 0.01f, 9999.0f, "%.2f", ImGuiSliderFlags_Logarithmic)) {
           entity_set_scale(entity, scale);
         }
 
@@ -866,7 +866,7 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
             int layers = (int)entity->material->layers;
 
             igText("Material Index:");
-            if (igSliderInt("##ety_mat_index", &index, 0, layers - 1, NULL, 0)) {
+            if (igSliderInt("##ety_mat_index", &index, 0, layers - 1, NULL, ImGuiSliderFlags_AlwaysClamp)) {
               entity_set_material_index(entity, index);
             }
           }
