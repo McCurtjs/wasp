@@ -63,14 +63,14 @@ void behavior_camera_test(Game game, entity_t* e, float dt) {
     vec3 ray_prev = camera_screen_to_ray(&game->camera, game->window, m_prev);
     float t, k;
     vec3 plane = v3y;
-    if (fabs(v3dot(game->camera.front.xyz, v3x)) > 1.0f - CAM_ANGLE_THRESHOLD) {
+    if (fabs(v3dot(game->camera.front, v3x)) > 1.0f - CAM_ANGLE_THRESHOLD) {
       plane = v3x;
     }
-    else if (fabs(v3dot(game->camera.front.xyz, v3y)) < CAM_ANGLE_THRESHOLD) {
+    else if (fabs(v3dot(game->camera.front, v3y)) < CAM_ANGLE_THRESHOLD) {
       plane = v3z;
     }
-    if (v3ray_plane(game->camera.pos.xyz, ray, demo->target, plane, &t)
-    &&  v3ray_plane(game->camera.pos.xyz, ray_prev, demo->target, plane, &k)
+    if (v3ray_plane(game->camera.pos, ray, demo->target, plane, &t)
+    &&  v3ray_plane(game->camera.pos, ray_prev, demo->target, plane, &k)
     ) {
       vec3 old_pos = v3add(demo->target, v3scale(ray, t));
       vec3 new_pos = v3add(demo->target, v3scale(ray_prev, k));
@@ -80,11 +80,11 @@ void behavior_camera_test(Game game, entity_t* e, float dt) {
       }
 
       demo->target = v3add(demo->target, offset);
-      game->camera.pos.xyz = v3add(game->camera.pos.xyz, offset);
+      game->camera.pos = v3add(game->camera.pos, offset);
     }
   }
 
-  vec3 view_dir = v3sub(game->demo->target, game->camera.pos.xyz);
+  vec3 view_dir = v3sub(game->demo->target, game->camera.pos);
   float cam_speed = CAMERA_SPEED * dt * v3mag(view_dir);
 
   float zoom = game->input.mouse.scroll * 30.f;
@@ -93,32 +93,32 @@ void behavior_camera_test(Game game, entity_t* e, float dt) {
   if (input_pressed(IN_DOWN)) zoom -= 1;
 
   if (zoom != 0) {
-    game->camera.pos.xyz = v3add(
-      game->camera.pos.xyz, v3scale(game->camera.front.xyz, zoom * cam_speed)
+    game->camera.pos = v3add(
+      game->camera.pos, v3scale(game->camera.front, zoom * cam_speed)
     );
   }
 
   if (input_pressed(IN_JUMP)) //game->input.pressed.forward)
-    game->camera.pos.xyz = v3add(
-      game->camera.pos.xyz, v3scale(game->camera.front.xyz, cam_speed)
+    game->camera.pos = v3add(
+      game->camera.pos, v3scale(game->camera.front, cam_speed)
     );
 
   if (input_pressed(IN_DOWN)) //game->input.pressed.back)
-    game->camera.pos.xyz = v3add(
-      game->camera.pos.xyz, v3scale(game->camera.front.xyz, -cam_speed)
+    game->camera.pos = v3add(
+      game->camera.pos, v3scale(game->camera.front, -cam_speed)
     );
 
   if (input_pressed(IN_RIGHT)) { //game->input.pressed.right) {
-    vec3 right = v3norm(v3cross(game->camera.front.xyz, game->camera.up.xyz));
+    vec3 right = v3norm(v3cross(game->camera.front, game->camera.up));
     right = v3scale(right, cam_speed);
-    game->camera.pos.xyz = v3add(game->camera.pos.xyz, right);
+    game->camera.pos = v3add(game->camera.pos, right);
     demo->target = v3add(demo->target, right);
   }
 
   if (input_pressed(IN_LEFT)) { //game->input.pressed.left) {
-    vec3 left = v3norm(v3cross(game->camera.front.xyz, game->camera.up.xyz));
+    vec3 left = v3norm(v3cross(game->camera.front, game->camera.up));
     left = v3scale(left, -cam_speed);
-    game->camera.pos.xyz = v3add(game->camera.pos.xyz, left);
+    game->camera.pos = v3add(game->camera.pos, left);
     demo->target = v3add(demo->target, left);
   }
 
@@ -130,7 +130,7 @@ void behavior_camera_test(Game game, entity_t* e, float dt) {
 
   if (input_pressed(IN_ROTATE_LIGHT)) { //game->input.pressed.rmb) {
     mat4 light_rotation = m4rotation(v3y, 4.f * dt);//yrot);
-    demo->light_pos = mv4mul(light_rotation, demo->light_pos);
+    demo->light_pos = mv4mul(light_rotation, v34(demo->light_pos)).xyz;
   }
 
   if (input_triggered(IN_RELOAD)) {
@@ -145,8 +145,8 @@ void behavior_wizard_level(Game game, entity_t* e, float dt) {
   if (input_pressed(IN_CLICK_MOVE)) {
     vec3 ray = game_screen_to_ray(game);
     float t;
-    if (v3ray_plane(game->camera.pos.xyz, ray, v3origin, v3up, &t)) {
-      game->demo->target = v3add(game->camera.pos.xyz, v3scale(ray, t));
+    if (v3ray_plane(game->camera.pos, ray, v3origin, v3up, &t)) {
+      game->demo->target = v3add(game->camera.pos, v3scale(ray, t));
     }
   }
   entity_set_position(e, game->demo->target);
@@ -199,15 +199,15 @@ static void _wizard_movement(Game game, entity_t* e, float dt) {
     fake_target = v3add(fake_target, v3scale(dir, max_move));
   }
 
-  game->camera.pos.xyz = v3add(e->pos, v3f(6, 12, 7));
+  game->camera.pos = v3add(e->pos, v3f(6, 12, 7));
 
-  vec3 cam_to_target = v3dir(fake_target, game->camera.pos.xyz);
-  vec3 cam_to_wizard = v3dir(e->pos, game->camera.pos.xyz);
+  vec3 cam_to_target = v3dir(fake_target, game->camera.pos);
+  vec3 cam_to_wizard = v3dir(e->pos, game->camera.pos);
   //vec3 diff = v3sub(cam_to_target, cam_to_wizard);
   cam_to_target = v3add(cam_to_wizard, v3rescale(cam_to_target, 0.3f));
   cam_to_target = v3norm(cam_to_target);
 
-  game->camera.front.xyz = cam_to_target;
+  game->camera.front = cam_to_target;
 }
 
 typedef struct wizard_bullet_t {
@@ -260,8 +260,8 @@ static void _wizard_projectile(Game game, entity_t* e, float dt) {
   if (input_pressed(IN_CLICK) && shot_timer > WIZARD_FIRE_RATE) {
     vec3 click_ray = game_screen_to_ray(game);
     float t;
-    if (v3ray_plane(game->camera.pos.xyz, click_ray, v3origin, v3up, &t)) {
-      vec3 click_pos = v3add(game->camera.pos.xyz, v3scale(click_ray, t));
+    if (v3ray_plane(game->camera.pos, click_ray, v3origin, v3up, &t)) {
+      vec3 click_pos = v3add(game->camera.pos, v3scale(click_ray, t));
       click_pos.y = 1.5f;
       vec3 launch_point = v3f(e->pos.x, 2, e->pos.z);
 
@@ -414,30 +414,30 @@ void behavior_camera_monument(Game game, entity_t* e, float dt) {
     str_log("[Game.monument] Extent: {}", game->demo->monument_extent);
   }
 
-  vec3 direction = game->camera.front.xyz;
+  vec3 direction = game->camera.front;
   plane_speed += v3dot(direction, v3down) * dt * 9.8f;
   if (plane_speed < PLANE_SPEED_MIN) {
     plane_speed = PLANE_SPEED_MIN;
   }
 
-  direction = v3scale(game->camera.front.xyz, plane_speed * dt);
-  game->camera.pos.xyz = v3add(game->camera.pos.xyz, direction);
+  direction = v3scale(game->camera.front, plane_speed * dt);
+  game->camera.pos = v3add(game->camera.pos, direction);
 
-  vec3 left = v3cross(game->camera.up.xyz, game->camera.front.xyz);
+  vec3 left = v3cross(game->camera.up, game->camera.front);
   left = v3rescale(left, 18.f);
   vec3 right = v3neg(left);
   light_t* light_left = light_ref(monument_light_left);
   light_t* light_right = light_ref(monument_light_right);
   light_t* light_spot = light_ref(monument_light_spot);
   if (light_left) {
-    light_left->pos = v3add(game->camera.pos.xyz, left);
+    light_left->pos = v3add(game->camera.pos, left);
   }
   if (light_right) {
-    light_right->pos = v3add(game->camera.pos.xyz, right);
+    light_right->pos = v3add(game->camera.pos, right);
   }
   if (light_spot) {
-    light_spot->pos = game->camera.pos.xyz;
-    light_spot->dir = game->camera.front.xyz;
+    light_spot->pos = game->camera.pos;
+    light_spot->dir = game->camera.front;
   }
 }
 
@@ -724,8 +724,8 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
       &game->camera, game->window, pos_adj
     );
     float t;
-    if (v3ray_plane(game->camera.pos.xyz, ray, v3origin, v3up, &t)) {
-      entity_set_position(entity, v3add(game->camera.pos.xyz, v3scale(ray, t)));
+    if (v3ray_plane(game->camera.pos, ray, v3origin, v3up, &t)) {
+      entity_set_position(entity, v3add(game->camera.pos, v3scale(ray, t)));
     }
   }
 
@@ -909,9 +909,9 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
   }
 
   if (do_center) {
-    vec3 target_ray = v3sub(game->demo->target, game->camera.pos.xyz);
+    vec3 target_ray = v3sub(game->demo->target, game->camera.pos);
     game->demo->target = entity->pos;
-    game->camera.pos.xyz = v3sub(entity->pos, target_ray);
+    game->camera.pos = v3sub(entity->pos, target_ray);
   }
 
   if (do_delete) {
@@ -968,7 +968,7 @@ void behavior_gear_rotate_sun(Game game, entity_t* e, float dt) {
 
 void behavior_stare(Game game, entity_t* e, float dt) {
   UNUSED(dt);
-  entity_set_rotation(e, q3look(v3sub(game->camera.pos.xyz, e->pos), v3up));
+  entity_set_rotation(e, q3look(v3sub(game->camera.pos, e->pos), v3up));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -979,11 +979,11 @@ extern slotkey_t editor_light_bright;
 extern slotkey_t editor_light_gizmo;
 void behavior_attach_to_light(Game game, entity_t* e, float dt) {
   UNUSED(dt);
-  entity_set_position(e, game->demo->light_pos.xyz);
+  entity_set_position(e, game->demo->light_pos);
   light_t* light = light_ref(editor_light_bright);
   if (!light) return;
-  light->pos = game->demo->light_pos.xyz;
-  light->dir = v3sub(game->demo->target, game->demo->light_pos.xyz);
+  light->pos = game->demo->light_pos;
+  light->dir = v3sub(game->demo->target, game->demo->light_pos);
   light = light_ref(editor_light_gizmo);
   light->pos = game->demo->target;
 }
@@ -1008,11 +1008,11 @@ void behavior_attach_to_camera_target(Game game, entity_t* e, float dt) {
 
     vec3 ray = game_screen_to_ray(game);
     float t;
-    if (v3ray_plane(game->camera.pos.xyz, ray, v3origin, v3up, &t)) {
+    if (v3ray_plane(game->camera.pos, ray, v3origin, v3up, &t)) {
       entity_add(&(entity_desc_t) {
         .model = game->demo->models.box,
         .material = mats[(uint)e->pos.x % 6],
-        .pos = v3add(game->camera.pos.xyz, v3scale(ray, t)),
+        .pos = v3add(game->camera.pos, v3scale(ray, t)),
         .scale = 10.0f,
         .onrender = render_pbr,
       });

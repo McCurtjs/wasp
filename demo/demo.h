@@ -67,7 +67,7 @@ typedef struct demo_materials_t {
 
 typedef struct demo_t {
   vec3              target;
-  vec4              light_pos;
+  vec3              light_pos;
   int               monument_extent;
   int               monument_size;
 

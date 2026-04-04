@@ -123,7 +123,7 @@ void wasp_init(app_defaults_t* game) {
 
   demo = (demo_t) {
     .target = v3origin,
-    .light_pos = v4f(4, 3, 5, 1),
+    .light_pos = v3f(4, 3, 5),
     .monument_extent = 10,
     .monument_size = 200,
   };
@@ -353,7 +353,7 @@ void wasp_render(Game game) {
   tex_apply(game->demo->render_target->textures[3], 3, depth_sampler);
   tex_apply(lights, 4, light_sampler);
   glUniformMatrix4fv(loc_invproj, 1, 0, m4inverse(game->camera.projection).f);
-  glUniform4fv(loc_light_pos, 1, mv4mul(game->camera.view, demo.light_pos).f);
+  glUniform4fv(loc_light_pos, 1, mv4mul(game->camera.view, v34(demo.light_pos)).f);
 
   model_render(game->demo->models.frame);
 

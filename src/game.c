@@ -151,8 +151,8 @@ static void _game_scene_switch(Game_Internal* game) {
   _game_scene_close(game);
 
   // Reset camera to the default
-  game->pub.camera.up = v4up;
-  game->pub.camera.front = v4front;
+  game->pub.camera.up = v3up;
+  game->pub.camera.front = v3front;
   camera_build(&game->pub.camera);
   game->pub.scene_time = 0.0f;
   game->pub.frame_time = 0.016f;
@@ -201,9 +201,9 @@ Game game_new(String title, vec2i window_size) {
       .graphics = gfx_new(),
       .camera = {
         .type = CAMERA_PERSPECTIVE,
-        .pos = p4origin,//v4f(0, 0, 60, 1),
-        .front = v4front,
-        .up = v4y,
+        .pos = v3origin,//v4f(0, 0, 60, 1),
+        .front = v3front,
+        .up = v3y,
         .perspective =
         { CAMERA_DEFAULT_FOV
         , i2aspect(window_size)

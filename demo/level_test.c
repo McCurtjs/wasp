@@ -34,10 +34,10 @@ scene_unload_fn_t scene_load_gears(Game game) {
 
   demo_t* demo = game->demo;
 
-  game->camera.pos = v4f(3, 2, 45, 1);
-  game->camera.front = v4front;
+  game->camera.pos = v3f(3, 2, 45);
+  game->camera.front = v3front;
   game->demo->target = v3origin;
-  game->demo->light_pos = v4f(40, 60, 0, 1);
+  game->demo->light_pos = v3f(40, 60, 0);
 
   camera_look_at(&game->camera, game->demo->target);
 
@@ -265,8 +265,8 @@ scene_unload_fn_t scene_load_wizard(Game game) {
 
   demo_t* demo = game->demo;
 
-  game->camera.pos = v4f(3, 9, 5, 1);
-  game->camera.front = v4front;
+  game->camera.pos = v3f(3, 9, 5);
+  game->camera.front = v3front;
   game->demo->target = v3origin;
 
   camera_look_at(&game->camera, game->demo->target);
@@ -360,8 +360,8 @@ scene_unload_fn_t scene_load_monument(Game game) {
 
   demo_t* demo = game->demo;
 
-  game->camera.pos = v4f(0, 0, 1, 1);
-  game->camera.front = v4front;
+  game->camera.pos = v3f(0, 0, 1);
+  game->camera.front = v3front;
   game->demo->target = v3origin;
 
   input_pointer_lock();

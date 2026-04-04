@@ -32,13 +32,13 @@ enum camera_type_t {
   CAMERA_ORTHOGRAPHIC
 };
 
-typedef struct Camera_Perspective {
+typedef struct camera_perspective_params_t {
   float fov, aspect, near, far;
-} Camera_Perspective;
+} camera_perspective_params_t;
 
-typedef struct Camera_Orthographic {
+typedef struct camera_orthographic_params_t {
   float left, right, top, bottom, near, far;
-} Camera_Orthographic;
+} camera_orthographic_params_t;
 
 #define CAMERA_DEFAULT_FOV  d2r(60)
 #define CAMERA_DEFAULT_NEAR 0.1f
@@ -47,13 +47,13 @@ typedef struct Camera_Orthographic {
 typedef struct camera_t {
   uint type;
 
-  vec4 pos;
-  vec4 front;
-  vec4 up;
+  vec3 pos;
+  vec3 front;
+  vec3 up;
 
   union {
-    Camera_Perspective  perspective;
-    Camera_Orthographic orthographic;
+    camera_perspective_params_t   perspective;
+    camera_orthographic_params_t  orthographic;
   };
 
   mat4 projection;
@@ -62,14 +62,15 @@ typedef struct camera_t {
 
 } camera_t;
 
+camera_t camera_build_ortho(camera_orthographic_params_t);
+camera_t camera_build_persp(camera_perspective_params_t);
+
 void camera_build(camera_t* camera);
 void camera_rotate(camera_t* camera, vec2 euler);
 void camera_rotate_local(camera_t* camera, vec3 euler);
 void camera_orbit(camera_t* camera, vec3 center, vec2 euler);
 void camera_orbit_local(camera_t* camera, vec3 center, vec3 euler);
 void camera_look_at(camera_t* camera, vec3 target);
-
-vec3 camera_ray(const camera_t* camera, vec2 offset);
 
 mat4 camera_view(const camera_t* camera);
 mat4 camera_projection_view(const camera_t* camera);
