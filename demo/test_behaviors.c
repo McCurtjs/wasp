@@ -526,7 +526,7 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
 
   ImVec2_c v2imzero = { 0 };
   ImVec2_c v2imwinsize = { 250, (float)game->window.h };
-  ImVec2_c v2imsubmenu = { 234 };
+  ImVec2_c v2imsubmenu = { 234, 0 };
   ImVec2_c v2imbtnsize = { 20, 20 };
   ImVec4_c v4imbtnselcolor = { 0, 0.4f, 0.8f, 1 };
 
@@ -563,13 +563,13 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
   igSetNextWindowSize(v2imwinsize, ImGuiCond_Always);
 
   if (igBegin("Information", NULL, flags_information)) {
-    float screen_y = igGetCursorScreenPos().y;
+    //float screen_y = igGetCursorScreenPos().y;
 
     igText("Scene:");
     const char* scenes[] = { "1 - Editor", "2 - Magicks", "3 - Flight" };
     igPushItemWidth(-1);
     if (igBeginCombo("##scene_select", scenes[game->scene], ImGuiComboFlags_NoArrowButton)) {
-      for (int i = 0; i < ARRAY_COUNT(scenes); ++i) {
+      for (int i = 0; i < (int)ARRAY_COUNT(scenes); ++i) {
         if (igSelectable_Bool(scenes[i], i == game->scene, 0, v2imzero)) {
           game->next_scene = i;
         }
@@ -642,7 +642,7 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
       float h = (float)game->window.h - 5;
       igBeginChild_Str("panel_entities", (ImVec2_c) { 234, h - y }, child_flags, 0);
       entity_t* entity = entity_ref(selected);
-      const char* selected_str = entity ? entity->name->begin : "<None>";
+      //const char* selected_str = entity ? entity->name->begin : "<None>";
       //if (igBeginCombo("##entity_select", selected_str, 0)) {
 
       igPushItemWidth(-1);

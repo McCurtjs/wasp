@@ -435,6 +435,7 @@ void img_resolve(Image* pimg) {
     case IMG_ERROR:
     case IMG_DEFAULT:
       *pimg = img_from_bytes(img->data, img->size, img->channels);
+      break;
 
     case IMG_HANDLE: {
 #ifdef __WASM__
