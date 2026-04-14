@@ -30,12 +30,6 @@
 
 #define CAMERA_SPEED 0.8f
 
-vec3 game_screen_to_ray(Game game) {
-  return camera_screen_to_ray(
-    &game->camera, game->window, game->input.mouse.pos
-  );
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // Behavior for controlling camera rotation and movement
 ////////////////////////////////////////////////////////////////////////////////
@@ -48,19 +42,39 @@ void behavior_camera_test(Game game, entity_t* e, float dt) {
   UNUSED(e);
 
   demo_t* demo = game->demo;
+  input_t* input = &game->input;
 
-  float xrot = d2r(-game->input.mouse.move.y * 180 / (float)game->window.h);
-  float yrot = d2r(-game->input.mouse.move.x * 180 / (float)game->window.w);
-
+  // Camera rotation
   if (input_pressed(IN_CAM_ROTATE)) {
-    vec3 angles = v3f(xrot, yrot, 0);
-    camera_orbit(&game->camera, demo->target, angles.xy);
+    float xrot = d2r( game->input.mouse.move.y * 180);
+    float yrot = d2r(-game->input.mouse.move.x * 180);
+    vec2 angles = v2f(xrot, yrot);
+    camera_orbit(&game->camera, demo->target, angles);
+    str_log("Mouse pos: {:.03}, move: {:.03}", game->input.mouse.pos, game->input.mouse.move);
+  }
+  else if (input->touch.count == 1) {
+    float xrot = d2r( input->touch.first->move.y * 180.0f);
+    float yrot = d2r(-input->touch.first->move.x * 180.0f);
+    vec2 angles = v2f(xrot, yrot);
+    camera_orbit(&game->camera, demo->target, angles);
+    str_log("Touch pos: {:.03}, move: {:.03}", input->touch.first->pos, input->touch.first->move);
   }
 
-  if (input_pressed(IN_CAM_DRAG)) {
-    vec3 ray = game_screen_to_ray(game);
-    vec2 m_prev = v2sub(game->input.mouse.pos, game->input.mouse.move);
-    vec3 ray_prev = camera_screen_to_ray(&game->camera, game->window, m_prev);
+  // Camera dragging/panning
+  if (input_pressed(IN_CAM_DRAG) || input->touch.count == 2) {
+    vec3 ray = camera_ray(&game->camera, input->mouse.pos);
+    vec2 m_prev = v2sub(game->input.mouse.pos, input->mouse.move);
+    vec3 ray_prev = camera_ray(&game->camera, m_prev);
+
+    // touch...
+    if (input->touch.count == 2) {
+      vec2 mid = v2mid(input->touch.first->pos, input->touch.second->pos);
+      vec2 mid_move = v2mid(input->touch.first->move, input->touch.second->move);
+      ray = camera_ray(&game->camera, mid);
+      m_prev = v2sub(mid, mid_move);
+      ray_prev = camera_ray(&game->camera, m_prev);
+    }
+
     float t, k;
     vec3 plane = v3y;
     if (fabs(v3dot(game->camera.front, v3x)) > 1.0f - CAM_ANGLE_THRESHOLD) {
@@ -84,6 +98,7 @@ void behavior_camera_test(Game game, entity_t* e, float dt) {
     }
   }
 
+  // Camera zoom
   vec3 view_dir = v3sub(game->demo->target, game->camera.pos);
   float cam_speed = CAMERA_SPEED * dt * v3mag(view_dir);
 
@@ -92,12 +107,21 @@ void behavior_camera_test(Game game, entity_t* e, float dt) {
   if (input_pressed(IN_JUMP)) zoom += 1;
   if (input_pressed(IN_DOWN)) zoom -= 1;
 
+  if (input->touch.count == 2) {
+    vec2 prev1 = v2sub(input->touch.first->pos, input->touch.first->move);
+    vec2 prev2 = v2sub(input->touch.second->pos, input->touch.second->move);
+    float dist_old = v2dist(prev1, prev2);
+    float dist_new = v2dist(input->touch.first->pos, input->touch.second->pos);
+    zoom += (dist_old - dist_new) * 1000.0f;
+  }
+
   if (zoom != 0) {
     game->camera.pos = v3add(
       game->camera.pos, v3scale(game->camera.front, zoom * cam_speed)
     );
   }
 
+  // Camera keyboard controls
   if (input_pressed(IN_JUMP)) //game->input.pressed.forward)
     game->camera.pos = v3add(
       game->camera.pos, v3scale(game->camera.front, cam_speed)
@@ -143,7 +167,7 @@ void behavior_camera_test(Game game, entity_t* e, float dt) {
 void behavior_wizard_level(Game game, entity_t* e, float dt) {
   UNUSED(dt);
   if (input_pressed(IN_CLICK_MOVE)) {
-    vec3 ray = game_screen_to_ray(game);
+    vec3 ray = camera_ray(&game->camera, game->input.mouse.pos);
     float t;
     if (v3ray_plane(game->camera.pos, ray, v3origin, v3up, &t)) {
       game->demo->target = v3add(game->camera.pos, v3scale(ray, t));
@@ -258,7 +282,7 @@ static void _wizard_projectile(Game game, entity_t* e, float dt) {
   static float shot_timer = WIZARD_FIRE_RATE;
   shot_timer += dt;
   if (input_pressed(IN_CLICK) && shot_timer > WIZARD_FIRE_RATE) {
-    vec3 click_ray = game_screen_to_ray(game);
+    vec3 click_ray = camera_ray(&game->camera, game->input.mouse.pos);
     float t;
     if (v3ray_plane(game->camera.pos, click_ray, v3origin, v3up, &t)) {
       vec3 click_pos = v3add(game->camera.pos, v3scale(click_ray, t));
@@ -716,13 +740,11 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
     do_delete = true;
   }
 
-  const touch_t* touch = input_touch_first();
+  const touch_t* touch = input_touch_get(&game->input, 0);
   if (touch) {
     vec2 pos_adj = v2f((float)game->window.x, (float)game->window.y);
     pos_adj = v2mul(pos_adj, touch->pos);
-    vec3 ray = camera_screen_to_ray(
-      &game->camera, game->window, pos_adj
-    );
+    vec3 ray = camera_ray(&game->camera, pos_adj);
     float t;
     if (v3ray_plane(game->camera.pos, ray, v3origin, v3up, &t)) {
       entity_set_position(entity, v3add(game->camera.pos, v3scale(ray, t)));
@@ -1006,7 +1028,7 @@ void behavior_attach_to_camera_target(Game game, entity_t* e, float dt) {
       game->demo->materials.renderite,
     };
 
-    vec3 ray = game_screen_to_ray(game);
+    vec3 ray = camera_ray(&game->camera, game->input.mouse.pos);
     float t;
     if (v3ray_plane(game->camera.pos, ray, v3origin, v3up, &t)) {
       entity_add(&(entity_desc_t) {

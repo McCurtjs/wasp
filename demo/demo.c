@@ -80,14 +80,14 @@ static keybind_t input_map[] = {
   { .name = IN_RIGHT, .key = 'd' },
   { .name = IN_KICK, .key = SDLK_LEFT },
   { .name = IN_SNAP_LIGHT, .key = 'r' },
-  { .name = IN_CLICK, .key = SDL_BUTTON_LEFT, .mouse = true },
-  { .name = IN_CREATE_OBJECT, .key = SDL_BUTTON_LEFT, .mouse = true },
+  { .name = IN_CLICK, .button = SDL_BUTTON_LEFT, .type = BT_MOUSE },
+  { .name = IN_CREATE_OBJECT, .button = SDL_BUTTON_LEFT, .type = BT_MOUSE },
   { .name = IN_DELETE_OBJECT, .key = SDLK_DELETE },
-  { .name = IN_CLICK_MOVE, .key = SDL_BUTTON_RIGHT, .mouse = true },
+  { .name = IN_CLICK_MOVE, .button = SDL_BUTTON_RIGHT, .type = BT_MOUSE },
   { .name = IN_ROTATE_LIGHT, .key = 'e' },
-  { .name = IN_CAM_DRAG, .key = SDL_BUTTON_RIGHT, .mouse = true },
+  { .name = IN_CAM_DRAG, .key = SDL_BUTTON_RIGHT, .type = BT_MOUSE },
   { .name = IN_CAM_DRAG, .key = 'o' },
-  { .name = IN_CAM_ROTATE, .key = SDL_BUTTON_MIDDLE, .mouse = true },
+  { .name = IN_CAM_ROTATE, .key = SDL_BUTTON_MIDDLE, .type = BT_MOUSE },
   { .name = IN_CAM_ROTATE, .key = 'i' },
   { .name = IN_CAM_CENTER, .key = 'c' },
   { .name = IN_SHIFT, .key = 16 },
@@ -103,6 +103,10 @@ static keybind_t input_map[] = {
   { .name = IN_DECREASE, .key = SDLK_DOWN },
   { .name = IN_INCREASE_FAST, .key = SDLK_PAGEUP },
   { .name = IN_DECREASE_FAST, .key = SDLK_PAGEDOWN },
+  { .name = IN_JUMP, .type = BT_TOUCH, .touch = &(touch_button_t) {
+    .pos = svNzero, .radius = 0.1f
+  },
+  }
 };
 
 static touch_t touch_fingers[10];
@@ -285,7 +289,7 @@ bool wasp_load (Game game, int await_count, float dt) {
 
   // Assign static sets of game params
   game->input.keymap = span_keymap(input_map, ARRAY_COUNT(input_map));
-  game->input.touch = span_fingers(touch_fingers, ARRAY_COUNT(touch_fingers));
+  game->input.touch.fingers = span_fingers(touch_fingers, ARRAY_COUNT(touch_fingers));
   game->scenes = span_scene(demo_scenes, ARRAY_COUNT(demo_scenes));
   game->graphics->renderers = span_renderer(renderers, ARRAY_COUNT(renderers));
 

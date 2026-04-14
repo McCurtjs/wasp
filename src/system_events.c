@@ -48,130 +48,13 @@ static void _process_window_resize(Game game, SDL_WindowEvent* window) {
     game->camera.orthographic.left = -top * aspect;
     game->camera.orthographic.right = -bottom * aspect;
   }
+  else {
+    game->camera.perspective.aspect = aspect;
+  }
 
-  game->camera.perspective.aspect = aspect;
   camera_build(&game->camera);
 
   if (game->on_window_resize) game->on_window_resize(game);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Mouse events
-////////////////////////////////////////////////////////////////////////////////
-
-static void _process_mouse_btn_down(Game game, SDL_MouseButtonEvent* button) {
-  if (button->which == SDL_TOUCH_MOUSEID && game->input.touch.begin) return;
-
-  keybind_t* span_foreach(keybind, game->input.keymap) {
-    if (keybind->mouse && keybind->key == button->button && !keybind->pressed) {
-      keybind->triggered = true;
-      keybind->pressed = true;
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-static void _process_mouse_btn_up(Game game, SDL_MouseButtonEvent* button) {
-  if (button->which == SDL_TOUCH_MOUSEID && game->input.touch.begin) return;
-
-  keybind_t* span_foreach(keybind, game->input.keymap) {
-    if (keybind->mouse && keybind->key == button->button) {
-      keybind->pressed = false;
-      keybind->released = true;
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-static void _process_mouse_motion(Game game, SDL_MouseMotionEvent* motion) {
-  if (motion->which == SDL_TOUCH_MOUSEID && game->input.touch.begin) return;
-
-  game->input.mouse.pos = v2f(motion->x, motion->y);
-
-  // you can get many mouse move inputs per frame, so accumulate motion
-  game->input.mouse.move.x += motion->xrel;
-  game->input.mouse.move.y += motion->yrel;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-static void _process_mouse_wheel(Game game, SDL_MouseWheelEvent* wheel) {
-  game->input.mouse.scroll = wheel->y;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Touch input events
-////////////////////////////////////////////////////////////////////////////////
-// Note: if multi-touch fingers aren't set, these will route to mouse inputs
-
-// Gets the first matching touch point for a given id
-static touch_t* _touch_get(span_fingers_t fingers, uint64_t id) {
-  touch_t* span_foreach(ret, fingers) {
-    if (ret->id == id) return ret;
-  }
-  return NULL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-static void _process_finger_down(Game game, SDL_TouchFingerEvent* touch) {
-  if (!game->input.touch.begin) return;
-
-  // a touch id of 0 means "unused" - find the first unused slot for this event.
-  // if there are no unused slots we've gone over our multi-touch limit (defined
-  //    by the size of the touch_t span in game->input).
-  touch_t* input = _touch_get(game->input.touch, 0);
-  if (!input) return;
-
-  vec2 pos = v2f(touch->x, touch->y);
-
-  *input = (touch_t) {
-    .id = touch->fingerID,
-    .origin = pos,
-    .pos = pos,
-    .move = v2zero,
-    .pressure = touch->pressure,
-    .triggered = true,
-    .released = false,
-  };
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-static void _process_finger_motion(Game game, SDL_TouchFingerEvent* touch) {
-  if (!game->input.touch.begin) return;
-
-  touch_t* slot = _touch_get(game->input.touch, touch->fingerID);
-  if (!slot) return;
-
-  slot->pos = v2f(touch->x, touch->y);
-  slot->move = v2f(touch->dx, touch->dy);
-  slot->pressure = touch->pressure;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-static void _process_finger_up(Game game, SDL_TouchFingerEvent* touch) {
-  if (!game->input.touch.begin) return;
-
-  touch_t* input = _touch_get(game->input.touch, touch->fingerID);
-  if (!input) return;
-
-  input->released = true;
-  input->pos = v2f(touch->x, touch->y);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-static void _process_finger_cancelled(Game game, SDL_TouchFingerEvent* touch) {
-  if (!game->input.touch.begin) return;
-
-  touch_t* input = _touch_get(game->input.touch, touch->fingerID);
-  if (!input) return;
-
-  *input = (touch_t){ 0 };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -182,7 +65,9 @@ static void _process_key_down(Game game, SDL_KeyboardEvent* key) {
   if (key->repeat) return;
 
   keybind_t* span_foreach(keybind, game->input.keymap) {
-    if (key->key == (uint)keybind->key && !keybind->mouse) {
+    if (keybind->type != BT_KEYBOARD) continue;
+
+    if (key->key == (uint)keybind->key) {
 
       // sometimes when getting a key-up event, it'll also send a
       // "helpful" reminder that other keys are still down... avoid double
@@ -200,11 +85,141 @@ static void _process_key_down(Game game, SDL_KeyboardEvent* key) {
 
 static void _process_key_up(Game game, SDL_KeyboardEvent* key) {
   keybind_t* span_foreach(keybind, game->input.keymap) {
-    if (key->key == (uint)keybind->key && !keybind->mouse) {
+    if (keybind->type != BT_KEYBOARD) continue;
+
+    if (key->key == (uint)keybind->key) {
       keybind->pressed = false;
       keybind->released = true;
     }
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Mouse events
+////////////////////////////////////////////////////////////////////////////////
+
+static void _process_mouse_btn_down(Game game, SDL_MouseButtonEvent* button) {
+  input_t* input = &game->input;
+  if (button->which == SDL_TOUCH_MOUSEID && input->touch.fingers.begin) return;
+
+  keybind_t* span_foreach(keybind, game->input.keymap) {
+    if (keybind->type != BT_MOUSE) continue;
+
+    if (keybind->key == button->button && !keybind->pressed) {
+      keybind->triggered = true;
+      keybind->pressed = true;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static void _process_mouse_btn_up(Game game, SDL_MouseButtonEvent* button) {
+  input_t* input = &game->input;
+  if (button->which == SDL_TOUCH_MOUSEID && input->touch.fingers.begin) return;
+
+  keybind_t* span_foreach(keybind, game->input.keymap) {
+    if (keybind->type != BT_MOUSE) continue;
+
+    if (keybind->key == button->button) {
+      keybind->pressed = false;
+      keybind->released = true;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static void _process_mouse_motion(Game game, SDL_MouseMotionEvent* motion) {
+  input_t* input = &game->input;
+  if (motion->which == SDL_TOUCH_MOUSEID && input->touch.fingers.begin) return;
+
+  game->input.mouse.raw = v2f(motion->x, motion->y);
+
+  // you can get many mouse move inputs per frame, so accumulate motion
+  game->input.mouse.raw_move.x += motion->xrel;
+  game->input.mouse.raw_move.y += motion->yrel;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static void _process_mouse_wheel(Game game, SDL_MouseWheelEvent* wheel) {
+  game->input.mouse.scroll = wheel->y;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Touch input events
+////////////////////////////////////////////////////////////////////////////////
+// Note: if multi-touch fingers aren't set, these will route to mouse inputs
+
+// Gets the first matching touch point for a given id
+static touch_t* _touch_get(input_touch_t* touch, uint64_t id) {
+  touch_t* span_foreach(ret, touch->fingers) {
+    if (ret->id == id) return ret;
+  }
+  return NULL;
+}
+
+// Transforms the touch input to NDC space, from -1 to 1 with center origin
+static vec2 _touch_to_ndc(vec2 pos) {
+  return v2scale(v2sub(pos, v2f(0.5f, 0.5f)), 2.0f);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static void _process_finger_down(Game game, SDL_TouchFingerEvent* touch) {
+  if (!game->input.touch.fingers.begin) return;
+
+  // a touch id of 0 means "unused" - find the first unused slot for this event.
+  // if there are no unused slots we've gone over our multi-touch limit (defined
+  //    by the size of the touch_t span in game->input).
+  touch_t* input = _touch_get(&game->input.touch, 0);
+  if (!input) return;
+
+  vec2 pos = _touch_to_ndc(v2f(touch->x, touch->y));
+
+  *input = (touch_t) {
+    .id = touch->fingerID,
+    .origin = pos,
+    .pos = pos,
+    .move = v2zero,
+    .pressure = touch->pressure,
+    .triggered = true,
+    .released = false,
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static void _process_finger_motion(Game game, SDL_TouchFingerEvent* touch) {
+  if (!game->input.touch.fingers.begin) return;
+
+  touch_t* slot = _touch_get(&game->input.touch, touch->fingerID);
+  if (!slot) return;
+
+  slot->pos = _touch_to_ndc(v2f(touch->x, touch->y));
+  slot->move = v2add(slot->move, v2f(touch->dx, -touch->dy));
+  slot->pressure = touch->pressure;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static void _process_finger_up(Game game, SDL_TouchFingerEvent* touch) {
+  touch_t* input = _touch_get(&game->input.touch, touch->fingerID);
+  if (!input) return;
+
+  input->released = true;
+  input->pressure = 0.0f;
+  input->pos = _touch_to_ndc(v2f(touch->x, touch->y));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static void _process_finger_cancelled(Game game, SDL_TouchFingerEvent* touch) {
+  touch_t* input = _touch_get(&game->input.touch, touch->fingerID);
+  if (!input) return;
+
+  *input = (touch_t){ 0 };
 }
 
 ////////////////////////////////////////////////////////////////////////////////

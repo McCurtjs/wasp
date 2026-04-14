@@ -106,6 +106,6 @@ Game game_get_local(void);
 void game_update(Game game, float dt);
 void game_render(Game game);
 
-vec3 game_camera_ray(vec2 camera_ndc);
+vec2 game_screen_to_ndc(Game game, vec2i screen_pos);
 
 #endif

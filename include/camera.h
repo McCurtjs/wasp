@@ -74,8 +74,6 @@ void camera_look_at(camera_t* camera, vec3 target);
 
 mat4 camera_view(const camera_t* camera);
 mat4 camera_projection_view(const camera_t* camera);
-vec2 camera_screen_to_ndc(vec2i screen, vec2 screen_pos);
-vec3 camera_screen_to_ray(const camera_t* camera, vec2i scr, vec2 screen_pos);
-vec3 camera_ray(const camera_t* camera, vec2i scr_wh, vec2 ndc_pos);
+vec3 camera_ray(const camera_t* camera, vec2 ndc_pos);
 
 #endif

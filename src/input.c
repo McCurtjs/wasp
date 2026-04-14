@@ -37,22 +37,55 @@ extern void js_pointer_unlock(void);
 // Update active input by clearing per-frame values
 ////////////////////////////////////////////////////////////////////////////////
 
-void input_update(input_t* input) {
+void input_update(input_t* input, vec2i scr_wh) {
+  // update the ndc mouse position based on the raw (per-pixel) values
+  vec2 aspect = v2f((float)scr_wh.w, -(float)scr_wh.h);
+
+  input->mouse.pos = v2ndc(input->mouse.raw, scr_wh);
+  input->mouse.move = v2div(input->mouse.raw_move, aspect);
+
+  // correctly set the number of touch inputs and simple multi-touch
+  input->touch.count = input_touch_count(input);
+
+  if (input->touch.count) {
+    input->touch.first = &input->touch.fingers.begin[0];
+    if (input->touch.count >= 2) {
+      input->touch.second = &input->touch.fingers.begin[1];
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void input_reset(input_t* input) {
+  assert(input);
+
   keybind_t* span_foreach(keybind, input->keymap) {
     keybind->triggered = false;
     keybind->released = false;
   }
 
+  input->mouse.raw_move = v2zero;
   input->mouse.move = v2zero;
   input->mouse.scroll = 0;
 
-  if (input->touch.begin) {
-    touch_t* span_foreach(slot, input->touch) {
+  input->touch.count = 0;
+  input->touch.first = NULL;
+  input->touch.second = NULL;
+
+  if (input->touch.fingers.begin) {
+    // as touches leave the list, slide the rest over to close the gap
+    touch_t* track = input->touch.fingers.begin;
+    touch_t* span_foreach(slot, input->touch.fingers) {
       slot->triggered = false;
-      if (slot->released) {
-        *slot = (touch_t){ 0 };
+      slot->move = v2zero;
+
+      if (!slot->released) {
+        *track++ = *slot;
       }
     }
+
+    for (; track < input->touch.fingers.end; ++track) *track = (touch_t){ 0 };
   }
 }
 
@@ -148,18 +181,41 @@ bool input_released(int input_name) {
 
 #include <limits.h>
 
-const touch_t* input_touch_first(void) {
-  Game game = game_get_active();
-  if (!game->input.touch.begin) return NULL;
+index_t input_touch_count(input_t* input) {
+  assert(input);
+  if (!input->touch.fingers.begin) return 0;
 
-  touch_t* ret = NULL;
-  touch_t* span_foreach(slot, game->input.touch) {
+  index_t count = 0;
+  touch_t* span_foreach(slot, input->touch.fingers) {
+    if (slot->id) ++count;
+  }
+
+  return count;
+}
+
+const touch_t* input_touch_get(input_t* input, index_t index) {
+  assert(input);
+  assert(index >= 0);
+  if (!input->touch.fingers.begin) return NULL;
+
+  touch_t* span_foreach(slot, input->touch.fingers) {
     if (slot->id != 0) {
-      if (ret == NULL || slot->id < ret->id) {
-        ret = slot;
-      }
+      if (index <= 0) return slot;
+      --index;
     }
   }
 
-  return ret;
+  return NULL;
+}
+
+const touch_t* input_touch_from_id(input_t* input, uint64_t id) {
+  assert(input);
+  assert(id != 0);
+  if (!input->touch.fingers.begin) return NULL;
+
+  touch_t* span_foreach(slot, input->touch.fingers) {
+    if (slot->id == id) return slot;
+  }
+
+  return NULL;
 }

@@ -199,6 +199,11 @@ Game game_new(String title, vec2i window_size) {
       .scene = 0,
       .scene_time = 0,
       .graphics = gfx_new(),
+      .input = {
+        .triggered = input_triggered,
+        .pressed = input_pressed,
+        .released = input_released,
+      },
       .camera = {
         .type = CAMERA_PERSPECTIVE,
         .pos = v3origin,//v4f(0, 0, 60, 1),
@@ -340,6 +345,7 @@ static void _game_entity_update_execute(Game_Internal* game, slotkey_t key) {
 
 void game_update(Game _game, float dt) {
   GAME_INTERNAL;
+
   // If a scene change is requested, do that now
   if (game->pub.next_scene >= 0) {
     _game_scene_switch(game);
@@ -348,6 +354,9 @@ void game_update(Game _game, float dt) {
     game->pub.frame_time = dt;
     game->pub.scene_time += dt;
   }
+
+  // Update "input" struct with active per-frame values
+  input_update(&game->pub.input, game->pub.window);
 
   // Go through the list of "acting" entities with behaviors and update.
   // Clean up the actor list as we go by removing any stale keys or keys of
@@ -383,7 +392,7 @@ void game_update(Game _game, float dt) {
   arr_id_clear(game->entity_updates);
 
   // Reset button triggers (only one frame on trigger/release)
-  input_update(&game->pub.input);
+  input_reset(&game->pub.input);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
