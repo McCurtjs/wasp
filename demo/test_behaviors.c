@@ -110,9 +110,16 @@ void behavior_camera_test(Game game, entity_t* e, float dt) {
   if (input->touch.count == 2) {
     vec2 prev1 = v2sub(input->touch.first->pos, input->touch.first->move);
     vec2 prev2 = v2sub(input->touch.second->pos, input->touch.second->move);
+    vec2 curr1 = input->touch.first->pos;
+    vec2 curr2 = input->touch.second->pos;
+    prev1.x *= game->camera.perspective.aspect;
+    prev2.x *= game->camera.perspective.aspect;
+    curr1.x *= game->camera.perspective.aspect;
+    curr2.x *= game->camera.perspective.aspect;
+
     float dist_old = v2dist(prev1, prev2);
-    float dist_new = v2dist(input->touch.first->pos, input->touch.second->pos);
-    zoom += (dist_old - dist_new) * 1000.0f;
+    float dist_new = v2dist(curr1, curr2);
+    zoom += (dist_new - dist_old) * 1000.0f;
   }
 
   if (zoom != 0) {

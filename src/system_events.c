@@ -162,7 +162,7 @@ static touch_t* _touch_get(input_touch_t* touch, uint64_t id) {
 
 // Transforms the touch input to NDC space, from -1 to 1 with center origin
 static vec2 _touch_to_ndc(vec2 pos) {
-  return v2scale(v2sub(pos, v2f(0.5f, 0.5f)), 2.0f);
+  return v2mul(v2sub(pos, v2f(0.5f, 0.5f)), v2f(2.0f, -2.0f));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
