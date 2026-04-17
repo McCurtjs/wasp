@@ -325,6 +325,7 @@ scene_unload_fn_t scene_load_wizard(Game game) {
       entity_add(&(entity_desc_t) {
         .model = demo->models.box,
         .material = material,
+        .tint = b4white,
         .pos = pos,
         .scale = 5.0f,
         .renderer = renderer_pbr,
@@ -401,6 +402,7 @@ scene_unload_fn_t scene_load_monument(Game game) {
         entity_add(&(entity_desc_t) {
           .model = demo->models.box,
           .material = demo->materials.mudds,
+          .tint = b4white,
           .pos = pos,
           .scale = 120.f - 2.f * (y + ext),
           .renderer = renderer_pbr,

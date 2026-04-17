@@ -134,13 +134,19 @@ static void _process_mouse_motion(Game game, SDL_MouseMotionEvent* motion) {
   input_t* input = &game->input;
   if (motion->which == SDL_TOUCH_MOUSEID && input->touch.fingers.begin) return;
 
+  // you can get many mouse move inputs per frame, so accumulate motion
+  /*
   vec2 old_pos = game->input.mouse.raw;
   game->input.mouse.raw = v2f(motion->x, motion->y);
-
-  // you can get many mouse move inputs per frame, so accumulate motion
   game->input.mouse.raw_move = v2add(
     game->input.mouse.raw_move, v2sub(game->input.mouse.raw, old_pos)
   );
+  /*/
+  game->input.mouse.raw = v2f(motion->x, motion->y);
+  game->input.mouse.raw_move = v2add(
+    game->input.mouse.raw_move, v2f(motion->xrel, motion->yrel)
+  );
+  //*/
 }
 
 ////////////////////////////////////////////////////////////////////////////////

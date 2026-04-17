@@ -48,16 +48,16 @@ void behavior_camera_test(Game game, entity_t* e, float dt) {
 
   // Camera rotation
   if (input_pressed(IN_CAM_ROTATE)) {
-    float xrot = d2r( game->input.mouse.move.y * 180);
-    float yrot = d2r(-game->input.mouse.move.x * 180);
-    vec2 angles = v2f(xrot, yrot);
+    float xrot = d2r(game->input.mouse.move.y * 180);
+    float yrot = d2r(game->input.mouse.move.x * 180);
+    vec2 angles = v2f(xrot, -yrot);
     camera_orbit(&game->camera, demo->target, angles);
     //str_log("Mouse pos: {:.03}, move: {:.03}", game->input.mouse.pos, game->input.mouse.move);
   }
   else if (input->touch.count == 1) {
-    float xrot = d2r( input->touch.first->move.y * 180.0f);
-    float yrot = d2r(-input->touch.first->move.x * 180.0f);
-    vec2 angles = v2f(xrot, yrot);
+    float xrot = d2r(input->touch.first->move.y * 180.0f);
+    float yrot = d2r(input->touch.first->move.x * 180.0f);
+    vec2 angles = v2f(xrot, -yrot);
     camera_orbit(&game->camera, demo->target, angles);
     //str_log("Touch id: {}, pos: {:.03}, move: {:.03}", input->touch.first->id, input->touch.first->pos, input->touch.first->move);
   }
@@ -184,8 +184,12 @@ void behavior_camera_test(Game game, entity_t* e, float dt) {
 
 void behavior_wizard_level(Game game, entity_t* e, float dt) {
   UNUSED(dt);
-  if (input_pressed(IN_CLICK_MOVE)) {
+  if (input_pressed(IN_CLICK_MOVE) || game->input.touch.count > 0) {
     vec3 ray = camera_ray(&game->camera, game->input.mouse.pos);
+    if (game->input.touch.count > 0) {
+      ray = camera_ray(&game->camera, game->input.touch.first->pos);
+    }
+
     float t;
     if (v3ray_plane(game->camera.pos, ray, v3origin, v3up, &t)) {
       game->demo->target = v3add(game->camera.pos, v3scale(ray, t));
@@ -216,7 +220,7 @@ static void _wizard_movement(Game game, entity_t* e, float dt) {
   if (distance + 0.1f < WIZARD_SPEED / 3.f) {
     max_move *= (distance + 0.1f) / (WIZARD_SPEED / 3.f);
   }
-  if (input_pressed(IN_CLICK)) {
+  if (input_pressed(IN_CLICK) || game->input.touch.count >= 2) {
     max_move /= 2.0f;
   }
   if (distance <= max_move) {
@@ -299,8 +303,14 @@ static void _wizard_projectile(Game game, entity_t* e, float dt) {
   demo_t* demo = game->demo;
   static float shot_timer = WIZARD_FIRE_RATE;
   shot_timer += dt;
-  if (input_pressed(IN_CLICK) && shot_timer > WIZARD_FIRE_RATE) {
+  if ((input_pressed(IN_CLICK) || game->input.touch.count >= 2)
+  &&  shot_timer > WIZARD_FIRE_RATE
+  ) {
     vec3 click_ray = camera_ray(&game->camera, game->input.mouse.pos);
+    if (game->input.touch.count >= 2) {
+      click_ray = camera_ray(&game->camera, game->input.touch.second->pos);
+    }
+
     float t;
     if (v3ray_plane(game->camera.pos, click_ray, v3origin, v3up, &t)) {
       vec3 click_pos = v3add(game->camera.pos, v3scale(click_ray, t));
@@ -410,9 +420,16 @@ void behavior_camera_monument(Game game, entity_t* e, float dt) {
     plane_speed = PLANE_SPEED_MIN;
   }
 
-  float xrot = d2r(-game->input.mouse.move.y * 180.f / (float)game->window.h);
-  float yrot = d2r(-game->input.mouse.move.x * 180.f / (float)game->window.x);
+  vec2 window = v2vi(game->window);
+
+  float xrot = d2r( game->input.mouse.move.y * 180.f / window.h);
+  float yrot = d2r(-game->input.mouse.move.x * 180.f / window.x);
   float epsilon = 0.000001f;
+
+  if (game->input.touch.count == 1) {
+    xrot = d2r( game->input.touch.first->move.y * 180.f / window.h);
+    yrot = d2r(-game->input.touch.first->move.x * 180.f / window.w);
+  }
 
   vec2 rotation = v2f(xrot, yrot);
   if (v2mag(rotation) > epsilon) {
