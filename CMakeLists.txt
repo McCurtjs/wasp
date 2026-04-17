@@ -163,8 +163,9 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
       src/native/main.c
       src/native/ui.h
       demo/demo.c
-      demo/level_test.c
-      demo/test_behaviors.c
+      demo/scene_editor.c
+      demo/scene_wizard.c
+      demo/scene_monument.c
       demo/demo.h
       lib/cimgui/cimgui.h
     )

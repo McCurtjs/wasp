@@ -238,8 +238,8 @@ elif [ "$build_target" = "clang" ]; then
 
   if [ "$build_type" == "Spec" ]; then
 
-    clang $flags_memtest -o build/clang/test.exe \
-      $flags_common $flags_debug_opt $includes $build_native $sources $sources_test
+    clang $flags_memtest -o build/clang/test.exe $sources $includes \
+      $flags_common $flags_debug_opt $build_native $sources_test
 
     if [ "$?" == "0" ]; then
       ./build/clang/test.exe $args
@@ -247,8 +247,8 @@ elif [ "$build_target" = "clang" ]; then
 
   else
 
-    clang $flags_memtest -o build/clang/test.exe \
-      $flags_common $flags_debug_opt $includes $build_native $sources $sources_demo
+    clang $flags_memtest -o build/clang/test.exe $sources $includes \
+      $flags_common $flags_debug_opt $build_native $sources_demo
 
     if [ "$?" == "0" ]; then
       ./build/clang/demo.exe $args
@@ -296,7 +296,8 @@ elif [ "$build_target" = "mingw" ]; then
 elif [ "$build_target" = "msvc" ]; then
 
   if [ "$build_type" = "Spec" ]; then
-    cmake -G "Visual Studio 17 2022" -S . -B build/msvc/Spec -DCMAKE_BUILD_TYPE=Spec
+    cmake -G "Visual Studio 17 2022" -S . -B build/msvc/Spec \
+      -DCMAKE_BUILD_TYPE=Spec
   else
     cmake -G "Visual Studio 17 2022" -S . -B build/msvc/Demo
   fi

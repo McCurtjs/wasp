@@ -58,14 +58,8 @@ static renderer_t _renderer_pbr = {
 };
 renderer_t* renderer_pbr = &_renderer_pbr;
 
-static renderer_t _renderer_debug = {
-  .name = "Debug",
-  .render = render_debug3,
-};
-renderer_t* renderer_debug = &_renderer_debug;
-
 static renderer_t* renderers[] = {
-  &_renderer_basic, &_renderer_pbr, &_renderer_debug
+  &_renderer_basic, &_renderer_pbr
 };
 
 ////////////////////////////////////////////////////////////////////////////////

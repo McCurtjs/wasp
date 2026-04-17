@@ -88,21 +88,10 @@ typedef struct demo_t {
 #include "game.h"
 
 ////////////////////////////////////////////////////////////////////////////////
-// Entity behavior functions
+// Shared entity behavior functions
 ////////////////////////////////////////////////////////////////////////////////
 
-void behavior_camera_test(Game game, entity_t* entity, float dt);
-void behavior_camera_monument(Game game, entity_t* entity, float dt);
 void behavior_grid_toggle(Game game, entity_t* entity, float dt);
-void behavior_cubespin(Game game, entity_t* entity, float dt);
-void behavior_gear_rotate_cw(Game game, entity_t* entity, float dt);
-void behavior_gear_rotate_ccw(Game game, entity_t* entity, float dt);
-void behavior_gear_rotate_sun(Game game, entity_t* entity, float dt);
-void behavior_stare(Game game, entity_t* entity, float dt);
-void behavior_attach_to_light(Game game, entity_t* entity, float dt);
-void behavior_wizard_level(Game game, entity_t* entity, float dt);
-void behavior_attach_to_camera_target(Game game, entity_t* entity, float dt);
-void behavior_wizard(Game game, entity_t* entity, float dt);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Entity rendering functions
@@ -111,12 +100,9 @@ void behavior_wizard(Game game, entity_t* entity, float dt);
 void render_basic(Game game, entity_t* entity);
 void render_debug(Game game, entity_t* entity);
 void render_pbr(Game game, entity_t* entity);
-
-void render_debug3(renderer_t* renderer, Game game);
  
 extern renderer_t* renderer_pbr;
 extern renderer_t* renderer_basic;
-extern renderer_t* renderer_debug;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Input keymap names

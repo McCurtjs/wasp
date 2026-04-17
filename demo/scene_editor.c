@@ -40,7 +40,7 @@
 
 #include "array_byte.h"
 
-void behavior_camera_test(Game game, entity_t* e, float dt) {
+void _behavior_camera_test(Game game, entity_t* e, float dt) {
   UNUSED(e);
 
   demo_t* demo = game->demo;
@@ -182,328 +182,6 @@ void behavior_camera_test(Game game, entity_t* e, float dt) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void behavior_wizard_level(Game game, entity_t* e, float dt) {
-  UNUSED(dt);
-  if (input_pressed(IN_CLICK_MOVE) || game->input.touch.count > 0) {
-    vec3 ray = camera_ray(&game->camera, game->input.mouse.pos);
-    if (game->input.touch.count > 0) {
-      ray = camera_ray(&game->camera, game->input.touch.first->pos);
-    }
-
-    float t;
-    if (v3ray_plane(game->camera.pos, ray, v3origin, v3up, &t)) {
-      game->demo->target = v3add(game->camera.pos, v3scale(ray, t));
-    }
-  }
-  entity_set_position(e, game->demo->target);
-  entity_rotate_a(e, v3down, dt);
-}
-
-#define WIZARD_SPEED 8.0f
-#define WIZARD_FAKE_SPEED (WIZARD_SPEED * 4.0f)
-#define WIZARD_FIRE_RATE 0.05f
-#define WIZARD_BADDY_SPAWN_RATE 3.0f
-
-static void _wizard_movement(Game game, entity_t* e, float dt) {
-  static vec3 fake_target = svNzero;
-
-  if (game->scene_time == 0.0f) fake_target = v3zero;
-
-  demo_t* demo = game->demo;
-
-  vec3 target = demo->target;
-  vec3 pos = e->pos;
-  target.y = pos.y;
-  vec3 to_target = v3sub(target, pos);
-  float distance = v3mag(to_target);
-  float max_move = WIZARD_SPEED * dt;
-  if (distance + 0.1f < WIZARD_SPEED / 3.f) {
-    max_move *= (distance + 0.1f) / (WIZARD_SPEED / 3.f);
-  }
-  if (input_pressed(IN_CLICK) || game->input.touch.count >= 2) {
-    max_move /= 2.0f;
-  }
-  if (distance <= max_move) {
-    entity_set_position(e, target);
-  }
-  else {
-    vec3 dir = v3norm(to_target);
-    entity_translate(e, v3scale(dir, max_move));
-  }
-
-  to_target = v3sub(target, fake_target);
-  distance = v3mag(to_target);
-  max_move = WIZARD_FAKE_SPEED * dt;
-  if (distance + 0.1f < WIZARD_FAKE_SPEED / 3.f) {
-    max_move *= (distance + 0.1f) / (WIZARD_FAKE_SPEED / 3.f);
-  }
-  if (distance <= max_move) {
-    fake_target = target;
-  }
-  else {
-    vec3 dir = v3norm(to_target);
-    fake_target = v3add(fake_target, v3scale(dir, max_move));
-  }
-
-  game->camera.pos = v3add(e->pos, v3f(6, 12, 7));
-
-  vec3 cam_to_target = v3dir(fake_target, game->camera.pos);
-  vec3 cam_to_wizard = v3dir(e->pos, game->camera.pos);
-  //vec3 diff = v3sub(cam_to_target, cam_to_wizard);
-  cam_to_target = v3add(cam_to_wizard, v3rescale(cam_to_target, 0.3f));
-  cam_to_target = v3norm(cam_to_target);
-
-  game->camera.front = cam_to_target;
-}
-
-typedef struct wizard_bullet_t {
-  slotkey_t parent_entity_id;
-  slotkey_t light_id;
-  vec3 pos;
-  vec3 velocity;
-} wizard_bullet_t;
-
-#define con_type wizard_bullet_t
-#define con_prefix bullet
-#include "slotmap.h"
-#undef con_type
-#undef con_prefix
-
-SlotMap_bullet wizard_bullets = NULL;
-
-static void behavior_projectile(Game game, entity_t* e, float dt) {
-  UNUSED(game);
-  assert(e);
-
-  wizard_bullet_t* bullet = smap_bullet_ref(wizard_bullets, e->user_id);
-  if (!bullet) return;
-
-  entity_translate(e, v3scale(bullet->velocity, dt * 25.0f));
-
-  light_t* light = light_ref(bullet->light_id);
-  if (light) {
-    light->pos = e->pos;
-  }
-
-  if (e->pos.y < 0) {
-    entity_remove(e->id);
-  }
-}
-
-static void ondelete_projectile(Game game, entity_t* e) {
-  UNUSED(game);
-  wizard_bullet_t* bullet = smap_bullet_ref(wizard_bullets, e->user_id);
-  if (!bullet) return;
-
-  light_remove(bullet->light_id);
-  smap_bullet_remove(wizard_bullets, e->user_id);
-}
-
-static void _wizard_projectile(Game game, entity_t* e, float dt) {
-  demo_t* demo = game->demo;
-  static float shot_timer = WIZARD_FIRE_RATE;
-  shot_timer += dt;
-  if ((input_pressed(IN_CLICK) || game->input.touch.count >= 2)
-  &&  shot_timer > WIZARD_FIRE_RATE
-  ) {
-    vec3 click_ray = camera_ray(&game->camera, game->input.mouse.pos);
-    if (game->input.touch.count >= 2) {
-      click_ray = camera_ray(&game->camera, game->input.touch.second->pos);
-    }
-
-    float t;
-    if (v3ray_plane(game->camera.pos, click_ray, v3origin, v3up, &t)) {
-      vec3 click_pos = v3add(game->camera.pos, v3scale(click_ray, t));
-      click_pos.y = 1.5f;
-      vec3 launch_point = v3f(e->pos.x, 2, e->pos.z);
-
-      if (!wizard_bullets) {
-        wizard_bullets = smap_bullet_new();
-      }
-
-      slotkey_t eid = entity_add(&(entity_desc_t) {
-        .pos = launch_point,
-        .scale = 0.4f,
-        .model = demo->models.color_cube,
-        .onrender = render_basic,
-        .behavior = behavior_projectile,
-        .ondelete = ondelete_projectile,
-      });
-      Entity bullet = entity_ref(eid);
-
-      bullet->user_id = smap_bullet_add(wizard_bullets, (wizard_bullet_t) {
-        .parent_entity_id = bullet->id,
-        .light_id = light_add((light_t) {
-          .color = v3f(1.0f, 0.7f, 0.8f),
-          .intensity = 8.0f,
-          .pos = launch_point,
-        }),
-        .pos = launch_point,
-        .velocity = v3dir(click_pos, launch_point),
-      });
-    }
-  }
-}
-
-#include <math.h>
-
-#define BADDY_SPEED 4.0f
-static void behavior_baddy(Game game, entity_t* e, float dt) {
-  vec3 target = game->demo->target;
-  target.y = e->pos.y;
-  vec3 dir = v3dir(target, e->pos);
-  float move_speed = BADDY_SPEED * dt;
-  if (v3mag(dir) <= move_speed) {
-    entity_set_position(e, target);
-  }
-  else {
-    entity_translate(e, v3rescale(dir, move_speed));
-  }
-
-  if (wizard_bullets && wizard_bullets->size) {
-    wizard_bullet_t* smap_foreach(bullet_data, wizard_bullets) {
-      Entity bullet = entity_ref(bullet_data->parent_entity_id);
-      if (!bullet) continue;
-      if (v3dist(e->pos, bullet->pos) < 2.0f) {
-        entity_remove(bullet->id);
-        entity_translate(e, v3f(0, -0.025f, 0));
-        if (e->pos.y <= 0.0f) {
-          entity_remove(e->id);
-        }
-        return;
-      }
-    }
-  }
-}
-
-static void _wizard_baddies(Game game, entity_t* e, float dt) {
-  static float timer = WIZARD_BADDY_SPAWN_RATE;// *3.f;
-  timer -= dt;
-  if (timer < 0) {
-    timer = WIZARD_BADDY_SPAWN_RATE;
-    float theta = game->scene_time * 8483.f;
-    vec3 offset = v23xz(v2heading(theta));
-    offset = v3scale(offset, 40.f + (cosf(theta * 52.f) + 1) * 20.f);
-    vec3 pos = v3add(e->pos, offset);
-    pos.y = 1.f;
-    entity_add(&(entity_desc_t) {
-      .model = game->demo->models.box,
-      .material = game->demo->materials.crate,
-      .pos = pos,
-      .scale = 2.0f,
-      .tint = v4cv(v4f(1.0f, 0.6f, 0.6f, 1.0f)),
-      .renderer = renderer_pbr,
-      .behavior = behavior_baddy,
-    });
-  }
-}
-
-void behavior_wizard(Game game, entity_t* e, float dt) {
-  _wizard_movement(game, e, dt);
-  _wizard_projectile(game, e, dt);
-  _wizard_baddies(game, e, dt);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Monumnet behaviors
-////////////////////////////////////////////////////////////////////////////////
-
-extern slotkey_t monument_light_left;
-extern slotkey_t monument_light_right;
-extern slotkey_t monument_light_spot;
-#define PLANE_SPEED_MIN 30.f
-static float plane_speed = PLANE_SPEED_MIN;
-void behavior_camera_monument(Game game, entity_t* e, float dt) {
-  UNUSED(e);
-
-  if (game->scene_time == 0) {
-    plane_speed = PLANE_SPEED_MIN;
-  }
-
-  vec2 window = v2vi(game->window);
-
-  float xrot = d2r( game->input.mouse.move.y * 180.f / window.h);
-  float yrot = d2r(-game->input.mouse.move.x * 180.f / window.x);
-  float epsilon = 0.000001f;
-
-  if (game->input.touch.count == 1) {
-    xrot = d2r( game->input.touch.first->move.y * 180.f / window.h);
-    yrot = d2r(-game->input.touch.first->move.x * 180.f / window.w);
-  }
-
-  vec2 rotation = v2f(xrot, yrot);
-  if (v2mag(rotation) > epsilon) {
-    rotation = v2norm(rotation);
-    rotation = v2scale(rotation, dt * 1.8f);
-    rotation.x *= -1.f;
-    entity_translate(e, v23xz(rotation));
-  }
-
-  if (v3mag(e->pos) > epsilon) {
-    vec3 half = v3scale(e->pos, 0.6f * dt);
-    camera_rotate_local(&game->camera, half);
-    entity_set_position(e, v3sub(e->pos, half));
-  }
-
-  if (input_triggered(IN_CLICK)) {
-    input_pointer_lock();
-  }
-
-  if (input_triggered(IN_INCREASE)) {
-    game->demo->monument_extent += 1;
-    game->next_scene = game->scene;
-  }
-
-  if (input_triggered(IN_DECREASE)) {
-    game->demo->monument_extent -= 1;
-    game->next_scene = game->scene;
-  }
-
-  if (input_triggered(IN_INCREASE_FAST)) {
-    game->demo->monument_extent += 10;
-    game->next_scene = game->scene;
-  }
-
-  if (input_triggered(IN_DECREASE_FAST)) {
-    game->demo->monument_extent -= 10;
-    game->next_scene = game->scene;
-  }
-
-  if (game->next_scene == game->scene) {
-    str_log("[Game.monument] Extent: {}", game->demo->monument_extent);
-  }
-
-  vec3 direction = game->camera.front;
-  plane_speed += v3dot(direction, v3down) * dt * 9.8f;
-  if (plane_speed < PLANE_SPEED_MIN) {
-    plane_speed = PLANE_SPEED_MIN;
-  }
-
-  direction = v3scale(game->camera.front, plane_speed * dt);
-  game->camera.pos = v3add(game->camera.pos, direction);
-
-  vec3 left = v3cross(game->camera.up, game->camera.front);
-  left = v3rescale(left, 18.f);
-  vec3 right = v3neg(left);
-  light_t* light_left = light_ref(monument_light_left);
-  light_t* light_right = light_ref(monument_light_right);
-  light_t* light_spot = light_ref(monument_light_spot);
-  if (light_left) {
-    light_left->pos = v3add(game->camera.pos, left);
-  }
-  if (light_right) {
-    light_right->pos = v3add(game->camera.pos, right);
-  }
-  if (light_spot) {
-    light_spot->pos = game->camera.pos;
-    light_spot->dir = game->camera.front;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Toggles the visibility of the grid
-////////////////////////////////////////////////////////////////////////////////
-
 #ifndef __WASM__
 #include "ui.h"
 
@@ -536,6 +214,8 @@ static void _normalize_floats_fixed(float* floats, int count, int fixed_ind) {
     floats[i] *= scale;
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
 
 #endif // ifndef __WASM__
 
@@ -983,7 +663,7 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
 // Cube spinning behavior
 ////////////////////////////////////////////////////////////////////////////////
 
-void behavior_cubespin(Game game, entity_t* e, float dt) {
+void _behavior_cubespin(Game game, entity_t* e, float dt) {
   UNUSED(dt);
 
   entity_set_rotation(e, q4mul(
@@ -996,7 +676,7 @@ void behavior_cubespin(Game game, entity_t* e, float dt) {
 // Clockwise spin around the Z axis
 ////////////////////////////////////////////////////////////////////////////////
 
-void behavior_gear_rotate_cw(Game game, entity_t* e, float dt) {
+void _behavior_gear_rotate_cw(Game game, entity_t* e, float dt) {
   UNUSED(game);
   entity_rotate_a(e, v3back, dt);
 }
@@ -1005,25 +685,16 @@ void behavior_gear_rotate_cw(Game game, entity_t* e, float dt) {
 // Counter-clockwise spin around the Z axis
 ////////////////////////////////////////////////////////////////////////////////
 
-void behavior_gear_rotate_ccw(Game game, entity_t* e, float dt) {
+void _behavior_gear_rotate_ccw(Game game, entity_t* e, float dt) {
   UNUSED(game);
   entity_rotate_a(e, v3front, dt);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Sun-gear rotation around the Y axis
-////////////////////////////////////////////////////////////////////////////////
-
-void behavior_gear_rotate_sun(Game game, entity_t* e, float dt) {
-  UNUSED(game);
-  entity_rotate_a(e, v3down, dt);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Orients the entity to face the camera along its local +Z axis
 ////////////////////////////////////////////////////////////////////////////////
 
-void behavior_stare(Game game, entity_t* e, float dt) {
+void _behavior_stare(Game game, entity_t* e, float dt) {
   UNUSED(dt);
   entity_set_rotation(e, q3look(v3sub(game->camera.pos, e->pos), v3up));
 }
@@ -1102,12 +773,6 @@ void render_debug(Game game, entity_t* e) {
   draw_render();
 }
 
-void render_debug3(renderer_t* renderer, Game game) {
-  UNUSED(renderer);
-  UNUSED(game);
-  draw_render();
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // Render function for physically-based lighting
 ////////////////////////////////////////////////////////////////////////////////
@@ -1157,3 +822,241 @@ void render_pbr(Game game, entity_t* e) {
 
   glBindTexture(GL_TEXTURE_2D, 0);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Loading function to initialize the scene
+////////////////////////////////////////////////////////////////////////////////
+
+#include "light.h"
+
+slotkey_t editor_light_bright;
+slotkey_t editor_light_gizmo;
+scene_unload_fn_t scene_load_gears(Game game) {
+
+  demo_t* demo = game->demo;
+
+  game->camera.pos = v3f(3, 2, 45);
+  game->camera.front = v3front;
+  game->demo->target = v3origin;
+  game->demo->light_pos = v3f(40, 60, 0);
+
+  camera_look_at(&game->camera, game->demo->target);
+
+  // Debug Renderer
+  entity_add(&(entity_desc_t) {
+    .name = S("Grid"),
+    .model = demo->models.grid,
+    .onrender = render_debug,
+    .behavior = behavior_grid_toggle,
+  });
+
+  // Camera Controller
+  entity_add(&(entity_desc_t) {
+    .name = S("Camera controller"),
+    .behavior = _behavior_camera_test,
+  });
+
+  //* Spinny Cube
+  entity_add(&(entity_desc_t) {
+    .name = S("Spinny-cube"),
+    .model = demo->models.color_cube,
+    .pos = v3f(-2, 0, 0),
+    .onrender = render_basic,
+    .behavior = _behavior_cubespin,
+  }); //*/
+
+  //* Staring Cube
+  entity_add(&(entity_desc_t) {
+    .name = S("Staring Cube"),
+    .model = demo->models.color_cube,
+    .pos = v3f(0, 0, 2),
+    .onrender = render_basic,
+    .behavior = _behavior_stare,
+  }); //*/
+
+  //* Gizmos
+  entity_add(&(entity_desc_t) {
+    .name = S("Target Gizmo"),
+    .model = demo->models.gizmo,
+    .onrender = render_basic,
+    .behavior = behavior_attach_to_camera_target,
+  }); //*/
+
+  entity_add(&(entity_desc_t) {
+    .name = S("Light Gizmo"),
+    .model = demo->models.gizmo,
+    .onrender = render_basic,
+    .behavior = behavior_attach_to_light,
+  }); //*/
+
+  //* Gear 1
+  entity_add(&(entity_desc_t) {
+    .name = S("Gear 1"),
+    .model = demo->models.gear,
+    .material = demo->materials.grass,
+    .pos = v3f(0, 7, -12),
+    .onrender = render_pbr,
+    .behavior = _behavior_gear_rotate_cw,
+  }); //*/
+
+  //* Gear 2
+  entity_add(&(entity_desc_t) {
+    .name = S("Gear 2"),
+    .model = demo->models.gear,
+    .material = demo->materials.sands,
+    .pos = v3f(20.5f, -1.5f, -12),
+    .onrender = render_pbr,
+    .behavior = _behavior_gear_rotate_ccw,
+  }); //*/
+
+  //* Gear 3
+  entity_add(&(entity_desc_t) {
+    .name = S("Gear 3"),
+    .model = demo->models.gear,
+    .material = demo->materials.mudds,
+    .pos = v3f(43.f, -1.5f, -12),
+    .onrender = render_pbr,
+    .behavior = _behavior_gear_rotate_cw,
+  }); //*/
+
+  //* Crate
+  entity_add(&(entity_desc_t) {
+    .name = S("Grass Block 1"),
+    .model = demo->models.box,
+    .material = demo->materials.grass,
+    .pos = v3f(0, -0.5, 0),
+    .onrender = render_pbr,
+  }); //*/
+
+  //* Crate
+  entity_add(&(entity_desc_t) {
+    .name = S("Grass Block 2"),
+    .model = demo->models.box,
+    .material = demo->materials.grass,
+    .pos = v3f(1, -0.5, 0),
+    .onrender = render_pbr,
+  }); //*/
+
+  //* Crate
+  entity_add(&(entity_desc_t) {
+    .name = S("Grass Block 3"),
+    .model = demo->models.box,
+    .material = demo->materials.grass,
+    .pos = v3f(0, -0.5, 1),
+    .onrender = render_pbr,
+  }); //*/
+
+  //* Crate
+  entity_add(&(entity_desc_t) {
+    .name = S("Grass Block 4"),
+    .model = demo->models.box,
+    .material = demo->materials.grass,
+    .pos = v3f(1, -0.5, 1),
+    .onrender = render_pbr,
+  }); //*/
+
+  //* Bigger Crate
+  entity_add(&(entity_desc_t) {
+    .name = S("Medium Crate"),
+    .model = demo->models.box,
+    .material = demo->materials.crate,
+    .pos = v3f(2, 0, 0),
+    .scale = 2.0f,
+    .onrender = render_pbr,
+  }); //*/
+
+  //* Even Bigger Crate
+  entity_add(&(entity_desc_t) {
+    .name = S("Big Crate"),
+    .model = demo->models.box,
+    .material = demo->materials.renderite,
+    .tint = v4cv(v4f(0.8f, 0.3f, 0.6f, 1.0f)),
+    .pos = v3f(5, 0.5f, 0),
+    .scale = 3.f,
+    .onrender = render_pbr,
+  }); //*/
+
+  //* LORGE Cube(s)
+  for (int j = -2; j < 3; ++j) {
+    for (int i = -2; i < 3; ++i) {
+      float x = 23.0f * i;
+      float y = 23.0f * j;
+      float angle = 0.02f; // 3.0f / (x * y);
+      vec3 axis = v3norm(v3f(cosf(y), 1, sinf(x)));
+      vec3 pos = v3f(x, -10.5, y);
+      if (!(i == 0 && i == j)) {
+        angle = 0.f;
+        pos.y -= v3mag(pos) / 10.f;
+      }
+
+      Material material = demo->materials.tiles;
+      /*
+      if (i == 2 && j == 1) {
+        axis = v3up;
+        angle = 3.14159f;// / 4.0f;
+        material = demo->materials.mudds;
+      }
+      else if (i == j) {
+        material = demo->materials.grass;
+      }
+      else if (i == -j) {
+        material = demo->materials.sands;
+      }
+      else if (i % 2 == 0) {
+        material = j % 2 == 0 ?
+          demo->materials.renderite : demo->materials.mudds;
+      }
+      /*/
+      material = demo->materials.atlas;
+      //*/
+
+      int mindex = i + j;
+      if (mindex < 0) mindex *= -1;
+      mindex %= material->layers;
+      entity_add(&(entity_desc_t) {
+        .name = S("Ground Cube"),
+        .model = demo->models.box,
+        .material = material,
+        .tint = b4white,
+        .material_index = mindex,
+        .pos = pos,
+        .rot = q4axang(axis, angle),
+        .scale = 19.0f,
+        .renderer = renderer_pbr,
+      });
+
+    }
+  } //*/
+
+  //* Some lights
+  editor_light_bright = light_add((light_t) {
+    .intensity = 60000.0f,
+    .pos = v3f(40, 30, 50),
+    .color = v3f(0.9f, 0.9f, 0.75f),
+    .dir = v3sub(demo->target, v3f(40, 30, 50)),
+    .spot_outer = 0.8f,
+    .spot_inner = 0.9f,
+  });
+
+  editor_light_gizmo = light_add((light_t) {
+    .intensity = 50.0f,
+    .pos = v3f(4, 3, 5),
+    .color = v3f(0.8f, 0.8f, 0.95f),
+  });
+
+  light_add((light_t) {
+    .intensity = 700.0f,
+    .pos = v3f(20, 7, 20),
+    .color = v3f(1.0f, 0.2f, 0.2f),
+  });
+
+  light_add((light_t) {
+    .intensity = 400.0f,
+    .pos = v3f(-20, 7, -20),
+    .color = v3f(0.0f, 0.9f, 0.4f),
+  });
+  //*/
+
+  return NULL;
+}
+
