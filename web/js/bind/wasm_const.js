@@ -30,6 +30,10 @@ export const
     mouse_button_down: 0x401,
     mouse_button_up: 0x402,
     mouse_wheel: 0x403,
+    touch_down: 0x700,
+    touch_up: 0x701,
+    touch_move: 0x702,
+    touch_cancel: 0x703,
 
     // other
     keymod: {
@@ -40,6 +44,14 @@ export const
       rctrl:  0x0080,
       lalt:   0x0100,
       ralt:   0x0200,
-    }
+    },
+
+    mouse: {
+      button: 1,
+      touch: -1,
+      left: 1,
+      right: 3,
+      middle: 2,
+    },
   }
 ;

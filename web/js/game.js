@@ -151,6 +151,29 @@ class Game {
       };
     };
 
+    let touch_pos = (e) => {
+      let b = game.gl.canvas.getBoundingClientRect();
+      return {
+        x: (e.clientX - b.x) / b.width,
+        y: (e.clientY - b.y) / b.height
+      };
+    }
+
+    let process_mouse_button = (type, source, e) => {
+      let pos = mouse_pos(e);
+      let button = (source == sdl.mouse.touch ? sdl.mouse.left : e.button + 1);
+      game.wasm.exports.wasm_push_mouse_button_event(
+        type, source, button, pos.x, pos.y
+      );
+    }
+
+    let process_mouse_touch = (type, e) => {
+      if (e.targetTouches.length == 1) {
+        let touch = e.targetTouches[0];
+        process_mouse_button(type, sdl.mouse.touch, touch);
+      }
+    }
+
     window.addEventListener('keydown', (e) => {
       keyboard_event(e, sdl.key_down);
     });
@@ -160,26 +183,68 @@ class Game {
     });
 
     game.gl.canvas.addEventListener('mousedown', (e) => {
-      let pos = mouse_pos(e);
-      game.wasm.exports.wasm_push_mouse_button_event(
-        sdl.mouse_button_down, e.button + 1, pos.x, pos.y);
+      process_mouse_button(sdl.mouse_button_down, sdl.mouse.button, e);
     });
 
     // attach to window so we still get "up" events when dragged out the window
     window.addEventListener('mouseup', (e) => {
-      let pos = mouse_pos(e);
-      game.wasm.exports.wasm_push_mouse_button_event(
-        sdl.mouse_button_up, e.button + 1, pos.x, pos.y);
+      process_mouse_button(sdl.mouse_button_up, sdl.mouse.button, e);
     });
 
     window.addEventListener('mousemove', (e) => {
       let pos = mouse_pos(e);
       game.wasm.exports.wasm_push_mouse_motion_event(
-        pos.x, pos.y, e.movementX, e.movementY);
+        1, pos.x, pos.y, e.movementX, e.movementY);
     });
 
     window.addEventListener('wheel', (e) => {
       game.wasm.exports.wasm_push_mouse_wheel_event(e.deltaX, e.deltaY);
+    });
+
+    game.gl.canvas.addEventListener('touchstart', (e) => {
+      process_mouse_touch(sdl.mouse_button_down, e);
+      for (const touch of e.changedTouches) {
+        let pos = touch_pos(touch);
+        game.wasm.exports.wasm_push_touch_event(
+          sdl.touch_down, touch.identifier + 1, touch.force, pos.x, pos.y
+        );
+        console.log("Touch ID: ", touch.identifier + 1, " started");
+      }
+      if (e.cancelable) e.preventDefault();
+    });
+
+    window.addEventListener('touchend', (e) => {
+      process_mouse_touch(sdl.mouse_button_up, e);
+      for (const touch of e.changedTouches) {
+        let pos = touch_pos(touch);
+        game.wasm.exports.wasm_push_touch_event(
+          sdl.touch_up, touch.identifier + 1, touch.force, pos.x, pos.y
+        );
+        console.log("Touch ID: ", touch.identifier + 1, " ended");
+      }
+      if (e.cancelable) e.preventDefault();
+    });
+
+    window.addEventListener('touchmove', (e) => {
+      process_mouse_touch(sdl.mouse_move, e);
+      for (const touch of e.changedTouches) {
+        let pos = touch_pos(touch);
+        game.wasm.exports.wasm_push_touch_event(
+          sdl.touch_move, touch.identifier + 1, touch.force, pos.x, pos.y
+        );
+        console.log("Touch ID: ", touch.identifier + 1, ", pos: ", pos);
+      }
+    });
+
+    window.addEventListener('touchcancel', (e) => {
+      process_mouse_touch(sdl.mouse_button_up, e);
+      for (const touch of e.changedTouches) {
+        let pos = touch_pos(touch);
+        game.wasm.exports.wasm_push_touch_event(
+          sdl.touch_cancel, touch.identifier + 1, touch.force, pos.x, pos.y
+        );
+        console.log("Touch ID: ", touch.identifier + 1, " cancelled");
+      }
     });
   }
 };

@@ -134,11 +134,13 @@ static void _process_mouse_motion(Game game, SDL_MouseMotionEvent* motion) {
   input_t* input = &game->input;
   if (motion->which == SDL_TOUCH_MOUSEID && input->touch.fingers.begin) return;
 
+  vec2 old_pos = game->input.mouse.raw;
   game->input.mouse.raw = v2f(motion->x, motion->y);
 
   // you can get many mouse move inputs per frame, so accumulate motion
-  game->input.mouse.raw_move.x += motion->xrel;
-  game->input.mouse.raw_move.y += motion->yrel;
+  game->input.mouse.raw_move = v2add(
+    game->input.mouse.raw_move, v2sub(game->input.mouse.raw, old_pos)
+  );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -197,8 +199,9 @@ static void _process_finger_motion(Game game, SDL_TouchFingerEvent* touch) {
   touch_t* slot = _touch_get(&game->input.touch, touch->fingerID);
   if (!slot) return;
 
+  vec2 old_pos = slot->pos;
   slot->pos = _touch_to_ndc(v2f(touch->x, touch->y));
-  slot->move = v2add(slot->move, v2f(touch->dx, -touch->dy));
+  slot->move = v2add(slot->move, v2sub(slot->pos, old_pos));
   slot->pressure = touch->pressure;
 }
 

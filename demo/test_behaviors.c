@@ -38,6 +38,8 @@
 
 #define CAM_ANGLE_THRESHOLD 0.4f
 
+#include "array_byte.h"
+
 void behavior_camera_test(Game game, entity_t* e, float dt) {
   UNUSED(e);
 
@@ -50,14 +52,23 @@ void behavior_camera_test(Game game, entity_t* e, float dt) {
     float yrot = d2r(-game->input.mouse.move.x * 180);
     vec2 angles = v2f(xrot, yrot);
     camera_orbit(&game->camera, demo->target, angles);
-    str_log("Mouse pos: {:.03}, move: {:.03}", game->input.mouse.pos, game->input.mouse.move);
+    //str_log("Mouse pos: {:.03}, move: {:.03}", game->input.mouse.pos, game->input.mouse.move);
   }
   else if (input->touch.count == 1) {
     float xrot = d2r( input->touch.first->move.y * 180.0f);
     float yrot = d2r(-input->touch.first->move.x * 180.0f);
     vec2 angles = v2f(xrot, yrot);
     camera_orbit(&game->camera, demo->target, angles);
-    str_log("Touch pos: {:.03}, move: {:.03}", input->touch.first->pos, input->touch.first->move);
+    //str_log("Touch id: {}, pos: {:.03}, move: {:.03}", input->touch.first->id, input->touch.first->pos, input->touch.first->move);
+  }
+
+  if (input->touch.count) {
+    Array_byte str = arr_byte_copy_str("[Touch IDs] ");
+    for (index_t i = 0; i < input->touch.count; ++i) {
+      arr_byte_append_format(str, " {}", input->touch.fingers.begin[i].id);
+    }
+    str_write(slice_from_arr(str));
+    arr_byte_delete(&str);
   }
 
   // Camera dragging/panning
@@ -119,7 +130,7 @@ void behavior_camera_test(Game game, entity_t* e, float dt) {
 
     float dist_old = v2dist(prev1, prev2);
     float dist_new = v2dist(curr1, curr2);
-    zoom += (dist_new - dist_old) * 1000.0f;
+    zoom += (dist_new - dist_old) * 500.0f;
   }
 
   if (zoom != 0) {

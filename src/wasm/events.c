@@ -43,15 +43,14 @@ void export(wasm_push_window_event) (uint event_type, int x, int y) {
 }
 
 void export(wasm_push_mouse_button_event) (
-  uint event_type, byte button, float x, float y
+  uint event_type, uint source, byte button, float x, float y
 ) {
-  byte state =
-    event_type == SDL_EVENT_MOUSE_BUTTON_DOWN ? SDL_PRESSED : SDL_RELEASED;
+  SDL_MouseID which = source < 0 ? SDL_TOUCH_MOUSEID : source;
 
   SDL_MouseButtonEvent event = {
     .type = event_type,
+    .which = which,
     .button = button,
-    .state = state,
     .x = x, .y = y
   };
 
@@ -59,11 +58,13 @@ void export(wasm_push_mouse_button_event) (
 }
 
 void export(wasm_push_mouse_motion_event) (
-  float x, float y, float xrel, float yrel
+  int source, float x, float y, float xrel, float yrel
 ) {
+  SDL_MouseID which = source < 0 ? SDL_TOUCH_MOUSEID : source;
+
   SDL_MouseMotionEvent event = {
     .type = SDL_EVENT_MOUSE_MOTION,
-    .state = 0, // will figure this out later
+    .which = which,
     .x = x,
     .y = y,
     .xrel = xrel,
@@ -96,6 +97,24 @@ void export(wasm_push_keyboard_event) (
     .down = event_type == SDL_EVENT_KEY_DOWN,
     .repeat = repeat,
     .key = tolower(key),
+  };
+
+  event_process_system(game_get_active(), &event);
+}
+
+void export(wasm_push_touch_event) (
+  uint event_type, uint finger_id, float pressure, float x, float y
+) {
+
+  str_log("Event translator - event: {}, id: {}, x: {:.3}, y: {:.3}",
+    event_type, finger_id, x, y);
+
+  SDL_TouchFingerEvent event = {
+    .type = event_type,
+    .fingerID = finger_id,
+    .x = x,
+    .y = y,
+    .pressure = pressure,
   };
 
   event_process_system(game_get_active(), &event);

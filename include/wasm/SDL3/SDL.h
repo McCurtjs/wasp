@@ -51,12 +51,16 @@
 #include "SDL_keycode.h"
 
 typedef Uint32 SDL_WindowID;
+typedef Uint32 SDL_MouseID;
+typedef Uint64 SDL_FingerID;
 
 typedef int SDL_bool;
 #define SDL_TRUE 1
 #define SDL_FALSE 0
+#define SDL_TOUCH_MOUSEID ((SDL_MouseID)-1)
 
 typedef enum {
+
   SDL_EVENT_WINDOW_RESIZED  = 0x206,
 
   SDL_EVENT_KEY_DOWN        = 0x300,
@@ -66,6 +70,12 @@ typedef enum {
   SDL_EVENT_MOUSE_BUTTON_DOWN,
   SDL_EVENT_MOUSE_BUTTON_UP,
   SDL_EVENT_MOUSE_WHEEL,
+
+  SDL_EVENT_FINGER_DOWN     = 0x700,
+  SDL_EVENT_FINGER_UP,
+  SDL_EVENT_FINGER_MOTION,
+  SDL_EVENT_FINGER_CANCELED,
+
 } SDL_EventType;
 
 #define SDL_RELEASED 0
@@ -131,7 +141,7 @@ typedef struct SDL_MouseMotionEvent
 {
   Uint32 type;        /**< ::SDL_EVENT_MOUSE_MOTION */
   Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
-  Uint32 state;       /**< The current button state */
+  SDL_MouseID which;  /**< The mouse instance id in relative mode, SDL_TOUCH_MOUSEID for touch events, or 0 */
   float x;            /**< X coordinate, relative to window */
   float y;            /**< Y coordinate, relative to window */
   float xrel;         /**< The relative motion in the X direction */
@@ -145,8 +155,8 @@ typedef struct SDL_MouseButtonEvent
 {
   Uint32 type;
   Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
+  SDL_MouseID which;  /**< The mouse instance id in relative mode, SDL_TOUCH_MOUSEID for touch events, or 0 */
   Uint8 button;       /**< The mouse button index */
-  Uint8 state;        /**< ::SDL_PRESSED or ::SDL_RELEASED */
   Uint8 clicks;       /**< 1 for single-click, 2 for double-click, etc. */
   float x;            /**< X coordinate, relative to window */
   float y;            /**< Y coordinate, relative to window */
@@ -167,6 +177,18 @@ typedef struct SDL_MouseWheelEvent
     Sint32 integer_y;   /**< The amount scrolled vertically, accumulated to whole scroll "ticks" (added in 3.2.12) */
 } SDL_MouseWheelEvent;
 
+typedef struct SDL_TouchFingerEvent
+{
+    SDL_EventType type; /**< SDL_EVENT_FINGER_DOWN, SDL_EVENT_FINGER_UP, SDL_EVENT_FINGER_MOTION, or SDL_EVENT_FINGER_CANCELED */
+    Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
+    SDL_FingerID fingerID;
+    float x;            /**< Normalized in the range 0...1 */
+    float y;            /**< Normalized in the range 0...1 */
+    float dx;           /**< Normalized in the range -1...1 */
+    float dy;           /**< Normalized in the range -1...1 */
+    float pressure;     /**< Normalized in the range 0...1 */
+} SDL_TouchFingerEvent;
+
 typedef union SDL_Event {
   Uint32 type;
   SDL_WindowEvent window;
@@ -174,6 +196,7 @@ typedef union SDL_Event {
   SDL_MouseMotionEvent motion;
   SDL_MouseButtonEvent button;
   SDL_MouseWheelEvent wheel;
+  SDL_TouchFingerEvent tfinger;
 
   Uint8 padding[32];
 } SDL_Event;
