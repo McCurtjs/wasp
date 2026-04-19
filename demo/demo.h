@@ -37,6 +37,7 @@
 typedef struct demo_shaders_t {
   Shader loading;
   Shader frame;
+  Shader pass;
   Shader basic;
   Shader light;
   Shader light_inst;
@@ -72,6 +73,7 @@ typedef struct demo_t {
   int               monument_size;
 
   RenderTarget      render_target;
+  RenderTarget      render_target_min;
 
   demo_shaders_t    shaders;
   demo_models_t     models;

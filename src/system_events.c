@@ -37,6 +37,7 @@
 static void _process_window_resize(Game game, SDL_WindowEvent* window) {
   vec2i new_size = v2i(window->data1, window->data2);
   *(vec2i*)(&game->window) = new_size;
+  game->resolution = new_size;
 
   str_log("Event: resizing window - {}", game->window);
   rt_resize(NULL, game->window);

@@ -78,6 +78,7 @@ RenderTarget _rt_new(index_t size, tex_format_t formats[]) {
 
   *ret = (RenderTarget_Internal) {
     .pub = {
+      .resolution = i2zero,
       .slot_count = size,
       .textures = NULL,
       .formats = (tex_format_t*)format_loc,
@@ -107,6 +108,8 @@ RenderTarget _rt_new(index_t size, tex_format_t formats[]) {
 bool rt_build(RenderTarget rt_in, vec2i screen) {
   RT_INTERNAL;
   if (rt->pub.ready) return false;
+
+  rt->pub.resolution = screen;
 
   // framebuffer
   if (!rt->handle) {
@@ -222,17 +225,23 @@ void rt_bind(RenderTarget rt_in) {
   color3 c = rt->pub.clear_color;
   glClearColor(c.r, c.g, c.b, 1.f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glViewport(0, 0, rt->pub.resolution.w, rt->pub.resolution.h);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Binds the default backbuffer/screen
 ////////////////////////////////////////////////////////////////////////////////
 
+extern vec2i game_get_window_size(void);
+
 void rt_bind_default(void) {
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   glBindRenderbuffer(GL_RENDERBUFFER, 0);
-  glClearColor(0.2f, 0.2f, 0.2f, 1);
+  glClearColor(0.2f, 0.2f, 0.3f, 1);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+  vec2i window = game_get_window_size();
+  glViewport(0, 0, window.w, window.h);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -260,10 +269,6 @@ void rt_resize(RenderTarget rt, vec2i screen) {
     if (!rt->ready) {
       str_write("[RenderTarget.resize] Failed to resize");
     }
-  }
-  else {
-    // Resize the default back-buffer if no specific target was given
-    glViewport(0, 0, screen.w, screen.h);
   }
 }
 

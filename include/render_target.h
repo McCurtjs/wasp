@@ -37,6 +37,7 @@ typedef enum depth_format_t {
 } depth_format_t;
 
 typedef struct _opaque_RenderTarget_t {
+  CONST vec2i                 resolution;
   CONST index_t               slot_count;
   CONST Texture       * CONST textures;
   CONST tex_format_t  * CONST formats;

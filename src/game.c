@@ -138,7 +138,10 @@ static void _game_scene_close(Game_Internal* game) {
 static void _game_scene_switch(Game_Internal* game) {
 
   // A value of -1 means "continue playing current scene"
-  if (game->pub.next_scene < 0) return;
+  if (game->pub.next_scene < 0) {
+    game->pub.next_scene = -1; // reset to -1 in case it went below
+    return;
+  }
 
   // Validate scene index is within count of available scenes
   index_t scene_count = span_scene_size(game->pub.scenes);
@@ -195,6 +198,7 @@ Game game_new(String title, vec2i window_size) {
   *ret = (Game_Internal) {
     .pub = {
       .window = window_size,
+      .resolution = window_size,
       .title = title,
       .scene = 0,
       .scene_time = 0,
@@ -237,6 +241,10 @@ Game game_new(String title, vec2i window_size) {
   }
 
   camera_build(&ret->pub.camera);
+
+  if (ret->pub.on_window_resize) {
+    ret->pub.on_window_resize(p_ret);
+  }
 
   return p_ret;
 }
@@ -421,6 +429,13 @@ void game_render(Game _game) {
   }
 
   gfx_render(game->pub.graphics, _game);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+vec2i game_get_window_size(void) {
+  Game game = game_get_active();
+  return game->window;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -250,6 +250,21 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
     game->next_scene = 2;
   }
 
+  if (game->input.touch.third && game->input.touch.third->released) {
+    vec2 pos = game->input.touch.third->pos;
+    vec2 origin = game->input.touch.third->origin;
+    float diff = pos.x - origin.x;
+    if (diff > 0.5) game->next_scene = game->scene + 1;
+    if (diff < -0.5) game->next_scene = game->scene - 1;
+
+    if (game->scene == 2) {
+      diff = pos.y - origin.y;
+      if (diff > 0.5)  ++game->demo->monument_extent;
+      if (diff < -0.5) --game->demo->monument_extent;
+      if (diff > 0.5 || diff < -0.5) game->next_scene = game->scene;
+    }
+  }
+
   if (input_triggered(IN_TOGGLE_LOCK) && game->scene == 2) {
     input_pointer_unlock();
   }

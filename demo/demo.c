@@ -134,7 +134,9 @@ void wasp_init(app_defaults_t* game) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void demo_callback_window_resize(Game game) {
-  rt_resize(game->demo->render_target, game->window);
+  game->resolution = i2scale(game->window, 0.25f);
+  rt_resize(demo.render_target, game->window);
+  rt_resize(demo.render_target_min, game->resolution);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -239,6 +241,9 @@ bool wasp_preload(Game game) {
   demo.shaders.light_inst->attrib_format = AF_MATERIAL_TINT;
   shader_file_frag(demo.shaders.light_inst, S("light"));
   shader_load_async(demo.shaders.light_inst);
+  demo.shaders.pass = shader_new(S("passthrough"));
+  shader_file_vert(demo.shaders.pass, S("warhol"));
+  shader_load_async(demo.shaders.pass);
 
   return true;
 }
@@ -272,7 +277,10 @@ bool wasp_load (Game game, int await_count, float dt) {
   game->demo->render_target = rt_new(
     TF_RGB_8, TF_RG_16, TF_RGB_10_A_2, TF_DEPTH_32
   );
+  game->demo->render_target_min = rt_new(TF_RGB_8);
+
   rt_build(game->demo->render_target, game->window);
+  rt_build(game->demo->render_target_min, game->resolution);
 
   shader_build_all();
   mat_build_all();
@@ -325,11 +333,12 @@ bool wasp_update (Game game, float dt) {
 #include <string.h>
 
 void wasp_render(Game game) {
-  rt_bind(game->demo->render_target);
+  rt_bind(demo.render_target);
   game_render(game);
 
   Texture lights = tex_from_lights();
 
+  //rt_bind(game->demo->render_target_min);
   rt_bind_default();
 
   Shader shader = demo.shaders.warhol;
@@ -344,16 +353,20 @@ void wasp_render(Game game) {
   int depth_sampler = shader_uniform_loc(shader, "samp_depth");
   int light_sampler = shader_uniform_loc(shader, "samp_light");
   int loc_invproj = shader_uniform_loc(shader, "in_proj_inverse");
-  int loc_light_pos = shader_uniform_loc(shader, "in_light_pos");
-  tex_apply(game->demo->render_target->textures[0], 0, tex_sampler);
-  tex_apply(game->demo->render_target->textures[1], 1, norm_sampler);
-  tex_apply(game->demo->render_target->textures[2], 2, prop_sampler);
-  tex_apply(game->demo->render_target->textures[3], 3, depth_sampler);
+  tex_apply(demo.render_target->textures[0], 0, tex_sampler);
+  tex_apply(demo.render_target->textures[1], 1, norm_sampler);
+  tex_apply(demo.render_target->textures[2], 2, prop_sampler);
+  tex_apply(demo.render_target->textures[3], 3, depth_sampler);
   tex_apply(lights, 4, light_sampler);
   glUniformMatrix4fv(loc_invproj, 1, 0, m4inverse(game->camera.projection).f);
-  glUniform4fv(loc_light_pos, 1, mv4mul(game->camera.view, v34(demo.light_pos)).f);
 
-  model_render(game->demo->models.frame);
+  model_render(demo.models.frame);
+
+  //rt_bind_default();
+  //shader_bind(demo.shaders.pass);
+  //int frame_sampler = shader_uniform_loc(demo.shaders.pass, "samp_frame");
+  //tex_apply(demo.render_target_min->textures[0], 0, frame_sampler);
+  //model_render(demo.models.frame);
 
   tex_delete(&lights);
 }

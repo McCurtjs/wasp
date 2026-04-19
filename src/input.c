@@ -1,7 +1,7 @@
 /*******************************************************************************
 * MIT License
 *
-* Copyright (c) 2025 Curtis McCoy
+* Copyright (c) 2026 Curtis McCoy
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -47,11 +47,14 @@ void input_update(input_t* input, vec2i scr_wh) {
   // correctly set the number of touch inputs and simple multi-touch
   input->touch.count = input_touch_count(input);
 
-  if (input->touch.count) {
+  if (input->touch.count >= 1) {
     input->touch.first = &input->touch.fingers.begin[0];
-    if (input->touch.count >= 2) {
-      input->touch.second = &input->touch.fingers.begin[1];
-    }
+  }
+  if (input->touch.count >= 2) {
+    input->touch.second = &input->touch.fingers.begin[1];
+  }
+  if (input->touch.count >= 3) {
+    input->touch.third = &input->touch.fingers.begin[2];
   }
 }
 

@@ -72,6 +72,7 @@ typedef struct _opaque_Game_t {
 
   // Window properties
   vec2i         CONST window;
+  vec2i               resolution;
   String        CONST title;
 
   index_t       CONST scene;      // index of current scene

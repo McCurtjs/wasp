@@ -83,6 +83,7 @@ typedef struct input_touch_t {
   index_t        count;
   const touch_t* first;
   const touch_t* second;
+  const touch_t* third;
 } input_touch_t;
 
 typedef struct input_stick_t {
