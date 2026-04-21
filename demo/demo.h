@@ -71,6 +71,7 @@ typedef struct demo_t {
   vec3              light_pos;
   int               monument_extent;
   int               monument_size;
+  int               active_shader;
 
   RenderTarget      render_target;
   RenderTarget      render_target_min;

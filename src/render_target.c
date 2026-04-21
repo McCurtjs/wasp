@@ -223,9 +223,10 @@ void rt_bind(RenderTarget rt_in) {
   glBindFramebuffer(GL_FRAMEBUFFER, rt->handle);
 
   color3 c = rt->pub.clear_color;
+  glViewport(0, 0, rt->pub.resolution.w, rt->pub.resolution.h);
+
   glClearColor(c.r, c.g, c.b, 1.f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  glViewport(0, 0, rt->pub.resolution.w, rt->pub.resolution.h);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -237,11 +238,12 @@ extern vec2i game_get_window_size(void);
 void rt_bind_default(void) {
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   glBindRenderbuffer(GL_RENDERBUFFER, 0);
-  glClearColor(0.2f, 0.2f, 0.3f, 1);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   vec2i window = game_get_window_size();
   glViewport(0, 0, window.w, window.h);
+
+  glClearColor(0.2f, 0.2f, 0.3f, 1);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

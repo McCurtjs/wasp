@@ -40,8 +40,6 @@ static File file_model_gear = NULL;
 
 static demo_t demo;
 
-static int active_shader = 1;
-
 static renderer_t _renderer_basic = {
   .name = "Basic",
 };
@@ -277,6 +275,7 @@ bool wasp_load (Game game, int await_count, float dt) {
   game->demo->render_target = rt_new(
     TF_RGB_8, TF_RG_16, TF_RGB_10_A_2, TF_DEPTH_32
   );
+  game->demo->render_target->clear_color = v3f(0.f, 0.f, 0.8f);
   game->demo->render_target_min = rt_new(TF_RGB_8);
 
   rt_build(game->demo->render_target, game->window);
@@ -315,10 +314,6 @@ bool wasp_load (Game game, int await_count, float dt) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool wasp_update (Game game, float dt) {
-  if (input_triggered(IN_TOGGLE_SHADER)) {
-    active_shader = (active_shader + 1) % 2;
-  }
-
   game_update(game, dt);
   return true;
 }
@@ -341,9 +336,9 @@ void wasp_render(Game game) {
   //rt_bind(game->demo->render_target_min);
   rt_bind_default();
 
-  Shader shader = demo.shaders.warhol;
-  if (active_shader == 1) {
-    shader = demo.shaders.frame;
+  Shader shader = demo.shaders.frame;
+  if (demo.active_shader == 1) {
+    shader = demo.shaders.warhol;
   }
 
   shader_bind(shader);

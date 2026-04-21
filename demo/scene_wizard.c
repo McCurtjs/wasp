@@ -307,7 +307,7 @@ scene_unload_fn_t scene_load_wizard(Game game) {
     .model = demo->models.box,
     .material = demo->materials.crate,
     .behavior = _behavior_wizard,
-    .renderer = renderer_pbr,
+    .onrender = render_pbr,
   });
 
   // Ground tiles

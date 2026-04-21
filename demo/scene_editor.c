@@ -250,7 +250,7 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
     game->next_scene = 2;
   }
 
-  if (game->input.touch.third && game->input.touch.third->released) {
+  if (game->input.touch.count == 3 && game->input.touch.third->released) {
     vec2 pos = game->input.touch.third->pos;
     vec2 origin = game->input.touch.third->origin;
     float diff = pos.x - origin.x;
@@ -267,6 +267,12 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
 
   if (input_triggered(IN_TOGGLE_LOCK) && game->scene == 2) {
     input_pointer_unlock();
+  }
+
+  if (input_triggered(IN_TOGGLE_SHADER)
+  || (game->input.touch.count == 4 && game->input.touch.first->released)
+  ) {
+    game->demo->active_shader ^= 1;
   }
 
 #ifndef __WASM__

@@ -1,8 +1,8 @@
 #version 300 es
 precision highp float;
 
-in highp vec2 vUV;
-out lowp vec4 frag_color;
+in vec2 vUV;
+out vec4 frag_color;
 uniform sampler2D samp_frame;
 
 void main() {

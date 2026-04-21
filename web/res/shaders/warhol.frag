@@ -1,9 +1,9 @@
 #version 300 es
 precision highp float;
 
-in lowp vec2 vUV;
+in vec2 vUV;
 
-out lowp vec4 frag_color;
+out vec4 frag_color;
 
 uniform mat4 in_proj_inverse;
 

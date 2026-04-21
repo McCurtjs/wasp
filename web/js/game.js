@@ -199,7 +199,8 @@ class Game {
 
     window.addEventListener('wheel', (e) => {
       game.wasm.exports.wasm_push_mouse_wheel_event(e.deltaX, e.deltaY);
-    });
+      e.preventDefault();
+    }, { passive: false });
 
     game.gl.canvas.addEventListener('touchstart', (e) => {
       process_mouse_touch(sdl.mouse_button_down, e);

@@ -40,6 +40,7 @@ typedef enum tex_format_t {
   TF_R_32,
   TF_RGB_10_A_2,
   TF_DEPTH_32,
+  TF_DEPTH_16,
   TF_SUPPORTED_MAX
 } tex_format_t;
 
