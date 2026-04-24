@@ -9,8 +9,8 @@ uniform mat4 in_proj_inverse;
 
 uniform sampler2D samp_tex;
 uniform sampler2D samp_norm;
-uniform sampler2D samp_depth;
 uniform sampler2D samp_prop;
+uniform sampler2D samp_depth;
 
 void main() {
   vec2 uv = vUV;

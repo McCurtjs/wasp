@@ -273,10 +273,10 @@ bool wasp_load (Game game, int await_count, float dt) {
   game->on_window_resize = demo_callback_window_resize;
 
   game->demo->render_target = rt_new(
-    TF_RGB_8, TF_RG_16, TF_RGB_10_A_2, TF_DEPTH_32
+    F_DEPTH_32, TF_RGB_8, TF_RG_16, TF_RGB_10_A_2, TF_R_32
   );
   game->demo->render_target->clear_color = v3f(0.f, 0.f, 0.8f);
-  game->demo->render_target_min = rt_new(TF_RGB_8);
+  game->demo->render_target_min = rt_new(F_DEPTH_NONE, TF_RGB_8);
 
   rt_build(game->demo->render_target, game->window);
   rt_build(game->demo->render_target_min, game->resolution);

@@ -3,7 +3,6 @@ precision highp float;
 
 #define ambient 0.5
 
-in vec4 vPos;
 in vec2 vUV;
 in vec3 vTintColor;
 in mat3 vTangentTransform;
@@ -20,6 +19,7 @@ uniform vec3 in_tint;
 layout(location = 0) out vec3 frag_color;
 layout(location = 1) out vec2 frag_norm;
 layout(location = 2) out vec4 frag_props;
+layout(location = 3) out float frag_depth;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Octahedral encode
@@ -53,4 +53,7 @@ void main() {
   vec3 n = vTangentTransform * tangent_normal;
   vec2 oct = oct_encode(n);
   frag_norm = oct * 0.5 + 0.5;
+
+  // Test
+  frag_depth = gl_FragCoord.z;
 }

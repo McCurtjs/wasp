@@ -60,11 +60,12 @@ static const GLenum _rt_depth_attachments[] = {
 // Initialize a render target
 ////////////////////////////////////////////////////////////////////////////////
 
-RenderTarget _rt_new(index_t size, tex_format_t formats[]) {
+RenderTarget _rt_new(index_t size, depth_format_t df, tex_format_t formats[]) {
   index_t depth_textures = 0;
   for (index_t i = 0; i < size; ++i) {
     if (formats[i] >= TF_DEPTH_32) ++depth_textures;
   }
+  assert(!depth_textures || df == F_DEPTH_NONE);
 
   RenderTarget_Internal* ret = malloc(
     sizeof(RenderTarget_Internal) +
@@ -82,7 +83,7 @@ RenderTarget _rt_new(index_t size, tex_format_t formats[]) {
       .slot_count = size,
       .textures = NULL,
       .formats = (tex_format_t*)format_loc,
-      .depth_format = depth_textures ? F_DEPTH_NONE : F_DEPTH_32,
+      .depth_format = df,
       .clear_color = v3f(0.f, 0.f, 0.8f),
       .ready = false,
     },

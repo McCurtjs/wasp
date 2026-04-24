@@ -46,9 +46,9 @@ typedef struct _opaque_RenderTarget_t {
   CONST bool                  ready;
 }* RenderTarget;
 
-RenderTarget _rt_new(index_t size, tex_format_t formats[]);
-#define rt_new(...) \
-  _rt_new(_va_count(__VA_ARGS__), (tex_format_t[]) { __VA_ARGS__ })
+RenderTarget _rt_new(index_t size, depth_format_t, tex_format_t formats[]);
+#define rt_new(depth_fmt, ...) \
+  _rt_new(_va_count(__VA_ARGS__), depth_fmt, (tex_format_t[]) { __VA_ARGS__ })
 
 bool rt_build(RenderTarget rt, vec2i screen);
 void rt_clear(RenderTarget rt);

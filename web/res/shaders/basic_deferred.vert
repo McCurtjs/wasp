@@ -7,10 +7,8 @@ layout(location = 4) in vec3 color;
 uniform mat4 in_pvm_matrix;
 
 out highp vec3 vColor;
-out highp float vDepth;
 
 void main() {
   gl_Position = in_pvm_matrix * vec4(position, 1.0);
   vColor = color;
-  vDepth = gl_Position.z;
 }
