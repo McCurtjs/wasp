@@ -39,4 +39,7 @@ void gfx_delete(Graphics* gfx);
 void gfx_render(Graphics, Game);
 void gfx_clear_instances(Graphics);
 
+bool gfx_get_vsync(void);
+void gfx_set_vsync(bool enabled);
+
 #endif

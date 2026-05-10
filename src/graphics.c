@@ -232,3 +232,28 @@ Texture tex_from_lights(void) {
   free(buffer);
   return texture;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef __WASM__
+
+void gfx_set_vsync(bool enabled) {
+  UNUSED(enabled);
+}
+
+#else
+
+#include "SDL3/SDL.h"
+
+bool gfx_get_vsync(void) {
+  int interval = 0;
+  if (SDL_GL_GetSwapInterval(&interval)) return interval != 0;
+  assert(false);
+  return 0;
+}
+
+void gfx_set_vsync(bool enabled) {
+  SDL_GL_SetSwapInterval(enabled ? 1 : 0);
+}
+
+#endif

@@ -132,7 +132,6 @@ void wasp_init(app_defaults_t* game) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void demo_callback_window_resize(Game game) {
-  game->resolution = i2scale(game->window, 0.25f);
   rt_resize(demo.render_target, game->resolution);
   rt_resize(demo.render_target_scaled, game->resolution);
 }

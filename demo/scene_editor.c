@@ -385,6 +385,17 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
       igText("FPS: %.3f", 1.0f / game->frame_time);
       igText("Entities: %d", entity_count());
       igText("Lights: %d", light_count());
+
+      bool vsync = gfx_get_vsync();
+      if (igCheckbox("V-Sync", &vsync)) {
+        gfx_set_vsync(vsync);
+      }
+
+      igText("Resolution");
+      if (igInputInt2("##resolution", game->resolution.i, ImGuiInputTextFlags_None)) {
+        game->on_window_resize(game);
+      }
+
       igEndChild();
     }
 

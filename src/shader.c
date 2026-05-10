@@ -501,6 +501,8 @@ Shader shader_new_from_files(
 index_t shader_manage_update(void) {
   assert(thread_is_main());
 
+  // TODO: move the loop checking shader reloads here
+
   if (_shaders_linked_count == _all_shaders_map->size) return 0;
 
   gl_shader_t* map_foreach(part, _all_parts_map) {
