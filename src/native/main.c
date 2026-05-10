@@ -1,7 +1,7 @@
 /*******************************************************************************
 * MIT License
 *
-* Copyright (c) 2025 Curtis McCoy
+* Copyright (c) 2026 Curtis McCoy
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -40,7 +40,6 @@
 static struct {
   SDL_Window* window;
   SDL_GLContext gl_context;
-  SDL_Thread* loading_thread;
   ImGuiContext* imgui;
   bool loading_done;
   uint64_t previous_time;
@@ -52,7 +51,7 @@ static struct {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _DEBUG
-void APIENTRY glDebugOutput
+void APIENTRY gl_debug_output
 ( GLenum source
 , GLenum type
 , uint id
@@ -117,13 +116,6 @@ void APIENTRY glDebugOutput
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-
-static int SDLCALL _loading_thread_fn(void* data) {
-  game_set_local(data);
-  return wasp_preload(data);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // SDL Callbacks
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -175,7 +167,7 @@ SDL_AppResult SDL_AppInit(void** app_state, int argc, char* argv[]) {
 #ifdef _DEBUG
   glEnable(GL_DEBUG_OUTPUT);
   glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-  glDebugMessageCallback(glDebugOutput, NULL);
+  glDebugMessageCallback(gl_debug_output, NULL);
   glDebugMessageControl(
     GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, true);
 #endif
@@ -192,12 +184,8 @@ SDL_AppResult SDL_AppInit(void** app_state, int argc, char* argv[]) {
   glViewport(0, 0, app.game->window.x, app.game->window.y);
 
   app.previous_time = SDL_GetTicks();
-  app.loading_thread = SDL_CreateThread(_loading_thread_fn, "load", &app.game);
 
-  if (!app.loading_thread) {
-    str_log("[App.Init] Failed to create loading thread: {}", SDL_GetError());
-    return SDL_APP_FAILURE;
-  }
+  if (!wasp_preload(app.game)) return SDL_APP_FAILURE;
 
   return SDL_APP_CONTINUE;
 }
@@ -215,35 +203,23 @@ SDL_AppResult SDL_AppIterate(void* app_state) {
   ImGui_ImplSDL3_NewFrame();
   igNewFrame();
 
+  file_manage_queue();
+  shader_check_updates();
+
   if (!app.loading_done) {
     float load_time = (float)current_time / 1000.f;
 
-    if (app.loading_thread) {
-      SDL_ThreadState state = SDL_GetThreadState(app.loading_thread);
+    index_t await_count = 0;
+    await_count += img_loading_count();
+    await_count += file_async_count();
 
-      if (state == SDL_THREAD_COMPLETE) {
-        int result;
-        SDL_WaitThread(app.loading_thread, &result);
-        if (!result) {
-          str_write("[App.Preload] Failed preload step");
-          return SDL_APP_FAILURE;
-        }
-        str_log("[App.Preload] Loaded - time elapsed: {}", load_time);
-        app.loading_thread = NULL;
-      }
-    }
-
-    app.loading_done = wasp_load(app.game, !!app.loading_thread, dt);
-
-    if (!app.loading_thread && app.loading_done) {
-      str_log("[App.Load] Loaded - time elapsed: {}", load_time);
-    }
-    else {
+    if (!wasp_load(app.game, (int)await_count, dt)) {
       goto swap_frames;
     }
-  }
 
-  shader_check_updates();
+    app.loading_done = true;
+    str_log("[App.Load] Loaded - time elapsed: {}", load_time);
+  }
 
   wasp_update(app.game, dt);
 

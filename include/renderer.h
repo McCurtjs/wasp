@@ -56,7 +56,7 @@ typedef void*     (*renderer_entity_attributes_fn_t)(Entity, bool modify);
 typedef void      (*renderer_instance_update_fn_t)(render_group_t*);
 
 // Called once per frame after the entities are processed 
-typedef void      (*renderer_render_fn_t)(renderer_t*, Game);
+typedef bool      (*renderer_render_fn_t)(renderer_t*, Game);
 
 // Called when the renderer is destroyed
 typedef void      (*renderer_delete_fn_t)(renderer_t**);
@@ -132,7 +132,7 @@ slotkey_t renderer_callback_entity_update(Entity);
 void      renderer_callback_entity_unregister(Entity);
 void*     renderer_callback_entity_attributes(Entity, bool modify);
 void      renderer_callback_instance_update(render_group_t*);
-void      renderer_callback_render(renderer_t*, Game);
+bool      renderer_callback_render(renderer_t*, Game);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Span type for defining collection of renderers for a pipeline

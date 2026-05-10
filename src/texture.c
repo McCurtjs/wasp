@@ -122,7 +122,7 @@ static inline GLenum _tex_gl_target_type(Texture tex) {
 ////////////////////////////////////////////////////////////////////////////////
 
 tex_format_t img_format(Image image) {
-  assert(image->ready);
+  assert(image->status == S_READY);
 
   switch (image->channels) {
 #ifdef __WASM__
@@ -143,9 +143,9 @@ tex_format_t img_format(Image image) {
 
 Texture tex_from_image(Image image) {
   assert(image);
-  assert(image->ready);
+  assert(image->status == S_READY);
 
-  if (!image || !image->ready) return NULL;
+  if (!image || image->status != S_READY) return NULL;
 
   Texture ret = malloc(sizeof(*ret));
   assert(ret);
@@ -433,7 +433,7 @@ void tex_delete(Texture* texture) {
 
 Texture tex_from_image_atlas(Image image, vec2i dim) {
   assert(image);
-  assert(image->ready);
+  assert(image->status == S_READY);
   assert(dim.x > 0 && dim.y > 0);
 
   Texture ret = malloc(sizeof(*ret));
@@ -450,7 +450,7 @@ Texture tex_from_image_atlas(Image image, vec2i dim) {
   glBindTexture(GL_TEXTURE_2D_ARRAY, ret->handle);
 
   // We want the image data to be in a vertical strip to load all at once
-  img_repack_vertical(&image, dim);
+  img_repack_vertical(image, dim);
 
   GLsizei mip_levels = 1;
 
@@ -562,13 +562,13 @@ void tex_set_atlas_layer(Texture tex, index_t layer, Image image) {
   assert(layer >= 0);
   assert(layer < tex->layers);
   assert(image);
-  assert(image->ready);
+  assert(image->status == S_READY);
   assert(image->width == tex->size.w);
   assert(image->height == tex->size.h);
   assert(_rt_format[tex->format].type == GL_UNSIGNED_BYTE);
 
   Image img = image;
-  img_set_channels(&img, _rt_format[tex->format].channels);
+  img_set_channels(img, _rt_format[tex->format].channels);
 
   glBindTexture(GL_TEXTURE_2D_ARRAY, tex->handle);
 

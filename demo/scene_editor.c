@@ -775,7 +775,7 @@ void behavior_attach_to_camera_target(Game game, entity_t* e, float dt) {
 
 void render_basic(Game game, entity_t* e) {
   Shader shader = game->demo->shaders.basic;
-  shader_bind(shader);
+  if (!shader_bind(shader)) return;
 
   int loc_pvm = shader_uniform_loc(shader, "in_pvm_matrix");
 
@@ -800,7 +800,7 @@ void render_debug(Game game, entity_t* e) {
 
 void render_pbr(Game game, entity_t* e) {
   Shader shader = game->demo->shaders.light;
-  shader_bind(shader);
+  if (!shader_bind(shader)) return;
 
   // Per-object properties
 

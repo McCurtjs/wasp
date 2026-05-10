@@ -755,5 +755,3 @@ void entity_rotate_a(Entity entity, vec3 axis, float angle) {
   entity->rot = q4norm(q4mul(entity->rot, q4axang(axis, angle)));
   _entity_set_dirty(entity);
 }
-
-

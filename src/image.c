@@ -29,10 +29,15 @@
 #ifndef __WASM__
 # define STB_IMAGE_IMPLEMENTATION
 # include "stb_image.h"
+# include "SDL3/SDL.h"
+
+static SDL_AtomicInt _img_loading_count = { 0 };
 #else
 # include <string.h>
 # include <stdlib.h> // malloc, free
 # include "wasm.h"
+
+static index_t _img_loading_count = 0;
 
 extern void* js_image_open(Image img, const char* src, uint src_len);
 extern void  js_image_delete(void* data_id);
@@ -40,26 +45,32 @@ extern void  js_image_extract(void* dst, void* src, int dst_channels);
 
 extern void* js_buffer_create(const byte* bytes, uint size);
 extern void  js_buffer_delete(void* data_id);
-
 #endif
+
+typedef struct Image_Internal {
+  struct _opaque_Image_t pub;
+
+  String filename_internal;
+} Image_Internal;
 
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef __WASM__
 # define IMG_SET_HANDLE(IMG, DATA_SIZE) \
-    IMG->handle = js_buffer_create(IMG->data, DATA_SIZE)
+    IMG->pub.handle = js_buffer_create((IMG)->pub.data, DATA_SIZE)
 #else
 # define IMG_SET_HANDLE(IMG, DATA_SIZE) \
-    IMG->handle = IMG->data
+    (IMG)->pub.handle = (IMG)->pub.data
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
 // Data section for setup and loading of static hardcoded image data
 ////////////////////////////////////////////////////////////////////////////////
 
-static Image _img_load_default_helper(Image image) {
-  if (!image->ready) {
-    image->ready = true;
+static Image_Internal* _img_load_default_helper(Image_Internal* image) {
+  if (image->pub.status == S_READY) {
+    image->pub.status = S_READY;
+    image->pub.filename = image->filename_internal->slice;
     IMG_SET_HANDLE(image, image->channels);
   }
   return image;
@@ -70,24 +81,26 @@ static Image _img_load_default_helper(Image image) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #define F 255
-struct image_t _img_default_error = {
-  .type = IMG_ERROR,
-  .filename = (String)&slice_empty,
-  .handle = NULL,
-  .data = (byte[]) {
-    0,0,0, F,0,F, 0,0,0, F,0,F,
-    F,0,F, 0,0,0, F,0,F, 0,0,0,
-    0,0,0, F,0,F, 0,0,0, F,0,F,
-    F,0,F, 0,0,0, F,0,F, 0,0,0
+static Image_Internal _img_default_error = {
+  .pub = {
+    .type = IMG_ERROR,
+    .status = S_READY,
+    .size = { 4, 4 },
+    .channels = 4,
+    .blend = false,
+    .data = (byte[]) {
+      0,0,0,F, F,0,F,F, 0,0,0,F, F,0,F,F,
+      F,0,F,F, 0,0,0,F, F,0,F,F, 0,0,0,F,
+      0,0,0,F, F,0,F,F, 0,0,0,F, F,0,F,F,
+      F,0,F,F, 0,0,0,F, F,0,F,F, 0,0,0,F
+    },
   },
-  .width = 4,
-  .height = 4,
-  .channels = 3,
+  .filename_internal = (String)&slice_empty,
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 
-static Image _img_load_default_error(void) {
+static Image_Internal* _img_load_default_error(void) {
   return _img_load_default_helper(&_img_default_error);
 }
 
@@ -95,120 +108,169 @@ static Image _img_load_default_error(void) {
 // Default one-pixel white image
 ////////////////////////////////////////////////////////////////////////////////
 
-struct image_t _img_default_white = {
-  .type = IMG_DEFAULT,
-  .filename = (String)&slice_empty,
-  .handle = NULL,
-  .data = (byte[]) { F, F, F },
-  .width = 1,
-  .height = 1,
-  .channels = 3,
+static Image_Internal _img_default_white = {
+  .pub = {
+    .type = IMG_DEFAULT,
+    .status = S_READY,
+    .size = { 1, 1 },
+    .channels = 4,
+    .blend = false,
+    .data = (byte[]) { F, F, F, F },
+  },
+  .filename_internal = (String)&slice_empty,
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 
 Image img_load_default_white(void) {
-  return _img_load_default_helper(&_img_default_white);
+  return (Image)_img_load_default_helper(&_img_default_white);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Default one-pixel image representing a flat normal map
 ////////////////////////////////////////////////////////////////////////////////
 
-struct image_t _img_default_normal = {
-  .type = IMG_DEFAULT,
-  .filename = (String)&slice_empty,
-  .handle = NULL,
-  .data = (byte[]) { 127, 127, 255 },
-  .width = 1,
-  .height = 1,
-  .channels = 3,
+static Image_Internal _img_default_normal = {
+  .pub = {
+    .type = IMG_DEFAULT,
+    .status = S_READY,
+    .size = { 1, 1 },
+    .channels = 4,
+    .blend = false,
+    .data = (byte[]) { 127, 127, 255, 255 },
+  },
+  .filename_internal = (String)&slice_empty,
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 
 Image img_load_default_normal(void) {
-  return _img_load_default_helper(&_img_default_normal);
+  return (Image)_img_load_default_helper(&_img_default_normal);
 }
 
 #ifdef __WASM__
+
 ////////////////////////////////////////////////////////////////////////////////
-// Callback to finalize asynchronous loading in WASM
+// Asynchronously load an image from a file (WASM)
 ////////////////////////////////////////////////////////////////////////////////
 
 void export(img_open_async_done)(
   Image img, int width, int height, bool success
-  ) {
+) {
   assert(img);
   assert(img->type == IMG_HANDLE);
+  --_img_loading_count;
 
   if (success) {
-    str_log("  Loaded ({}): {} x {}", (size_t)img->handle, width, height);
+    str_log("[Image.new]   Loaded ({}): {} x {}"
+    , (size_t)img->handle, width, height
+    );
+
     img->width = width;
     img->height = height;
     img->channels = 4;
-    img->ready = true;
+    img->status = S_READY;
   }
   else {
     js_image_delete(img->handle);
     *img = *_img_load_default_error();
-    str_log("  Failed ({}): using default", (size_t)img->handle);
+    str_log("[Image.new]   Failed ({}): using default", img->handle);
   }
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
-// Loads an image from a filename, asynchronously in WASM mode
-////////////////////////////////////////////////////////////////////////////////
 
-Image img_load_async_str(String filename) {
-  str_log("[Image.load] Loading: {}", filename);
-  Image ret;
-
-#ifdef __WASM__
-  ret = malloc(sizeof(*ret));
+Image img_new(String filename) {
+  assert(!str_is_null_or_empty(filename));
+  Image_Internal* ret = malloc(sizeof(*ret));
   assert(ret);
 
-  *ret = (struct image_t) {
-    .filename = filename,
-    .type = IMG_HANDLE,
-    .ready = false,
-    .blend = true,
+  *ret = (Image_Internal) {
+    .pub = {
+      .filename = filename->slice,
+      .type = IMG_HANDLE,
+      .status = S_LOADING,
+      .blend = true,
+    },
+    .filename_internal = filename,
   };
 
-  ret->handle = js_image_open(ret, ret->filename->begin, ret->filename->length);
-  str_log("  Async ID: {}", (size_t)ret->handle);
-  return ret;
+  ++_img_loading_count;
+  ret->handle = js_image_open(ret, filename->begin, filename->length);
+  str_log("[Image.new] Loading: {}, Async ID: {}", filename, ret->handle);
+  return (Image)ret;
+}
+
 #else
-  struct image_t img = {
-    .filename = filename,
-    .type = IMG_HANDLE,
-    .ready = true,
-    .blend = true,
-  };
 
-  img.handle = stbi_load(
-    img.filename->begin, &img.width, &img.height, &img.channels, 0
+////////////////////////////////////////////////////////////////////////////////
+// Asynchronously load an image from a file (Native/SDL)
+////////////////////////////////////////////////////////////////////////////////
+
+static int SDLCALL _img_load_async(void* data) {
+  assert(data);
+  Image_Internal* img = data;
+
+  img->pub.handle = stbi_load(img->pub.filename.begin, 
+    &img->pub.width, &img->pub.height, &img->pub.channels, 0
   );
 
-  if (!img.handle) {
-    str_delete(&img.filename);
-    str_log("  Failed: {} - using default", stbi_failure_reason());
-    return _img_load_default_error();
+  if (img->pub.handle) {
+    img->pub.status = S_READY;
+    str_log("[Image.load] Loaded: ({} x {}) {}"
+    , img->pub.width, img->pub.height, img->pub.filename
+    );
+  }
+  else {
+    str_log("[Image.load] Failed to load ({}): {}"
+    , img->pub.handle, img->pub.filename
+    );
+    *img = *_img_load_default_error();
   }
 
-  ret = malloc(sizeof(*ret));
-  assert(ret);
-  *ret = img;
-  str_log("  Loaded: {} x {} ({})", ret->width, ret->height, ret->channels);
-  return ret;
-#endif
+  SDL_AtomicDecRef(&_img_loading_count);
+
+  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-Image img_load_async(slice_t filename) {
-  return img_load_async_str(istr_copy(filename));
+Image img_new_str(String filename) {
+  assert(!str_is_null_or_empty(filename));
+  Image_Internal* ret = malloc(sizeof(*ret));
+  assert(ret);
+
+  *ret = (Image_Internal) {
+    .pub = {
+      .filename = filename->slice,
+      .type = IMG_HANDLE,
+      .status = S_LOADING,
+      .blend = true,
+    },
+    .filename_internal = filename,
+  };
+
+  str_log("[Image.new] Loading: {}", filename);
+  SDL_Thread* thread = SDL_CreateThread(_img_load_async, filename->begin, ret);
+
+  if (thread) {
+    SDL_AtomicIncRef(&_img_loading_count);
+    SDL_DetachThread(thread);
+  }
+  else {
+    str_log("[Image.new] Failed to create loading thraed: {}", filename);
+    ret->pub.status = S_FAILED;
+  }
+
+  return (Image)ret;
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+
+Image img_new(slice_t filename) {
+  return img_new_str(str_copy(filename));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -223,27 +285,29 @@ Image img_from_bytes(const byte* source, vec2i size, int channels) {
   index_t count = size.w * size.h;
   index_t data_size = count * channels;
 
-  Image ret = malloc(sizeof(*ret));
+  Image_Internal* ret = malloc(sizeof(*ret));
   assert(ret);
 
   void* data = malloc(data_size);
   assert(data);
 
-  *ret = (struct image_t) {
-    .filename = str_empty,
-    .data = data,
-    .size = size,
-    .channels = channels,
-    .type = IMG_DATA,
-    .blend = true,
+  *ret = (Image_Internal) {
+    .pub = {
+      .filename = slice_empty,
+      .type = IMG_DATA,
+      .status = S_READY,
+      .channels = channels,
+      .size = size,
+      .data = data,
+      .blend = true,
+    },
+    .filename_internal = str_empty,
   };
 
-  memcpy(ret->data, source, data_size);
+  memcpy(ret->pub.data, source, data_size);
 
   IMG_SET_HANDLE(ret, data_size);
-
-  ret->ready = true;
-  return ret;
+  return (Image)ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -257,20 +321,23 @@ Image img_from_color(color4 colorf, vec2i size, int channels) {
   index_t count = size.w * size.h;
   index_t data_size = count * channels;
 
-  Image ret = malloc(sizeof(*ret));
+  Image_Internal* ret = malloc(sizeof(*ret));
   assert(ret);
 
   void* data = malloc(data_size);
   assert(data);
 
-  *ret = (struct image_t){
-    .filename = str_empty,
-    .handle = data,
-    .data = data,
-    .size = size,
-    .channels = channels,
-    .type = IMG_DATA,
-    .blend = true,
+  *ret = (Image_Internal) {
+    .pub = {
+      .filename = slice_empty,
+      .type = IMG_DATA,
+      .status = S_READY,
+      .channels = channels,
+      .size = size,
+      .data = data,
+      .blend = true,
+    },
+    .filename_internal = str_empty,
   };
 
   switch (channels) {
@@ -302,9 +369,7 @@ Image img_from_color(color4 colorf, vec2i size, int channels) {
   }
 
   IMG_SET_HANDLE(ret, data_size);
-
-  ret->ready = true;
-  return ret;
+  return (Image)ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -315,19 +380,19 @@ Image img_pack_channels(Image r, Image g, Image b) {
 
   if (r) {
     size = v2i(MAX(size.w, r->width), MAX(size.h, r->height));
-    img_resolve(&r);
+    img_resolve(r);
   }
   if (g) {
     size = v2i(MAX(size.w, g->width), MAX(size.h, g->height));
-    img_resolve(&g);
+    img_resolve(g);
   }
   if (b) {
     size = v2i(MAX(size.w, b->width), MAX(size.h, b->height));
-    img_resolve(&b);
+    img_resolve(b);
   }
 
   Image ret = img_from_color(c4white, size, 3);
-  assert(ret && ret->ready);
+  assert(ret && ret->status == S_READY);
 
   Image src[3] = { r, g, b };
 
@@ -357,12 +422,25 @@ Image img_pack_channels(Image r, Image g, Image b) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Gets the number of actively loading images
+////////////////////////////////////////////////////////////////////////////////
+
+index_t img_loading_count(void) {
+#ifdef __WASM__
+  return _img_loading_count;
+#else
+  return (index_t)SDL_GetAtomicInt(&_img_loading_count);
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Deletes an images memory
 ////////////////////////////////////////////////////////////////////////////////
 
-void _img_free(Image img) {
+void _img_free(Image_Internal* img) {
+
+  switch (img->pub.type) {
 #ifdef __WASM__
-  switch (img->type) {
 
     case IMG_DEFAULT:
       break;
@@ -371,17 +449,14 @@ void _img_free(Image img) {
       break;
 
     case IMG_HANDLE:
-      js_image_delete(img->handle);
+      js_image_delete(img->pub.handle);
       break;
 
     case IMG_DATA:
-      js_buffer_delete(img->handle);
-      free(img->data);
+      js_buffer_delete(img->pub.handle);
+      free(img->pub.data);
       break;
-  }
 #else
-  switch (img->type) {
-
     case IMG_DEFAULT:
       break;
 
@@ -389,28 +464,29 @@ void _img_free(Image img) {
       break;
 
     case IMG_HANDLE:
-      stbi_image_free(img->handle);
+      stbi_image_free(img->pub.handle);
       break;
 
     case IMG_DATA:
-      free(img->data);
+      free(img->pub.data);
       break;
-  }
-#endif
 
-  img->handle = NULL;
-  img->data = NULL;
+#endif
+  }
+
+  img->pub.handle = NULL;
+  img->pub.data = NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 void img_delete(Image* pimg) {
   if (!pimg || !*pimg) return;
-  Image img = *pimg;
-  str_delete(&img->filename);
+  Image_Internal* img = (Image_Internal*)*pimg;
 
-  _img_free(img);
-  if (img->type != IMG_DEFAULT && img->type != IMG_ERROR) {
+  if (img->pub.type != IMG_DEFAULT && img->pub.type != IMG_ERROR) {
+    _img_free(img);
+    str_delete(&img->filename_internal);
     free(img);
   }
 
@@ -421,42 +497,32 @@ void img_delete(Image* pimg) {
 // Image data manipulation functions to release handles and change data format
 ////////////////////////////////////////////////////////////////////////////////
 
-void img_resolve(Image* pimg) {
-  assert(pimg && *pimg);
-  Image img = *pimg;
-  assert(img->ready);
-  assert(img->handle);
+void img_resolve(Image _img) {
+  assert(_img);
+  Image_Internal* img = (Image_Internal*)_img;
+  assert(img->pub.status == S_READY);
+  assert(img->pub.handle);
 
-  switch (img->type) {
+  if (img->pub.data) return;
 
-    case IMG_DATA:
-      break;
+  assert(img->pub.type == IMG_HANDLE);
 
-    case IMG_ERROR:
-    case IMG_DEFAULT:
-      *pimg = img_from_bytes(img->data, img->size, img->channels);
-      break;
-
-    case IMG_HANDLE: {
 #ifdef __WASM__
-      assert(!img->data);
-      size_t size_bytes = img->size.x * img->size.y * img->channels;
-      img->data = malloc(size_bytes);
-      js_image_extract(img->data, img->handle, img->channels);
-      js_image_delete(img->handle);
-      IMG_SET_HANDLE(img, size_bytes);
-      img->type = IMG_DATA;
+  assert(!img->data);
+  size_t size_bytes = img->pub.width * img->pub.height * img->pub.channels;
+  img->pub.data = malloc(size_bytes);
+  js_image_extract(img->pub.data, img->pub.handle, img->pub.channels);
+  js_image_delete(img->pub.handle);
+  IMG_SET_HANDLE(img, size_bytes);
+  img->pub.type = IMG_DATA;
 #else
-      img->data = img->handle;
+  img->pub.data = img->pub.handle;
 #endif
-    } break;
-
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void img_set_layout(Image* pimg, vec2i size, int channels) {
+void img_set_layout(Image pimg, vec2i size, int channels) {
   UNUSED(pimg);
   UNUSED(size);
   UNUSED(channels);
@@ -465,7 +531,7 @@ void img_set_layout(Image* pimg, vec2i size, int channels) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void img_set_size(Image* pimg, vec2i size) {
+void img_set_size(Image pimg, vec2i size) {
   UNUSED(pimg);
   UNUSED(size);
   // TODO
@@ -473,22 +539,27 @@ void img_set_size(Image* pimg, vec2i size) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void img_set_channels(Image* pimg, int channels) {
-  assert(pimg && *pimg);
-  Image img = *pimg;
-  assert(img->ready);
+void img_set_channels(Image _img, int channels) {
+  assert(_img);
+  Image_Internal* img = (Image_Internal*)_img;
+  assert(img->pub.status == S_READY);
   assert(channels > 0 && channels <= 4);
-  if (img->channels == channels) return;
-  img_resolve(&img);
+  if (img->pub.channels == channels) return;
+  img_resolve(_img);
 
-  size_t size_bytes = img->width * img->height * channels;
+  size_t size_bytes = img->pub.width * img->pub.height * channels;
   byte* dst_data = malloc(size_bytes);
   assert(dst_data);
 
-  for (size_t s = 0, d = 0; d < size_bytes; s += img->channels, d += channels) {
+  for (
+    size_t s = 0, d = 0;
+    d < size_bytes;
+    s += img->pub.channels, d += channels
+  ) {
     color4b pixel;
-    byte* src = (byte*)img->data + s;
-    switch (img->channels) {
+
+    byte* src = (byte*)img->pub.data + s;
+    switch (img->pub.channels) {
       case 4: pixel = *(color4b*)src;             break;
       case 3: pixel = v34b(*(color3b*)src, 255);  break;
       case 1: pixel = v4b(*src, *src, *src, 255); break;
@@ -505,9 +576,9 @@ void img_set_channels(Image* pimg, int channels) {
   }
 
   _img_free(img);
-  img->type = IMG_DATA;
-  img->data = dst_data;
-  img->channels = channels;
+  img->pub.type = IMG_DATA;
+  img->pub.data = dst_data;
+  img->pub.channels = channels;
   IMG_SET_HANDLE(img, size_bytes);
 }
 
@@ -515,27 +586,27 @@ void img_set_channels(Image* pimg, int channels) {
 // Rearranges an image from a 2d grid of tiles into a vertical stack
 ////////////////////////////////////////////////////////////////////////////////
 
-void img_repack_vertical(Image* pimg, vec2i dim) {
-  assert(pimg && *pimg);
-  Image img = *pimg;
-  assert(img->ready);
-  assert(img->handle);
+void img_repack_vertical(Image _img, vec2i dim) {
+  assert(_img);
+  Image_Internal* img = (Image_Internal*)_img;
+  assert(img->pub.status == S_READY);
+  assert(img->pub.handle);
   assert(dim.x > 0 && dim.y > 0);
   if (dim.x == 1) return;
-  img_resolve(&img);
+  img_resolve(_img);
 
-  size_t size_bytes = img->width * img->height * img->channels;
+  size_t size_bytes = img->pub.width * img->pub.height * img->pub.channels;
   byte* data = malloc(size_bytes);
   assert(data);
 
-  vec2i tile = i2div(img->size, dim);
-  int cell_width = img->channels * tile.w;
+  vec2i tile = i2div(img->pub.size, dim);
+  int cell_width = img->pub.channels * tile.w;
   int full_width = cell_width * dim.w;
 
   byte* iter_target = data;
   for (int dy = 0; dy < dim.y; ++dy) {
     for (int dx = 0; dx < dim.x; ++dx) {
-      const byte* source = (byte*)img->data
+      const byte* source = (byte*)img->pub.data
         + dx * cell_width
         + dy * full_width * tile.h;
 
@@ -548,8 +619,8 @@ void img_repack_vertical(Image* pimg, vec2i dim) {
   }
 
   _img_free(img);
-  img->type = IMG_DATA;
-  img->data = data;
+  img->pub.type = IMG_DATA;
+  img->pub.data = data;
   IMG_SET_HANDLE(img, size_bytes);
 }
 
@@ -559,8 +630,8 @@ void img_repack_vertical(Image* pimg, vec2i dim) {
 
 void img_save(Image img) {
   assert(img);
-  assert(img->filename);
-  img_save_as(img, img->filename->slice);
+  assert(img->filename.begin);
+  img_save_as(img, img->filename);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -580,7 +651,7 @@ void img_save_as(Image img, slice_t filename) {
 
 void img_save_as(Image img, slice_t filename) {
   assert(img);
-  assert(img->ready);
+  assert(img->status == S_READY);
   assert(filename.begin);
 
   // copy string to make sure the slice is null-terminated

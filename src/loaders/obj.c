@@ -26,12 +26,12 @@ model_obj_t file_load_obj(File file) {
   Array uvs   = arr_new(vec2);
   Array faces = arr_new(obj_face_elem_t);
   
-  str_log("Model_Obj - Loading: {}", file->name);
+  str_log("[Model.load] Loading OBJ: {}", file->name);
 
   index_t line_pos = 0;
 
-  while (line_pos < file->str.length) {
-    slice_t line = str_token_line(file->str, &line_pos).token;
+  while (line_pos < file->slice.length) {
+    slice_t line = str_token_line(file->slice, &line_pos).token;
 
     index_t i = 0;
     while (i < line.length) {
@@ -178,8 +178,8 @@ model_obj_t file_load_obj(File file) {
 
   arr_truncate(model.verts, model.verts->size);
 
-  str_log("  Loaded: verts: {}, indices: {}",
-    model.verts->size, model.indices->size
+  str_log("[Model.load] Loaded: verts: {}, indices: {} : {}"
+  , model.verts->size, model.indices->size, file->name
   );
 
   // Calculate tangents for each vertex...

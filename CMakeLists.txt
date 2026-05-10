@@ -59,6 +59,7 @@ target_sources(Wasp PRIVATE
   src/shader.c
   src/system_events.c
   src/texture.c
+  src/thread.c
   src/vertex.c
   src/wasm.c # rename to bridge.c?
   src/data/inline_primitives.h
@@ -83,8 +84,10 @@ target_sources(Wasp PRIVATE
   include/render_target.h
   include/renderer.h
   include/shader.h
+  include/status.h
   include/system_events.h
   include/texture.h
+  include/thread.h
   include/vertex.h
   include/wasm.h
   include/wasp.h

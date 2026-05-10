@@ -37,11 +37,11 @@
 typedef struct demo_shaders_t {
   Shader loading;
   Shader frame;
-  Shader pass;
   Shader basic;
   Shader light;
   Shader light_inst;
   Shader warhol;
+  Shader pass;
 } demo_shaders_t;
 
 typedef struct demo_models_t {
@@ -74,7 +74,7 @@ typedef struct demo_t {
   int               active_shader;
 
   RenderTarget      render_target;
-  RenderTarget      render_target_min;
+  RenderTarget      render_target_scaled;
 
   demo_shaders_t    shaders;
   demo_models_t     models;

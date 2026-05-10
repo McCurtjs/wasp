@@ -192,22 +192,22 @@ void mat_load_multi_async(Material m_in, view_slice_t filenames) {
 
     if (m->pub.params.use_diffuse_map) {
       String file = str_format("./res/textures/{}.{}", filename, m->ext);
-      (*img)->diffuse = img_load_async_str(file);
+      (*img)->diffuse = img_new_str(file);
     }
 
     if (m->pub.params.use_normal_map) {
       String file = str_format("./res/textures/{}_n.{}", filename, m->ext);
-      (*img)->normals = img_load_async_str(file);
+      (*img)->normals = img_new_str(file);
     }
 
     if (m->pub.params.use_roughness_map) {
       String file = str_format("./res/textures/{}_r.{}", filename, m->ext);
-      (*img)->roughness = img_load_async_str(file);
+      (*img)->roughness = img_new_str(file);
     }
 
     if (m->pub.params.use_metalness_map) {
       String file = str_format("./res/textures/{}_m.{}", filename, m->ext);
-      (*img)->metalness = img_load_async_str(file);
+      (*img)->metalness = img_new_str(file);
     }
 
     (*img)->next = NULL;
@@ -245,7 +245,7 @@ void mat_build(Material m_in) {
 
     for (int i = 0; i < MAT_MAP_COUNT; ++i) {
       if (img->images[i]) {
-        assert(img->images[i]->ready);
+        assert(img->images[i]->status == S_READY);
         m->pub.maps[i] = tex_from_image_atlas(img->images[i], dim);
         img_delete(&img->images[i]);
       }
@@ -260,7 +260,7 @@ void mat_build(Material m_in) {
 
       mat_images_t* node = img;
       while (node) {
-        assert(node->images[i]->ready);
+        assert(node->images[i]->status == S_READY);
         vec2i img_size = node->images[i]->size;
         if (img_size.x > size.x || img_size.y > size.y) {
           size = img_size;
@@ -281,7 +281,7 @@ void mat_build(Material m_in) {
 
       for (int i = 0; i < MAT_MAP_COUNT; ++i) {
         if (img->images[i]) {
-          assert(img->images[i]->ready);
+          assert(img->images[i]->status == S_READY);
           if (img->images[i]->type != IMG_ERROR) {
             assert(img->images[i]->size.w == m->pub.maps[i]->size.w);
             assert(img->images[i]->size.h == m->pub.maps[i]->size.h);

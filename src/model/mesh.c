@@ -60,7 +60,8 @@ typedef struct Model_Internal_Mesh {
 
 Model model_new_from_obj(File file) {
   assert(file);
-  if (!file_read(file)) {
+
+  if (file->status != S_READY) {
     str_log("[Model.new_from_obj] Can't read file: {}", file->name);
     return NULL;
   }

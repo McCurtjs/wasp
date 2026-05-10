@@ -26,6 +26,7 @@
 #define WASP_IMAGE_H_
 
 #include "types.h"
+#include "status.h"
 #include "slice.h"
 #include "span.h"
 #include "vec.h"
@@ -37,11 +38,11 @@ typedef enum img_type_t {
   IMG_DATA,
 } img_type_t;
 
-typedef struct image_t {
+typedef struct _opaque_Image_t {
+  slice_t       CONST filename;
   img_type_t    CONST type;
-  String        CONST filename;
-  CONST void*   CONST handle;
-  CONST void*   CONST data;
+  status_t      CONST status;
+  int           CONST channels;
   union {
     vec2i       CONST size;
     struct {
@@ -49,14 +50,15 @@ typedef struct image_t {
       int       CONST height;
     };
   };
-  int           CONST channels;
-  bool          CONST ready;
+  CONST void*   CONST data;
+  CONST void*   CONST handle;
   bool                blend;
 }* Image;
 
 //Image2 img_new(width/height);
-Image img_load_async_str(String filename);
-Image img_load_async(slice_t filename);
+
+Image img_new(slice_t filename);
+Image img_new_str(String filename);
 Image img_load_default_white(void);
 Image img_load_default_normal(void);
 Image img_from_bytes(const byte* data, vec2i size, int channels);
@@ -64,12 +66,15 @@ Image img_from_color(color4, vec2i size, int channels);
 Image img_pack_channels(Image r, Image g, Image b);
 Image img_copy(Image);
 //Image img_copy_resize(Image, vec2i size, int channels);
+
+index_t img_loading_count(void);
+
 void  img_delete(Image* image);
-void  img_resolve(Image*);
-void  img_set_layout(Image*, vec2i size, int channels);
-void  img_set_size(Image*, vec2i size);
-void  img_set_channels(Image*, int channels);
-void  img_repack_vertical(Image*, vec2i dim);
+void  img_resolve(Image);
+void  img_set_layout(Image, vec2i size, int channels);
+void  img_set_size(Image, vec2i size);
+void  img_set_channels(Image, int channels);
+void  img_repack_vertical(Image, vec2i dim);
 void  img_copy_data(void* dst, Image image, int dst_channels);
 void  img_save(Image);
 void  img_save_as(Image, slice_t filename);

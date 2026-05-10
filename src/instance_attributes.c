@@ -134,7 +134,7 @@ void attribute_bind(attribute_format_t format, Shader s) {
 // Disable warning for the return line:
 //    C33010: "Unchecked lower bound for enum format used as index"
 // Obviously the bound is being checked in the assert...
-# pragma warning ( disable : 33010)
+# pragma warning ( disable : 33010 )
 #endif
 
 index_t attribute_size(attribute_format_t format) {

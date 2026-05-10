@@ -30,7 +30,9 @@
 #include "file.h"
 #include "material.h"
 #include "map.h"
+#include "thread.h"
 
+// Have to undefine this here becuase apparently windows also defines it
 #undef CONST
 
 #include <string.h>
@@ -41,22 +43,29 @@
 
 #include "data/inline_shaders.h"
 
-enum shader_part_type_t {
+typedef enum shader_part_type_t {
   ST_UNKNOWN,
   ST_VERTEX,
   ST_FRAGMENT
-};
+} shader_part_type_t;
 
 typedef struct gl_shader_t {
-  uint      handle;
-  String    filename;
-  File      file;
-  bool      ready;
-  byte      type;
+  uint                handle;
+  shader_part_type_t  type;
+  status_t            status;
+  String              filename;
+  File                file;
+  String              text;
 #ifdef _WIN32
-  FILETIME  filetime;
+  FILETIME            filetime;
 #endif
 } gl_shader_t;
+
+#define con_type GLint
+#define con_prefix int
+#include "map.h"
+#undef con_type
+#undef con_prefix
 
 typedef struct Shader_Internal {
   struct _opaque_Shader_t pub;
@@ -64,34 +73,81 @@ typedef struct Shader_Internal {
   // hidden values
   uint      program_handle;
   String    name_internal;
-  String    vert_filename;
-  String    frag_filename;
-  HMap      uniforms;
+  slice_t   vert_filename;
+  slice_t   frag_filename;
+  HMap_int  uniforms;
 } Shader_Internal;
+
+#define con_type Shader_Internal*
+#define con_prefix shader
+#include "map.h"
+#undef con_type
+#undef con_prefix
+
+#define con_type gl_shader_t
+#define con_prefix part
+#include "map.h"
+#undef con_type
+#undef con_prefix
+
+static HMap_shader  _all_shaders_map = NULL;
+static HMap_part    _all_parts_map = NULL;
+static index_t      _shaders_linked_count = 0;
 
 #define SHADER_INTERNAL                                                       \
   Shader_Internal* s = (Shader_Internal*)(s_in);                              \
   assert(s)                                                                   //
 
-HMap _shader_parts = NULL;
-HMap _all_shaders = NULL;
-
 ////////////////////////////////////////////////////////////////////////////////
-// Helper functions for OpenGL shader compiling
+// Helpers for handling default shader names
 ////////////////////////////////////////////////////////////////////////////////
 
-bool _gl_shader_build(gl_shader_t* s, slice_t buffer) {
-  GLint size = (GLint)buffer.size;
+static bool _shader_is_default_name(slice_t name) {
+  return  str_eq(name, "quad")
+  ||      str_eq(name, "basic")
+  ;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static gl_shader_t* _part_get_or_create(shader_part_type_t, slice_t, slice_t);
+
+static gl_shader_t* _part_check_default(slice_t name) {
+  if (str_eq(name, "quad_vert"))
+    return _part_get_or_create(ST_VERTEX, name, S(shader_quad_vert));
+  if (str_eq(name, "quad_frag"))
+    return _part_get_or_create(ST_FRAGMENT, name, S(shader_quad_frag));
+  if (str_eq(name, "basic_vert"))
+    return _part_get_or_create(ST_VERTEX, name, S(shader_basic_vert));
+  if (str_eq(name, "basic_frag"))
+    return _part_get_or_create(ST_FRAGMENT, name, S(shader_basic_frag));
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Helper functions for managing and compiling GL shader "parts"
+////////////////////////////////////////////////////////////////////////////////
+
+static bool _part_build_check(gl_shader_t* s) {
+  assert(s);
+
+  if (s->status == S_READY)       { assert(s->handle); return true; }
+  if (s->status != S_COMPILING)   { return false; }
+  if (!thread_is_main())          { return false; }
+
+  GLint size = (GLint)s->text->size;
   GLint status = 0;
   GLenum type = s->type == ST_VERTEX ? GL_VERTEX_SHADER : GL_FRAGMENT_SHADER;
 
   s->handle = glCreateShader(type);
-  glShaderSource(s->handle, 1, &buffer.begin, &size);
+  assert(s->handle);
+  glShaderSource(s->handle, 1, &s->text->begin, &size);
   glCompileShader(s->handle);
   glGetShaderiv(s->handle, GL_COMPILE_STATUS, &status);
 
   if (status == GL_TRUE) {
-    s->ready = true;
+    s->status = S_READY;
+    str_log("[Shader.build] Compiled: {}", s->filename);
     return true;
   }
 
@@ -101,38 +157,169 @@ bool _gl_shader_build(gl_shader_t* s, slice_t buffer) {
   glGetShaderiv(s->handle, GL_INFO_LOG_LENGTH, &ilog_len);
   GLsizei log_length = (GLsizei)ilog_len;
 
+  if (!log_length) {
+    str_write(
+      "[Shader.build] Error compiling shader: no error message generated. "
+      "Possible threading issue?"
+    );
+  }
+
   char* log = malloc(log_length);
   glGetShaderInfoLog(s->handle, log_length, &log_length, log);
 
-  str_log("[Shader.build] Error compiling shader:\n  {}\n\n{}", s->filename, log);
+  str_log("[Shader.build] Error compiling shader:\n  {}\n{}", s->filename, log);
   free(log);
 
   glDeleteShader(s->handle);
   s->handle = 0;
+  s->status = S_ERROR;
 
   return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-bool _gl_shader_link(Shader_Internal* s, gl_shader_t* vert, gl_shader_t* frag) {
-  if (s->pub.ready || !vert->ready || !frag->ready) return 0;
+static void _part_load_check(gl_shader_t* s) {
+  assert(s);
+  assert(s->status == S_LOADING);
+
+  if (!s->file || s->file->status != S_READY) return;
+
+  str_delete(&s->text);
+  s->text = str_copy(s->file->slice);
+  s->status = S_COMPILING;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static gl_shader_t* _part_get_or_create(
+  shader_part_type_t type, slice_t file_or_name, slice_t text
+) {
+  assert(type == ST_VERTEX || type == ST_FRAGMENT);
+  assert(!slice_is_empty(file_or_name));
+  assert(slice_is_valid(text));
+
+  if (!_all_parts_map) _all_parts_map = map_part_new();
+
+  bool is_text_shader = !slice_is_empty(text);
+
+  gl_shader_t* ret = _part_check_default(is_text_shader ? text : file_or_name);
+  if (ret) return ret;
+
+  // Use ref/emplace here instead of ensure because the map doesn't store an
+  //    extra copy of the key, instead just using the string allocated by the
+  //    shader to match object lifetimes.
+  ret = map_part_ref(_all_parts_map, file_or_name);
+  if (ret) {
+    assert(ret->type == type);
+    return ret;
+  }
+
+  String key_copy = str_copy(file_or_name);
+
+  ret = map_part_emplace(_all_parts_map, key_copy->slice);
+
+  *ret = (gl_shader_t) {
+    .handle = 0,
+    .type = type,
+    .status = S_NEW,
+    .filename = key_copy,
+    .file = NULL,
+    .text = str_empty,
+  };
+
+  // Attempt to build the part immediately if its text is available
+  if (is_text_shader) {
+    ret->status = S_COMPILING;
+    ret->text = str_copy(text);
+
+    str_log("[Shader.new] Building text or default shader: {}", key_copy);
+    _part_build_check(ret);
+  }
+  // If it's not available yet, set it to loading
+  else {
+    ret->status = S_LOADING;
+    str_log("[Shader.new] Loading shader text from file: {}", key_copy);
+    ret->file = file_new(file_or_name, FM_READ);
+  }
+
+  return ret;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Helper functions for managing and linking GL shader programs
+////////////////////////////////////////////////////////////////////////////////
+
+static Shader_Internal* _shader_get_or_create(slice_t name) {
+  assert(!slice_is_empty(name));
+
+  if (!_all_shaders_map) _all_shaders_map = map_shader_new();
+
+  Shader_Internal** in_map = map_shader_ref(_all_shaders_map, name);
+  if (in_map) {
+    return *in_map;
+  }
+
+  String name_copy = str_copy(name);
+
+  Shader_Internal* ret = malloc(sizeof(Shader_Internal));
+  assert(ret);
+
+  *ret = (Shader_Internal) {
+    .pub = {
+      .name = name_copy->slice,
+      .attrib_format = AF_NONE,
+      .vertex_format = VF_POS_ONLY,
+      .status = S_NEW,
+    },
+    .program_handle = 0,
+    .name_internal = name_copy,
+    .vert_filename = slice_empty,
+    .frag_filename = slice_empty,
+    .uniforms = map_int_new(),
+  };
+
+  map_shader_insert(_all_shaders_map, ret->pub.name, ret);
+
+  return ret;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static bool _shader_link(Shader_Internal* s, gl_shader_t* v, gl_shader_t* f) {
+  assert(s);
+  assert(v);
+  assert(f);
+
+  if (s->pub.status == S_READY)     { assert(s->program_handle); return true; }
+  if (s->pub.status != S_LINKING)   { return false; }
+  if (v->status != S_READY)         { return false; }
+  if (f->status != S_READY)         { return false; }
+  if (!thread_is_main())            { return false; }
+
+  assert(v->handle);
+  assert(f->handle);
 
   GLint status = 0;
 
   s->program_handle = glCreateProgram();
-  glAttachShader(s->program_handle, vert->handle);
-  glAttachShader(s->program_handle, frag->handle);
+  assert(s->program_handle);
+  glAttachShader(s->program_handle, v->handle);
+  glAttachShader(s->program_handle, f->handle);
   glLinkProgram(s->program_handle);
 
   glGetProgramiv(s->program_handle, GL_LINK_STATUS, &status);
 
   if (status == GL_TRUE) {
-    s->pub.ready = true;
+    s->pub.status = S_READY;
+    ++_shaders_linked_count;
+    str_log("[Shader.link] Linked: {}", s->pub.name);
     return true;
   }
 
   // link_error:
+
+  s->pub.status = S_ERROR;
 
   int ilog_len = 0;
   glGetProgramiv(s->program_handle, GL_INFO_LOG_LENGTH, &ilog_len);
@@ -142,7 +329,7 @@ bool _gl_shader_link(Shader_Internal* s, gl_shader_t* vert, gl_shader_t* frag) {
   glGetProgramInfoLog(s->program_handle, log_length, &log_length, log);
 
   slice_t log_s = { .begin = log, .size = (index_t)log_length };
-  str_log("[Program.build] Error compiling shader program:\n{}", log_s);
+  str_log("[Shader.link] Error linking program: {}\n{}", s->pub.name, log_s);
 
   free(log);
 
@@ -151,251 +338,231 @@ bool _gl_shader_link(Shader_Internal* s, gl_shader_t* vert, gl_shader_t* frag) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-Shader _shader_basic = NULL;
-void _shader_build_basic(Shader s_in) {
-  SHADER_INTERNAL;
-  if (_shader_basic) return;
+static bool _shader_link_check(Shader_Internal* shader) {
+  assert(shader);
+  assert(shader->vert_filename.begin);
+  assert(shader->frag_filename.begin);
 
-  gl_shader_t vert = { .type = ST_VERTEX };
-  gl_shader_t frag = { .type = ST_FRAGMENT };
+  if (shader->pub.status == S_READY) return true;
 
-  _gl_shader_build(&vert, slice_from_c_str(basic_vert_text));
-  _gl_shader_build(&frag, slice_from_c_str(basic_frag_text));
+  gl_shader_t* vert = map_part_ref(_all_parts_map, shader->vert_filename);
+  gl_shader_t* frag = map_part_ref(_all_parts_map, shader->frag_filename);
 
-  if (!vert.ready || !frag.ready) {
-    str_write("[Shader.build_basic] Basic shader failed to build");
+  if (shader->pub.status == S_LOADING) {
+    if (vert->status == S_READY && frag->status == S_READY) {
+      shader->pub.status = S_LINKING;
+    }
   }
 
-  if (!_gl_shader_link(s, &vert, &frag)) {
-    str_write("[Shader.build_basic] Basic shader failed to link");
-  }
+  if (shader->pub.status != S_LINKING) return false;
 
-  _shader_basic = s_in;
+  return _shader_link(shader, vert, frag);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Initialize a new shader by name
+
 ////////////////////////////////////////////////////////////////////////////////
 
-Shader shader_new(slice_t name) {
+////////////////////////////////////////////////////////////////////////////////
+// Initialization for shaders based on names, files, or inline scripts
+////////////////////////////////////////////////////////////////////////////////
 
-  if (!_all_shaders) {
-    _all_shaders =
-      map_new(slice_t, Shader, slice_hash_vptr, slice_compare_vptr);
+Shader shader_new_from_default(slice_t name) {
+  assert(_shader_is_default_name(name));
+
+  str_log("[Shader.new] Building shder from default: {}", name);
+
+  return shader_new(name, slice_empty, slice_empty);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+Shader shader_new(slice_t name, slice_t vert_text, slice_t frag_text) {
+  assert(!slice_is_empty(name));
+  assert(!slice_is_empty(vert_text) || _shader_is_default_name(name));
+  assert(!slice_is_empty(frag_text) || _shader_is_default_name(name));
+
+  str_log("[Shader.new] Building shader from text: {}", name);
+
+  Shader_Internal* ret = _shader_get_or_create(name);
+  if (ret->pub.status != S_NEW) return (Shader)ret;
+
+  String vert_name = str_concat(name, "_vert");
+  String frag_name = str_concat(name, "_frag");
+
+  // Set up vertex part
+  gl_shader_t* vert = 
+    _part_get_or_create(ST_VERTEX, vert_name->slice, vert_text);
+
+  assert(vert);
+  ret->vert_filename = vert->filename->slice;
+  status_t vert_status = vert->status;
+
+  // Set up fragment part
+  gl_shader_t* frag = 
+    _part_get_or_create(ST_FRAGMENT, frag_name->slice, frag_text);
+
+  assert(frag);
+  ret->frag_filename = frag->filename->slice;
+  status_t frag_status = frag->status;
+
+  // Finish up and link
+  str_delete(&vert_name);
+  str_delete(&frag_name);
+
+  // Attempt to link immediately (since it's text based)
+  if (vert_status == S_READY && frag_status == S_READY) {
+    ret->pub.status = S_LINKING;
+    _shader_link_check(ret);
   }
 
-  Shader* in_map = map_ref(_all_shaders, &name);
-  if (in_map) {
-    str_log("[Shader.new] Name already in use: {}", name);
-    return *in_map;
-  }
-
-  str_log("[Shader.new] Building shader: {}", name);
-
-  Shader_Internal* ret = malloc(sizeof(Shader_Internal));
-  assert(ret);
-
-  String name_str = str_copy(name);
-
-  *ret = (Shader_Internal) {
-    .pub = {
-      .name = name_str->slice,
-      .attrib_format = AF_NONE,
-      .ready = false,
-    },
-
-    .program_handle = 0,
-    .name_internal = name_str,
-    .vert_filename = NULL,
-    .frag_filename = NULL,
-    .uniforms = NULL,
-  };
-
-  // set up uniforms map
-  ret->uniforms = map_new(slice_t, GLint, slice_hash_vptr, slice_compare_vptr);
-
-  map_insert(_all_shaders, &ret->pub.name, &ret);
-
-  if (str_eq(name, "basic")) {
-    _shader_build_basic((Shader)ret);
+  // If they're not ready (in case this was called off the main thread)
+  else {
+    assert(vert_status == S_COMPILING && frag_status == S_COMPILING);
+    ret->pub.status = S_COMPILING;
   }
 
   return (Shader)ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Create shader and start loading
+
+Shader shader_new_from_name(slice_t name) {
+  assert(!slice_is_empty(name));
+
+  str_log("[Shader.new] Building shader from name: {}", name);
+
+  if (_shader_is_default_name(name)) {
+    return shader_new_from_default(name);
+  }
+
+  Shader_Internal* test = _shader_get_or_create(name);
+  if (test->pub.status != S_NEW) return (Shader)test;
+
+  Shader ret = shader_new_from_files(name, name, name);
+  assert(ret == (Shader)test);
+
+  return (Shader)ret;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
-Shader shader_new_load_async(slice_t name) {
-  Shader ret = shader_new(name);
-  shader_load_async(ret);
+Shader shader_new_from_files(
+  slice_t name, slice_t vert_name, slice_t frag_name
+) {
+  assert(!slice_is_empty(name));
+  assert(!slice_is_empty(vert_name));
+  assert(!slice_is_empty(frag_name));
+
+  str_log("[Shader.new] Building shader from files: {}\n  Vert: {}\n  Frag: {}",
+    name, vert_name, frag_name
+  );
+
+  Shader_Internal* ret = _shader_get_or_create(name);
+  if (ret->pub.status != S_NEW) return (Shader)ret;
+
+  // set up vertex shader
+  gl_shader_t* vert = _part_check_default(vert_name);
+  if (!vert) {
+    String filename = str_concat("./res/shaders/", vert_name, ".vert");
+    vert = _part_get_or_create(ST_VERTEX, filename->slice, slice_empty);
+    str_delete(&filename);
+  }
+  ret->vert_filename = vert->filename->slice;
+  status_t vert_status = vert->status;
+
+  // set up fragment shader
+  gl_shader_t* frag = _part_check_default(frag_name);
+  if (!frag) {
+    String filename = str_concat("./res/shaders/", frag_name, ".frag");
+    frag = _part_get_or_create(ST_FRAGMENT, filename->slice, slice_empty);
+    str_delete(&filename);
+  }
+  ret->frag_filename = frag->filename->slice;
+  status_t frag_status = frag->status;
+
+  // link if all parts are available
+  ret->pub.status = S_LINKING;
+
+  if (vert_status == S_LOADING || frag_status == S_LOADING)
+    ret->pub.status = S_LOADING;
+  else if (vert_status == S_COMPILING || frag_status == S_COMPILING)
+    ret->pub.status = S_COMPILING;
+  else if (vert_status == S_READY && frag_status == S_READY)
+    _shader_link_check(ret);
+
+  return (Shader)ret;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Shader loading management
+////////////////////////////////////////////////////////////////////////////////
+
+index_t shader_manage_update(void) {
+  assert(thread_is_main());
+
+  if (_shaders_linked_count == _all_shaders_map->size) return 0;
+
+  gl_shader_t* map_foreach(part, _all_parts_map) {
+    if (part->status == S_LOADING) {
+      _part_load_check(part);
+    }
+
+    if (part->status == S_COMPILING) {
+      _part_build_check(part);
+    }
+  }
+
+  Shader_Internal** map_foreach(pshader, _all_shaders_map) {
+    Shader_Internal* shader = *pshader;
+    if (shader->pub.status != S_READY) {
+      _shader_link_check(shader);
+    }
+  }
+
+  index_t ret = _all_shaders_map->size - _shaders_linked_count;
+  assert(ret >= 0);
   return ret;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Remove after use
+////////////////////////////////////////////////////////////////////////////////
 
 void shader_delete(Shader* shader) {
   if (!shader || !*shader) return;
   Shader_Internal* s = (Shader_Internal*)*shader;
   str_delete(&s->name_internal);
-  str_delete(&s->frag_filename);
-  str_delete(&s->vert_filename);
-  map_delete(&s->uniforms);
+  map_int_delete(&s->uniforms);
 
   // TODO: Safely free all the shader related memory/handles
   *shader = NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Start loading the shader files
-////////////////////////////////////////////////////////////////////////////////
-
-void shader_load_async(Shader s_in) {
-  SHADER_INTERNAL;
-
-  if (s->program_handle) {
-    str_log("[Shader.load] Shader alrady loaded: {}", s->pub.name);
-    if (s->pub.ready) return;
-  }
-
-  if (!_shader_parts) {
-    _shader_parts = map_new(
-      slice_t, gl_shader_t, slice_hash_vptr, slice_compare_vptr
-    );
-  }
-
-  if (!s->vert_filename) {
-    s->vert_filename = str_format("./res/shaders/{}.vert", s->pub.name);
-  }
-
-  res_ensure_t vert_ens = map_ensure(_shader_parts, s->vert_filename);
-  gl_shader_t* vert = vert_ens.value;
-
-  if (vert_ens.is_new) {
-    *vert = (gl_shader_t) {
-      .handle = 0,
-      .filename = str_copy(s->vert_filename),
-      .file = file_new(s->vert_filename->slice),
-      .ready = false,
-      .type = ST_VERTEX
-    };
-  }
-
-  if (!s->frag_filename) {
-    s->frag_filename = str_format("./res/shaders/{}.frag", s->pub.name);
-  }
-
-  res_ensure_t frag_ens = map_ensure(_shader_parts, s->frag_filename);
-  gl_shader_t* frag = frag_ens.value;
-
-  if (frag_ens.is_new) {
-    *frag = (gl_shader_t) {
-      .handle = 0,
-      .filename = str_copy(s->frag_filename),
-      .file = file_new(s->frag_filename->slice),
-      .ready = false,
-      .type = ST_FRAGMENT
-    };
-  }
-}
-
-void shader_file_vert(Shader s_in, slice_t override) {
-  SHADER_INTERNAL;
-  assert(!s->pub.ready);
-  assert(!s->vert_filename);
-  s->vert_filename = str_format("./res/shaders/{}.vert", override);
-}
-
-void shader_file_frag(Shader s_in, slice_t override) {
-  SHADER_INTERNAL;
-  assert(!s->pub.ready);
-  assert(!s->frag_filename);
-  s->frag_filename = str_format("./res/shaders/{}.frag", override);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Build the shader
-////////////////////////////////////////////////////////////////////////////////
-
-void shader_build(Shader s_in) {
-  SHADER_INTERNAL;
-  if (s->pub.ready) return;
-
-  gl_shader_t* vert = map_ref(_shader_parts, s->vert_filename);
-  gl_shader_t* frag = map_ref(_shader_parts, s->frag_filename);
-
-  if (!vert || !frag) {
-    if (!vert) str_log("[Shader.build] Missing shader: {}", s->vert_filename);
-    if (!frag) str_log("[Shader.build] Missing shader: {}", s->frag_filename);
-    return;
-  }
-
-  file_read(vert->file);
-  file_read(frag->file);
-
-  if (!vert->ready) {
-    if (vert->file && vert->file->data) {
-      _gl_shader_build(vert, vert->file->str);
-      file_delete(&vert->file);
-    } else {
-      str_log("[Shader.build] Vertex shader broke: {}", vert->filename);
-    }
-  }
-
-  if (!frag->ready) {
-    if (frag->file && frag->file->data) {
-      _gl_shader_build(frag, frag->file->str);
-      file_delete(&frag->file);
-    } else {
-      str_log("[Shader.build] Fragment shader broken: {}", frag->filename);
-    }
-  }
-
-  if (!vert->ready || !frag->ready) {
-    str_log("[Shader.build] Failed component not ready: {} for {}",
-      vert->ready ? "vertex" : "fragment", s->pub.name
-    );
-    return;
-  }
-
-  if (!_gl_shader_link(s, vert, frag)) {
-    str_log("[Shader.build] Failed to link shader: {}", s->pub.name);
-    return;
-  }
-
-  str_log("[Shader.build] Built \"{}\" using\n  vert: {}\n  frag: {}"
-  , s->pub.name, vert->filename, frag->filename
-  );
-
-  s->pub.ready = true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-void shader_build_all(void) {
-  Shader* map_foreach(shader, _all_shaders) {
-    shader_build(*shader);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // Apply the shader for use
 ////////////////////////////////////////////////////////////////////////////////
 
-void shader_bind(Shader s_in) {
+bool shader_bind(Shader s_in) {
   SHADER_INTERNAL;
-  assert(s->pub.ready);
+  if (s->pub.status != S_READY) return false;
   glUseProgram(s->program_handle);
+  return true;
 }
+
+////////////////////////////////////////////////////////////////////////////////
 
 void shader_bind_attributes(Shader s_in) {
   SHADER_INTERNAL;
-  assert(s_in->ready);
+  assert(s_in->status == S_READY);
   attribute_bind(s->pub.attrib_format, s_in);
 }
 
-void shader_set_material(Shader s_in, Material material) {
+////////////////////////////////////////////////////////////////////////////////
+
+void shader_bind_material(Shader s_in, Material material) {
   SHADER_INTERNAL;
-  assert(s_in->ready);
+  assert(s_in->status == S_READY);
   assert(material);
 
   // get uniform/attribute locations for active material
@@ -419,10 +586,10 @@ void shader_set_material(Shader s_in, Material material) {
 
 int shader_uniform_loc(Shader s_in, const char* name) {
   SHADER_INTERNAL;
-  assert(s->pub.ready);
+  assert(s->pub.status == S_READY);
 
   slice_t name_slice = slice_from_c_str(name);
-  res_ensure_t slot = map_ensure(s->uniforms, &name_slice);
+  res_ensure_int_t slot = map_int_ensure(s->uniforms, name_slice);
 
   if (slot.is_new) {
     *(GLint*)slot.value = glGetUniformLocation(s->program_handle, name);
@@ -441,13 +608,13 @@ int shader_uniform_loc(Shader s_in, const char* name) {
 
 int shader_attribute_loc(Shader s_in, const char* name) {
   SHADER_INTERNAL;
-  assert(s->pub.ready);
+  assert(s->pub.status == S_READY);
 
   slice_t name_slice = slice_from_c_str(name);
-  res_ensure_t slot = map_ensure(s->uniforms, &name_slice);
+  res_ensure_int_t slot = map_int_ensure(s->uniforms, name_slice);
 
   if (slot.is_new) {
-    *(GLint*)slot.value = glGetAttribLocation(s->program_handle, name);
+    *slot.value = glGetAttribLocation(s->program_handle, name);
     int err = glGetError();
     if (err) {
       str_log("[Shader.attrib_loc] Failed: {}, error: 0x{!x}", name, err);
@@ -469,12 +636,11 @@ void shader_check_updates(void) {
 
 #include <Windows.h>
 
-void _gl_shader_update_program(Shader s_in, gl_shader_t* part) {
-  SHADER_INTERNAL;
-
+void _gl_shader_update_program(Shader_Internal* s, gl_shader_t* part) {
   gl_shader_t* vert = NULL;
   gl_shader_t* frag = NULL;
 
+  // check if this shader is affected by a part being updated
   if (str_eq(s->vert_filename, part->filename)) {
     vert = part;
   }
@@ -485,18 +651,24 @@ void _gl_shader_update_program(Shader s_in, gl_shader_t* part) {
     return;
   }
 
-  if (!vert) vert = map_ref(_shader_parts, s->vert_filename);
-  if (!frag) frag = map_ref(_shader_parts, s->frag_filename);
+  if (!vert) vert = map_part_ref(_all_parts_map, s->vert_filename);
+  if (!frag) frag = map_part_ref(_all_parts_map, s->frag_filename);
+
+  assert(vert);
+  assert(frag);
+
+  if (vert->status != S_READY || frag->status != S_READY) return;
 
   Shader_Internal temp = *s;
-  temp.pub.ready = false;
+  temp.pub.status = S_LINKING;
   temp.program_handle = 0;
 
-  if (!_gl_shader_link(&temp, vert, frag)) {
+  if (!_shader_link(&temp, vert, frag)) {
     str_log("[Shader.watch] Failed to re-link shader: {}", s->pub.name);
     return;
   }
 
+  --_shaders_linked_count;
   glDeleteProgram(s->program_handle);
 
   str_log("[Shader.watch] Re-linked: {}", s->pub.name);
@@ -507,14 +679,14 @@ void _gl_shader_update_program(Shader s_in, gl_shader_t* part) {
   }
 
   *s = temp;
-  map_clear(s->uniforms);
+  map_int_clear(s->uniforms);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 void _gl_shader_update_programs(gl_shader_t* part) {
-  Shader* map_foreach(shader, _all_shaders) {
-    _gl_shader_update_program(*shader, part);
+  Shader_Internal** map_foreach(pshader, _all_shaders_map) {
+    _gl_shader_update_program(*pshader, part);
   }
 }
 
@@ -525,20 +697,24 @@ void _gl_shader_update(gl_shader_t* part) {
   gl_shader_t temp = (gl_shader_t) {
     .handle = 0,
     .filename = part->filename,
-    .file = file_new(part->filename->slice),
-    .ready = false,
+    .file = file_new(part->filename->slice, FM_READ),
+    .status = S_COMPILING,
     .type = part->type
   };
 
-  if (!temp.file || !file_read(temp.file) || !temp.file->data) {
+  if (!temp.file || temp.file->status != S_READY) {
     str_write("[Shader.watch] Failed to read new file");
     file_delete(&temp.file);
     return;
   }
 
-  if (_gl_shader_build(&temp, temp.file->str)) {
+  temp.text = str_copy(temp.file->slice);
+
+  if (_part_build_check(&temp)) {
     str_write("[Shader.watch] Reload success!");
     glDeleteShader(part->handle);
+    file_delete(&part->file);
+    str_delete(&part->text);
     *part = temp;
 
     _gl_shader_update_programs(part);
@@ -592,8 +768,10 @@ close_handle:
 ////////////////////////////////////////////////////////////////////////////////
 
 void shader_check_updates(void) {
-  gl_shader_t* map_foreach(shader, _shader_parts) {
-    _shader_check_update(shader);
+  if (_all_parts_map) {
+    gl_shader_t* map_foreach(shader, _all_parts_map) {
+      _shader_check_update(shader);
+    }
   }
 }
 

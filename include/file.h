@@ -1,7 +1,7 @@
 /*******************************************************************************
 * MIT License
 *
-* Copyright (c) 2025 Curtis McCoy
+* Copyright (c) 2026 Curtis McCoy
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -27,24 +27,32 @@
 
 #include "types.h"
 #include "str.h"
+#include "status.h"
 
-typedef struct {
-  void* handle; // standin for FILE*
-  String name;
+#include "span_byte.h"
 
-  union {
-    struct {
-      byte* data;
-      index_t length;
-    };
-    slice_t str;
-  };
+typedef enum file_mode_t {
+  FM_READ,
+  FM_WRITE,
+  FM_READ_WRITE,
+  FM_REPLACE,
+  FM_COUNT
+} file_mode_t;
 
+typedef struct _opaque_File_t {
+  slice_t       CONST name;
+  status_t      CONST status;
+  file_mode_t   CONST mode;
+  view_byte_t   CONST data;
+  slice_t       CONST slice;
 }* File;
 
-File file_new(slice_t filename);
-long file_read_length(File file);
-bool file_read(File file);
-void file_delete(File* file);
+File        file_new(slice_t filename, file_mode_t mode);
+
+void        file_manage_queue(void);
+index_t     file_async_count(void);
+
+void        file_delete(File*);
+span_byte_t file_release_data(File);
 
 #endif

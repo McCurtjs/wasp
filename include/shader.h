@@ -1,7 +1,7 @@
 /*******************************************************************************
 * MIT License
 *
-* Copyright (c) 2025 Curtis McCoy
+* Copyright (c) 2026 Curtis McCoy
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -27,27 +27,32 @@
 
 #include "types.h"
 #include "slice.h"
+#include "status.h"
 #include "instance_attributes.h"
+#include "vertex.h"
 
 typedef struct _opaque_Material_t* Material;
 
 typedef struct _opaque_Shader_t {
   slice_t             CONST name;
-  attribute_format_t        attrib_format;
-  bool                CONST ready;
+  status_t            CONST status;
+  attribute_format_t        attrib_format; // TODO: detect these
+  vertex_format_t           vertex_format;
 }* Shader;
 
-Shader  shader_new(slice_t name);
-Shader  shader_new_load_async(slice_t name);
-void    shader_file_vert(Shader, slice_t override);
-void    shader_file_frag(Shader, slice_t override);
+Shader  shader_new_from_default(slice_t name);
+Shader  shader_new(slice_t name, slice_t vert_text, slice_t frag_text);
+Shader  shader_new_from_name(slice_t name);
+Shader  shader_new_from_files(slice_t name, slice_t vert_file, slice_t frag_name);
+
+index_t shader_manage_update(void);
+
 void    shader_load_async(Shader);
 void    shader_build(Shader);
-void    shader_build_all(void);
-void    shader_bind(Shader);
+bool    shader_bind(Shader);
 void    shader_bind_attributes(Shader);
 void    shader_set_uniform(Shader);
-void    shader_set_material(Shader, Material);
+void    shader_bind_material(Shader, Material);
 void    shader_delete(Shader* shader);
 
 int     shader_uniform_loc(Shader, const char* name);

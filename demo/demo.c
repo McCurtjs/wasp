@@ -133,8 +133,8 @@ void wasp_init(app_defaults_t* game) {
 
 void demo_callback_window_resize(Game game) {
   game->resolution = i2scale(game->window, 0.25f);
-  rt_resize(demo.render_target, game->window);
-  rt_resize(demo.render_target_min, game->resolution);
+  rt_resize(demo.render_target, game->resolution);
+  rt_resize(demo.render_target_scaled, game->resolution);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -209,7 +209,7 @@ bool wasp_preload(Game game) {
   img_delete(&save_out);
   //*/
 
-  file_model_gear = file_new(S("./res/models/gear.obj"));
+  file_model_gear = file_new(S("./res/models/gear.obj"), FM_READ);
 
   demo.materials.grass = mat_new(S("grass_rocky"), mat_params_norm_rough);
   demo.materials.grass->weight_roughness = 1.0f;
@@ -231,17 +231,19 @@ bool wasp_preload(Game game) {
 
   mat_load_all_async();
 
-  demo.shaders.basic = shader_new_load_async(S("basic_deferred"));
-  demo.shaders.light = shader_new_load_async(S("light"));
-  demo.shaders.frame = shader_new_load_async(S("frame"));
-  demo.shaders.warhol = shader_new_load_async(S("warhol"));
-  demo.shaders.light_inst = shader_new(S("light_inst"));
+  demo.shaders.basic = shader_new_from_files(
+    S("basic_deferred"), S("basic_vert"), S("basic_deferred"));
+  demo.shaders.pass =
+    shader_new_from_default(S("quad"));
+  demo.shaders.light =
+    shader_new_from_name(S("light"));
+  demo.shaders.frame =
+    shader_new_from_files(S("frame"), S("quad_vert"), S("frame"));
+  demo.shaders.warhol =
+    shader_new_from_files(S("warhol"), S("quad_vert"), S("warhol"));
+  demo.shaders.light_inst =
+    shader_new_from_files(S("light_inst"), S("light_inst"), S("light"));
   demo.shaders.light_inst->attrib_format = AF_MATERIAL_TINT;
-  shader_file_frag(demo.shaders.light_inst, S("light"));
-  shader_load_async(demo.shaders.light_inst);
-  demo.shaders.pass = shader_new(S("passthrough"));
-  shader_file_vert(demo.shaders.pass, S("warhol"));
-  shader_load_async(demo.shaders.pass);
 
   return true;
 }
@@ -254,11 +256,14 @@ bool wasp_preload(Game game) {
 # undef far // why does windows define "far", lol
 #endif
 
-bool wasp_load (Game game, int await_count, float dt) {
+static File test = NULL;
+
+bool wasp_load(Game game, int await_count, float dt) {
+  await_count += (int)shader_manage_update();
 
   // load this first since it's the loading screen spinner
   if (!demo.shaders.loading) {
-    demo.shaders.loading = shader_new(S("basic"));
+    demo.shaders.loading = shader_new_from_default(S("basic"));
     demo.models.color_cube = model_new_primitive(MODEL_CUBE_COLOR);
   }
 
@@ -276,12 +281,11 @@ bool wasp_load (Game game, int await_count, float dt) {
     F_DEPTH_32, TF_RGB_8, TF_RG_16, TF_RGB_10_A_2, TF_R_32
   );
   game->demo->render_target->clear_color = v3f(0.f, 0.f, 0.8f);
-  game->demo->render_target_min = rt_new(F_DEPTH_NONE, TF_RGB_8);
+  game->demo->render_target_scaled = rt_new(F_DEPTH_NONE, TF_RGB_8);
 
   rt_build(game->demo->render_target, game->window);
-  rt_build(game->demo->render_target_min, game->resolution);
+  rt_build(game->demo->render_target_scaled, game->resolution);
 
-  shader_build_all();
   mat_build_all();
 
   // Set params for PBR render group
@@ -313,7 +317,7 @@ bool wasp_load (Game game, int await_count, float dt) {
 // Game per-frame update
 ////////////////////////////////////////////////////////////////////////////////
 
-bool wasp_update (Game game, float dt) {
+bool wasp_update(Game game, float dt) {
   game_update(game, dt);
   return true;
 }
@@ -333,8 +337,8 @@ void wasp_render(Game game) {
 
   Texture lights = tex_from_lights();
 
-  //rt_bind(game->demo->render_target_min);
-  rt_bind_default();
+  rt_bind(game->demo->render_target_scaled);
+  //rt_bind_default();
 
   Shader shader = demo.shaders.frame;
   if (demo.active_shader == 1) {
@@ -357,11 +361,11 @@ void wasp_render(Game game) {
 
   model_render(demo.models.frame);
 
-  //rt_bind_default();
-  //shader_bind(demo.shaders.pass);
-  //int frame_sampler = shader_uniform_loc(demo.shaders.pass, "samp_frame");
-  //tex_apply(demo.render_target_min->textures[0], 0, frame_sampler);
-  //model_render(demo.models.frame);
+  rt_bind_default();
+  shader_bind(demo.shaders.pass);
+  int frame_sampler = shader_uniform_loc(demo.shaders.pass, "samp_frame");
+  tex_apply(demo.render_target_scaled->textures[0], 0, frame_sampler);
+  model_render(demo.models.frame);
 
   tex_delete(&lights);
 }

@@ -306,15 +306,15 @@ static void _renderer_create_vao(Shader s, render_group_t* group) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void renderer_callback_render(renderer_t* renderer, Game game) {
+bool renderer_callback_render(renderer_t* renderer, Game game) {
   assert(renderer);
   assert(game);
-  if (!renderer->groups || !renderer->groups->size) return;
+  if (!renderer->groups || !renderer->groups->size) return false;
 
   // set up values shared for each pass
   Shader shader = renderer->shader;
   assert(shader);
-  shader_bind(renderer->shader);
+  if (!shader_bind(renderer->shader)) return false;
 
   // apply globally shared uniforms
   int loc_proj_view = shader_uniform_loc(shader, "in_pv_matrix");
@@ -326,7 +326,7 @@ void renderer_callback_render(renderer_t* renderer, Game game) {
   render_group_t* map_foreach(group, renderer->groups) {
     if (!group->instances || !group->instances->size) continue;
 
-    shader_set_material(renderer->shader, group->material);
+    shader_bind_material(renderer->shader, group->material);
 
     // if the group's VAO hasn't been set, create it
     if (!group->vao) {
@@ -339,4 +339,6 @@ void renderer_callback_render(renderer_t* renderer, Game game) {
     model_render_instanced(group->model, group->instances->size);
     glBindVertexArray(0);
   }
+
+  return true;
 }

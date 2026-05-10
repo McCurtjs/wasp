@@ -2,7 +2,7 @@ import { Game } from "./game.js";
 
 var game = null;
 
-function renderTimer(now) {
+function render_timer(now) {
   const { await_count, gl } = game;
   const { wasp_load, wasp_update, wasp_render } = game.wasm.exports;
   const ms = now - game.frame_time; // milliseconds per frame
@@ -28,7 +28,7 @@ function renderTimer(now) {
       console.log("[Main.WebGL] Error: 0x" + err.toString(16));
     }
   }
-  requestAnimationFrame(renderTimer);
+  requestAnimationFrame(render_timer);
 }
 
 window.onload = async() => {
@@ -43,7 +43,7 @@ window.onload = async() => {
     game.handle = game.wasm.exports.game_init(canvas.width, canvas.height);
     if (game.wasm.exports.wasp_preload(game.handle)) {
       game.initialize_window_events();
-      requestAnimationFrame(renderTimer);
+      requestAnimationFrame(render_timer);
     }
   }
 }
