@@ -231,18 +231,18 @@ bool wasp_preload(Game game) {
 
   mat_load_all_async();
 
-  demo.shaders.basic = shader_new_from_files(
-    S("basic_deferred"), S("basic_vert"), S("basic_deferred"));
+  demo.shaders.basic =
+    shader_new_from_files(S("deferred"), S("basic_vert"), S("basic_gbuf"));
   demo.shaders.pass =
     shader_new_from_default(S("quad"));
-  demo.shaders.light =
-    shader_new_from_name(S("light"));
   demo.shaders.frame =
-    shader_new_from_files(S("frame"), S("quad_vert"), S("frame"));
+    shader_new_from_files(S("frame"), S("quad_vert"), S("pbr_light"));
   demo.shaders.warhol =
     shader_new_from_files(S("warhol"), S("quad_vert"), S("warhol"));
+  demo.shaders.light =
+    shader_new_from_files(S("light"), S("static_gbuf"), S("pbr_gbuf"));
   demo.shaders.light_inst =
-    shader_new_from_files(S("light_inst"), S("light_inst"), S("light"));
+    shader_new_from_files(S("light_inst"), S("static_gbuf_inst"), S("pbr_gbuf"));
   demo.shaders.light_inst->attrib_format = AF_MATERIAL_TINT;
 
   return true;
