@@ -27,6 +27,7 @@
 #include "gl.h"
 #include "light.h"
 #include "graphics.h"
+#include "str.h"
 
 #define PLANE_SPEED_MIN 30.f
 

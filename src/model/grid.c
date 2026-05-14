@@ -29,6 +29,8 @@
 
 #include <stdlib.h>
 
+extern Array _new_models;
+
 ////////////////////////////////////////////////////////////////////////////////
 // Model Grid
 ////////////////////////////////////////////////////////////////////////////////
@@ -68,9 +70,11 @@ Model model_new_grid(model_grid_param_t param) {
   *grid = (Model_Internal_Grid) {
     .type = MODEL_GRID,
     .name = _name_grid,
-    .ready = false,
+    .status = S_READY,
     .params = param
   };
+
+  arr_insert_back(_new_models, &grid);
 
   assert(grid->extent == param.extent);
 
@@ -155,8 +159,6 @@ Model model_new_grid(model_grid_param_t param) {
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
 
-  grid->ready = TRUE;
-
   return (Model)grid;
 }
 
@@ -175,8 +177,9 @@ Model model_new_grid_default(int extent) {
 
 void _model_render_grid(Model model) {
   Model_Internal_Grid* grid = (Model_Internal_Grid*)model;
+  assert(grid);
   assert(grid->type == MODEL_GRID);
-  assert(grid->ready);
+  assert(grid->status == S_READY);
   assert(grid->vao);
   glBindVertexArray(grid->vao);
   glDrawArrays(GL_LINES, 0, (GLsizei)grid->vert_count);

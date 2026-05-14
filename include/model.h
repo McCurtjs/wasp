@@ -26,11 +26,12 @@
 #define WASP_MODEL_H_
 
 #include "types.h"
+#include "status.h"
 #include "mat.h"
 #include "array.h"
-#include "file.h"
 #include "texture.h"
 #include "vertex.h"
+#include "slice.h"
 
 typedef enum model_type_t {
   MODEL_NONE = 0,
@@ -85,10 +86,10 @@ typedef struct model_sprites_t {
 #define MODEL_PROPS                   \
   CONST model_type_t    type;         \
   CONST slice_t         name;         \
+  CONST status_t        status;       \
   CONST vertex_format_t format;       \
   CONST index_t         vert_count;   \
-  CONST index_t         index_count;  \
-  CONST bool            ready         //
+  CONST index_t         index_count   //
 
 typedef struct _opaque_Model_t {
   MODEL_PROPS;
@@ -103,7 +104,11 @@ Model   model_new_primitive(model_type_t type);
 Model   model_new_sprites(vec2i dim);
 Model   model_new_grid(model_grid_param_t grid);
 Model   model_new_grid_default(int extent);
-Model   model_new_from_obj(File file);
+Model   model_new_load_obj(slice_t filename);
+Model   model_new_from_obj(slice_t obj_text);
+
+//Array_slice   model_list(void);
+//Model   model_get(slice_t name);
 
 void    model_delete(Model* model);
 

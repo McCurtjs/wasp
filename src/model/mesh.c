@@ -29,6 +29,8 @@
 
 #include <stdlib.h>
 
+extern Array _new_models;
+
 ////////////////////////////////////////////////////////////////////////////////
 // Models loaded from files
 ////////////////////////////////////////////////////////////////////////////////
@@ -41,6 +43,7 @@ typedef struct Model_Internal_Mesh {
   // Secrets
 
   String name_internal;
+  File file;
 
   union {
     GLuint buffers[2];
@@ -54,45 +57,46 @@ typedef struct Model_Internal_Mesh {
 } Model_Internal_Mesh;
 
 ////////////////////////////////////////////////////////////////////////////////
-// Load from OBJ
-////////////////////////////////////////////////////////////////////////////////
 
-Model model_new_from_obj(File file) {
-  assert(file);
+static void _model_build_from_string(Model model, slice_t text) {
+  Model_Internal_Mesh* mesh = (Model_Internal_Mesh*)model;
+  assert(mesh);
+  assert(mesh->type == MODEL_MESH);
 
-  if (file->status != S_READY) {
-    str_log("[Model.new_from_obj] Can't read file: {}", file->name);
-    return NULL;
-  }
+  if (mesh->status != S_BUILDING) return;
 
-  Model_Internal_Mesh* model = calloc(1, sizeof(Model_Internal_Mesh));
-  assert(model);
-
-  model->type = MODEL_MESH;
-
-  model_obj_t obj = file_load_obj(file);
+  model_obj_t obj = file_load_obj(text);
 
   if (!obj.verts || !obj.verts->size) {
     assert(0);
+    mesh->status = S_ERROR;
     goto new_obj_cleanup;
   }
 
-  model->format = obj.format;
-  model->vert_count = obj.verts->size;
-  model->index_count = obj.indices->size;
-  model->name_internal = obj.name;
-  model->name = obj.name->slice;
+  if (obj.name == NULL) {
+    if (mesh->file)
+      obj.name = str_copy(str_between_last(mesh->file->name, "/", "."));
+    else
+      obj.name = str_copy("OBJ_Model");
+  }
 
-  glGenBuffers(2, model->buffers);
+  mesh->status = S_READY;
+  mesh->format = obj.format;
+  mesh->vert_count = obj.verts->size;
+  mesh->index_count = obj.indices->size;
+  mesh->name_internal = obj.name;
+  mesh->name = obj.name->slice;
 
-  glBindBuffer(GL_ARRAY_BUFFER, model->vbo);
+  glGenBuffers(2, mesh->buffers);
+
+  glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
   glBufferData(GL_ARRAY_BUFFER
   , obj.verts->size_bytes
   , obj.verts->begin
   , GL_STATIC_DRAW
   );
 
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model->ebo);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER
   , obj.indices->size_bytes
   , obj.indices->begin
@@ -102,12 +106,74 @@ Model model_new_from_obj(File file) {
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-  model->ready = true;
-
 new_obj_cleanup:
 
   arr_delete(&obj.verts);
   arr_delete(&obj.indices);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void _model_build_mesh(Model model) {
+  Model_Internal_Mesh* mesh = (Model_Internal_Mesh*)model;
+  assert(mesh);
+  assert(mesh->type == MODEL_MESH);
+
+  if (mesh->status == S_READY) return;
+  assert(mesh->file);
+
+  if (mesh->status == S_LOADING && mesh->file->status == S_READY) {
+    mesh->status = S_BUILDING;
+  }
+
+  str_log("[Model.load] Building model from file: {}", mesh->file->name);
+
+  _model_build_from_string(model, mesh->file->slice);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Load from OBJ
+////////////////////////////////////////////////////////////////////////////////
+
+Model model_new_load_obj(slice_t filename) {
+  assert(!slice_is_empty(filename));
+
+  Model_Internal_Mesh* model = malloc(sizeof(*model));
+  assert(model);
+
+  str_log("[Model.new] Loading from file: {}", filename);
+
+  *model = (Model_Internal_Mesh) {
+  .type = MODEL_MESH,
+  .status = S_LOADING,
+  .file = file_new(filename, FM_READ),
+  };
+
+  arr_insert_back(_new_models, &model);
+
+  return (Model)model;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+Model model_new_from_obj(slice_t obj_text) {
+  assert(slice_is_valid(obj_text));
+
+  Model_Internal_Mesh* model = malloc(sizeof(*model));
+  assert(model);
+
+  str_write("[Model.new] Loading from text...");
+
+  *model = (Model_Internal_Mesh){
+  .type = MODEL_MESH,
+  .status = S_BUILDING,
+  };
+
+  arr_insert_back(_new_models, &model);
+
+  _model_build_from_string((Model)model, obj_text);
+
+  str_log("[Model.new] Loaded model: {}", model->name);
 
   return (Model)model;
 }
@@ -119,7 +185,7 @@ new_obj_cleanup:
 void _model_bind_mesh(const Model model) {
   Model_Internal_Mesh* mesh = (Model_Internal_Mesh*)model;
   assert(mesh->type == MODEL_MESH);
-  assert(mesh->ready);
+  assert(mesh->status == S_READY);
   assert(mesh->vbo);
   assert(mesh->ebo);
 
@@ -133,6 +199,7 @@ void _model_bind_mesh(const Model model) {
 void _model_render_mesh(Model model) {
   Model_Internal_Mesh* mesh = (Model_Internal_Mesh*)model;
   assert(mesh->type == MODEL_MESH);
+  assert(mesh->status == S_READY);
   assert(mesh->index_count);
   assert(mesh->vbo);
   assert(mesh->ebo);

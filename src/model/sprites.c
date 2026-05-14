@@ -43,6 +43,8 @@ typedef struct Model_Internal_Sprites {
   GLuint vao;
 } Model_Internal_Sprites;
 
+extern Array _new_models;
+
 ////////////////////////////////////////////////////////////////////////////////
 
 Model model_new_sprites(vec2i grid) {
@@ -57,15 +59,17 @@ Model model_new_sprites(vec2i grid) {
   *sprites = (Model_Internal_Sprites) {
     .type = MODEL_SPRITES,
     .name = STRL("hi"),
+    .status = S_READY,
     .format = VF_SPRITES,
     .vert_count = 0,
     .index_count = 0,
-    .ready = true,
     .grid = grid,
     .verts = arr_new(vertex_sprites_t),
     .vbo = vbo,
     .vao = 0,
   };
+
+  arr_insert_back(_new_models, &sprites);
 
   return (Model)sprites;
 }
@@ -74,6 +78,7 @@ Model model_new_sprites(vec2i grid) {
 
 void _model_bind_sprites(const Model model) {
   Model_Internal_Sprites* sprites = (Model_Internal_Sprites*)model;
+  assert(sprites);
   assert(sprites->type == MODEL_SPRITES);
   assert(sprites->vbo);
 
@@ -123,7 +128,7 @@ void model_sprites_add(
 ) {
   Model_Internal_Sprites* spr = (Model_Internal_Sprites*)_sprites;
   assert(spr);
-  assert(spr->ready);
+  assert(spr->status == S_READY);
   assert(spr->verts);
 
   frame = frame % (spr->grid.w * spr->grid.h);

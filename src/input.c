@@ -24,6 +24,7 @@
 
 #include "input.h"
 #include "game.h"
+#include "str.h"
 
 // imports for mouse-locking
 #ifdef __WASM__

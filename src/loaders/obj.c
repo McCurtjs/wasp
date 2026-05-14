@@ -18,7 +18,7 @@ typedef struct {
   int uv;
 } obj_face_elem_t;
 
-model_obj_t file_load_obj(File file) {
+model_obj_t file_load_obj(slice_t text) {
   model_obj_t model = { .format = VF_UV_NORM };
 
   Array verts = arr_new(obj_vertex_part_t);
@@ -26,12 +26,12 @@ model_obj_t file_load_obj(File file) {
   Array uvs   = arr_new(vec2);
   Array faces = arr_new(obj_face_elem_t);
   
-  str_log("[Model.load] Loading OBJ: {}", file->name);
+  str_write("[Model.build] Parsing OBJ...");
 
   index_t line_pos = 0;
 
-  while (line_pos < file->slice.length) {
-    slice_t line = str_token_line(file->slice, &line_pos).token;
+  while (line_pos < text.length) {
+    slice_t line = str_token_line(text, &line_pos).token;
 
     index_t i = 0;
     while (i < line.length) {
@@ -141,10 +141,6 @@ model_obj_t file_load_obj(File file) {
 
   }
 
-  if (!model.name) {
-    model.name = str_copy(str_between_last(file->name, "/", "."));
-  }
-
   model.indices = arr_new_reserve(uint, faces->size);
 
   switch (model.format) {
@@ -186,8 +182,8 @@ model_obj_t file_load_obj(File file) {
 
   arr_truncate(model.verts, model.verts->size);
 
-  str_log("[Model.load] Loaded: verts: {}, indices: {} : {}"
-  , model.verts->size, model.indices->size, file->name
+  str_log("[Model.build] Parsed model {} - verts: {}, indices: {}"
+  , model.name, model.verts->size, model.indices->size
   );
 
   // Calculate tangents for each vertex...

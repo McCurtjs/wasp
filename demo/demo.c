@@ -32,8 +32,6 @@
 #include "graphics.h"
 #include "renderer.h"
 
-static File file_model_gear = NULL;
-
 #ifdef __clang__
 # pragma clang diagnostic ignored "-Wconstant-logical-operand"
 #endif
@@ -259,8 +257,7 @@ bool wasp_load(Game game) {
   // Load models...
   //////////////////////////////////////////////////////////////////////////////
 
-  //file_model_gear = file_new(S("./res/models/gear.obj"), FM_READ);
-  demo.models.gear = model_new_primitive(MODEL_CUBE);// model_new_from_obj(file_model_gear);
+  demo.models.gear = model_new_load_obj(S("./res/models/gear.obj"));
   demo.models.color_cube = model_new_primitive(MODEL_CUBE_COLOR);
   demo.models.box = model_new_primitive(MODEL_CUBE);
   demo.models.frame = model_new_primitive(MODEL_FRAME);
@@ -290,9 +287,6 @@ bool wasp_load(Game game) {
   game->input.touch.fingers = span_fingers(touch_fingers, ARRAY_COUNT(touch_fingers));
   game->scenes = span_scene(demo_scenes, ARRAY_COUNT(demo_scenes));
   game->graphics->renderers = span_renderer(renderers, ARRAY_COUNT(renderers));
-
-  // Delete async loaded resources
-  //file_delete(&file_model_gear);
 
   str_write("[Demo.Load] Loading complete!");
 

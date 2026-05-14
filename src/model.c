@@ -26,6 +26,16 @@
 
 #include "gl.h"
 
+#include "array.h"
+#include "str.h"
+
+static array_t _all_models_array = {
+  .element_size = sizeof(Model)
+};
+static Array _loaded_models = NULL;
+
+Array _new_models = &_all_models_array;
+
 ////////////////////////////////////////////////////////////////////////////////
 
 static void _model_render_instanced(const Model model, index_t count) {
@@ -57,11 +67,13 @@ static void _model_render_instanced(const Model model, index_t count) {
 // Function routing based on object types
 ////////////////////////////////////////////////////////////////////////////////
 
+typedef void (model_build_fn_t)(Model model);
 typedef void (model_bind_fn_t)(const Model model);
 typedef void (model_render_fn_t)(Model model);
 typedef void (model_render_inst_fn_t)(const Model model, index_t count);
 
 // Internal model binding and render functions defined in ./models directory
+extern model_build_fn_t   _model_build_mesh;
 extern model_bind_fn_t    _model_bind_primitive;
 extern model_bind_fn_t    _model_bind_sprites;
 extern model_bind_fn_t    _model_bind_mesh;
@@ -72,6 +84,7 @@ extern model_render_fn_t  _model_render_sprites;
 extern model_render_fn_t  _model_render_mesh;
 
 typedef struct model_management_fns_t {
+  model_build_fn_t*       build;
   model_bind_fn_t*        bind;
   model_render_fn_t*      render_single;
   model_render_inst_fn_t* render_inst;
@@ -107,7 +120,8 @@ static model_management_fns_t model_management_fns[MODEL_TYPES_COUNT] = {
   },
 
   // MODEL_MESH - Basic mesh type loaded from .obj file
-  { .bind           = _model_bind_mesh
+  { .build          = _model_build_mesh
+  , .bind           = _model_bind_mesh
   , .render_single  = _model_render_mesh
   , .render_inst    = _model_render_instanced
   }
@@ -127,7 +141,7 @@ void model_bind(const Model model) {
     return;
   }
 
-  if (!model->ready) {
+  if (model->status != S_READY) {
     str_write("[Model.bind] Model not flagged as ready");
     return;
   }
@@ -156,7 +170,7 @@ void model_render(Model model) {
     return;
   }
 
-  if (!model->ready) {
+  if (model->status != S_READY) {
     str_write("[Model.render] Model not flagged as ready");
     return;
   }
@@ -190,7 +204,7 @@ void model_render_instanced(const Model model, index_t count) {
     return;
   }
 
-  if (!model->ready) {
+  if (model->status != S_READY) {
     str_write("[Model.render_inst] Model not flagged as ready");
     return;
   }
@@ -209,5 +223,37 @@ void model_render_instanced(const Model model, index_t count) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+
+void model_loading_manager(void) {
+  index_t loading_count = 0;
+
+  if (!_loaded_models) _loaded_models = arr_new(Model);
+
+  for (index_t i = 0; i < _new_models->size;) {
+    Model model = (((Model*)_new_models->begin)[i]);
+    assert(model);
+    assert(model->type >= 0 && model->type < MODEL_TYPES_COUNT);
+
+    if (model->status != S_READY) {
+      model_build_fn_t* build_fn = model_management_fns[model->type].build;
+      assert(build_fn);
+      build_fn(model);
+    }
+
+    if (model->status == S_READY) {
+      arr_insert_back(_loaded_models, &model);
+      arr_remove_unstable(_new_models, i);
+    }
+    else {
+      ++i;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+index_t model_loading_count(void) {
+  return _new_models->size;
+}
 
 

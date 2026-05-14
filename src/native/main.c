@@ -28,6 +28,7 @@
 #include "system_events.h"
 
 #include "str.h"
+#include "file.h"
 
 #define SDL_MAIN_USE_CALLBACKS
 #include "SDL3/SDL_main.h"
@@ -206,6 +207,7 @@ SDL_AppResult SDL_AppIterate(void* app_state) {
   file_loading_manager();
   shader_loading_manager();
   mat_loading_manager();
+  model_loading_manager();
 
   app.game->should_exit |= !wasp_update(app.game, dt);
 
@@ -273,6 +275,7 @@ index_t wasp_await_count(void) {
   count += img_loading_count();
   count += shader_loading_count();
   count += mat_loading_count();
+  count += model_loading_count();
 
   return count;
 }

@@ -24,6 +24,8 @@
 
 #define MCLIB_INTERNAL_IMPL
 #include "model.h"
+#include "str.h"
+
 #include "gl.h"
 
 #include <stdlib.h>
@@ -31,6 +33,8 @@
 
 // inlined static data declarations for model primitives
 #include "../data/inline_primitives.h"
+
+extern Array _new_models;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Primitives
@@ -63,13 +67,15 @@ static Model _model_new_cube(void) {
   *model = (Model_Internal_Primitive) {
     .type = MODEL_CUBE,
     .name = _name_cube,
+    .status = S_READY,
     .format = VF_UV_NORM,
     .vert_count = 36,
     .index_count = 0,
-    .ready = true,
     .vbo = vbo,
     .vao = 0,
   };
+
+  arr_insert_back(_new_models, &model);
 
   return (Model)model;
 }
@@ -93,13 +99,15 @@ static Model _model_new_cube_color(void) {
   *model = (Model_Internal_Primitive){
     .type = MODEL_CUBE_COLOR,
     .name = _name_cube_color,
+    .status = S_READY,
     .format = VF_COLOR,
     .vert_count = 14,
     .index_count = 0,
-    .ready = true,
     .vbo = vbo,
     .vao = 0,
   };
+
+  arr_insert_back(_new_models, &model);
 
   return (Model)model;
 }
@@ -123,13 +131,15 @@ static Model _model_new_frame(void) {
   *model = (Model_Internal_Primitive) {
     .type = MODEL_FRAME,
     .name = _name_frame,
+    .status = S_READY,
     .format = VF_POS_ONLY,
     .vert_count = 3,
     .index_count = 0,
-    .ready = true,
     .vbo = vbo,
     .vao = 0,
   };
+
+  arr_insert_back(_new_models, &model);
 
   return (Model)model;
 }
@@ -164,11 +174,12 @@ Model model_new_primitive(model_type_t type) {
 
 void _model_bind_primitive(Model model) {
   Model_Internal_Primitive* prim = (Model_Internal_Primitive*)model;
+  assert(prim);
   assert(prim->type == MODEL_CUBE
       || prim->type == MODEL_CUBE_COLOR
       || prim->type == MODEL_FRAME
   );
-  assert(prim->ready);
+  assert(prim->status == S_READY);
   assert(prim->vbo);
 
   glBindBuffer(GL_ARRAY_BUFFER, prim->vbo);
@@ -181,6 +192,7 @@ void _model_bind_primitive(Model model) {
 
 void _model_render_prim(Model model) {
   Model_Internal_Primitive* prim = (Model_Internal_Primitive*)model;
+  assert(prim);
 
   if (!prim->vao) {
     glGenVertexArrays(1, &prim->vao);
@@ -211,6 +223,7 @@ void _model_render_prim(Model model) {
 
 void _model_render_prim_strip(Model model) {
   Model_Internal_Primitive* prim = (Model_Internal_Primitive*)model;
+  assert(prim);
   assert(prim->type == MODEL_CUBE_COLOR);
 
   if (!prim->vao) {

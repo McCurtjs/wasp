@@ -27,6 +27,7 @@
 #include "gl.h"
 #include "light.h"
 #include "graphics.h"
+#include "str.h"
 
 #define CAMERA_SPEED 0.8f
 
@@ -603,18 +604,9 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
         }
 
         if (entity->model) {
-          const char* model_types[MODEL_TYPES_COUNT] = {
-            "None",
-            "Grid",
-            "Cube",
-            "Cube_Color",
-            "Frame",
-            "Sprites",
-            "Mesh"
-          };
           model_type_t type = entity->model->type;
           if (type >= 0 && type < MODEL_TYPES_COUNT) {
-            igText("Model type: %s", model_types[type]);
+            igText("Model type: %s", entity->model->name.begin);
           }
         }
 

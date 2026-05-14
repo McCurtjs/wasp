@@ -38,6 +38,6 @@ typedef struct model_obj_t {
 } model_obj_t;
 
 // Resulting format can be either VF_UV_NORM or VF_UV_NORM_COLOR
-model_obj_t file_load_obj(File file);
+model_obj_t file_load_obj(slice_t filename);
 
 #endif

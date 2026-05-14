@@ -384,8 +384,8 @@ Material mat_get(slice_t name) {
 Array_slice mat_get_names(void) {
   if (!_all_materials_map) return NULL;
   Array_slice ret = arr_slice_new_reserve(_all_materials_map->size);
-  Material_Internal* map_foreach(m, _all_materials_map) {
-    arr_slice_push_back(ret, m->pub.name);
+  Material_Internal** map_foreach(pm, _all_materials_map) {
+    arr_slice_push_back(ret, (*pm)->pub.name);
   }
   return ret;
 }
