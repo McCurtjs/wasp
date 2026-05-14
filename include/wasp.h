@@ -35,11 +35,22 @@
 # define export(fn_name) fn_name
 #endif
 
+////////////////////////////////////////////////////////////////////////////////
+// Game initialization and update functions for the user to implement
+////////////////////////////////////////////////////////////////////////////////
+
 void wasp_init(app_defaults_t* defaults);
 
-bool export(wasp_preload) (Game game);
-bool export(wasp_load) (Game game, int await_count, float dt);
+bool export(wasp_load) (Game game);
 bool export(wasp_update) (Game game, float dt);
 void export(wasp_render) (Game game);
+
+////////////////////////////////////////////////////////////////////////////////
+// System-level helper functions
+////////////////////////////////////////////////////////////////////////////////
+
+// \brief Helper function to get the number of collective objects that are
+//    currently loading on other threads.
+index_t wasp_await_count(void);
 
 #endif

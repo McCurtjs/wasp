@@ -22,6 +22,7 @@
 * SOFTWARE.
 */
 
+#define MCLIB_INTERNAL_IMPL
 #include "model.h"
 
 #include "gl.h"
@@ -33,11 +34,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct Model_Internal_Grid {
-  model_type_t type;
-  vertex_format_t format;
-  index_t vert_count;
-  index_t index_count;
-  bool ready;
+  MODEL_PROPS;
+
   union {
     model_grid_param_t params;
     struct {
@@ -62,11 +60,14 @@ typedef struct Model_Internal_Grid {
 ////////////////////////////////////////////////////////////////////////////////
 
 Model model_new_grid(model_grid_param_t param) {
+  static slice_t _name_grid = STRL("grid");
+
   Model_Internal_Grid* grid = malloc(sizeof(Model_Internal_Grid));
   assert(grid);
 
   *grid = (Model_Internal_Grid) {
     .type = MODEL_GRID,
+    .name = _name_grid,
     .ready = false,
     .params = param
   };

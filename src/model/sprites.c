@@ -22,6 +22,7 @@
 * SOFTWARE.
 */
 
+#define MCLIB_INTERNAL_IMPL
 #include "model.h"
 
 #include "gl.h"
@@ -33,11 +34,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct Model_Internal_Sprites {
-  model_type_t type;
-  vertex_format_t format;
-  index_t vert_count;
-  index_t index_count;
-  bool ready;
+  MODEL_PROPS;
 
   // Hidden
   vec2i grid;
@@ -49,6 +46,8 @@ typedef struct Model_Internal_Sprites {
 ////////////////////////////////////////////////////////////////////////////////
 
 Model model_new_sprites(vec2i grid) {
+  static slice_t _name_sprites = STRL("sprites");
+
   Model_Internal_Sprites* sprites = malloc(sizeof(Model_Internal_Sprites));
   assert(sprites);
 
@@ -57,6 +56,7 @@ Model model_new_sprites(vec2i grid) {
 
   *sprites = (Model_Internal_Sprites) {
     .type = MODEL_SPRITES,
+    .name = STRL("hi"),
     .format = VF_SPRITES,
     .vert_count = 0,
     .index_count = 0,

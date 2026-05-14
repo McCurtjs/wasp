@@ -113,6 +113,10 @@ static scene_load_fn_t demo_scenes[] =
 // Pre-initializer to set window size and title
 ////////////////////////////////////////////////////////////////////////////////
 
+static void _slice_write_disable(slice_t str) {
+  UNUSED(str);
+}
+
 void wasp_init(app_defaults_t* game) {
   game->window = v2i(1024, 768);
   game->title = str_copy("WASP Demo");
@@ -165,11 +169,18 @@ static void cheesy_loading_animation(Game game, float dt) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Game preloader - starts asynchronous loading
+// Game loader - start async loading and set up basic game parameters
 ////////////////////////////////////////////////////////////////////////////////
 
-bool wasp_preload(Game game) {
+#ifdef far
+# undef far // why does windows define "far", lol
+#endif
+
+bool wasp_load(Game game) {
   UNUSED(game);
+
+  // Load images/materials
+  //////////////////////////////////////////////////////////////////////////////
 
   /*
   slice_t _tex_names[] = {
@@ -189,12 +200,10 @@ bool wasp_preload(Game game) {
   mat_load_multi_async(demo.materials.atlas, tex_names.view);
 
   /*/
-  demo.materials.atlas = mat_new_atlas(
-    S("test_sprites"), mat_params_diffuse, v2i(4, 4)
-  );
+  demo.materials.atlas =
+    mat_new_atlas(S("test_sprites.png"), mat_params_diffuse, v2i(4, 4));
   demo.materials.atlas->weight_roughness = 0.3f;
   demo.materials.atlas->weight_metalness = 1.0f;
-  mat_set_ext(demo.materials.atlas, S("png"));
   //*/
 
   /*
@@ -208,28 +217,31 @@ bool wasp_preload(Game game) {
   img_delete(&save_out);
   //*/
 
-  file_model_gear = file_new(S("./res/models/gear.obj"), FM_READ);
 
-  demo.materials.grass = mat_new(S("grass_rocky"), mat_params_norm_rough);
+
+  demo.materials.grass = mat_new(S("grass_rocky.jpg"), mat_params_norm_rough);
   demo.materials.grass->weight_roughness = 1.0f;
 
-  demo.materials.crate = mat_new(S("crate"), mat_params_diffuse);
+  demo.materials.crate = mat_new(S("crate.jpg"), mat_params_diffuse);
   demo.materials.crate->weight_roughness = 1.0f;
 
-  demo.materials.tiles = mat_new(S("tiles"), mat_params_diffuse);
+  demo.materials.tiles = mat_new(S("tiles.jpg"), mat_params_diffuse);
 
-  demo.materials.sands = mat_new(S("brass2"), mat_params_norm);
+  demo.materials.sands = mat_new(S("brass2.jpg"), mat_params_norm);
   demo.materials.sands->weight_roughness = 1.0f;
 
-  demo.materials.mudds = mat_new(S("rustediron2"), mat_params_pbr);
+  demo.materials.mudds = mat_new(S("rustediron2.jpg"), mat_params_pbr);
   demo.materials.mudds->weight_metalness = 1.0f;
 
-  demo.materials.renderite = mat_new(S("renderite"), mat_params_none);
+  demo.materials.renderite = mat_new(S("renderite.jpg"), mat_params_none);
   demo.materials.renderite->weight_roughness = 0.2f;
   demo.materials.renderite->weight_metalness = 0.8f;
 
-  mat_load_all_async();
+  // Load shaders
+  //////////////////////////////////////////////////////////////////////////////
 
+  demo.shaders.loading =
+    shader_new_from_default(S("basic"));
   demo.shaders.basic =
     shader_new_from_files(S("deferred"), S("basic_vert"), S("basic_gbuf"));
   demo.shaders.pass =
@@ -244,34 +256,19 @@ bool wasp_preload(Game game) {
     shader_new_from_files(S("light_inst"), S("static_gbuf_inst"), S("pbr_gbuf"));
   demo.shaders.light_inst->attrib_format = AF_MATERIAL_TINT;
 
-  return true;
-}
+  // Load models...
+  //////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-// Game loader - after async loading, process loaded objects for the game
-////////////////////////////////////////////////////////////////////////////////
+  //file_model_gear = file_new(S("./res/models/gear.obj"), FM_READ);
+  demo.models.gear = model_new_primitive(MODEL_CUBE);// model_new_from_obj(file_model_gear);
+  demo.models.color_cube = model_new_primitive(MODEL_CUBE_COLOR);
+  demo.models.box = model_new_primitive(MODEL_CUBE);
+  demo.models.frame = model_new_primitive(MODEL_FRAME);
+  demo.models.grid = model_new_grid_default(100);
+  demo.models.gizmo = model_new_grid_default(0);
 
-#ifdef far
-# undef far // why does windows define "far", lol
-#endif
-
-static File test = NULL;
-
-bool wasp_load(Game game, int await_count, float dt) {
-  await_count += (int)shader_manage_update();
-
-  // load this first since it's the loading screen spinner
-  if (!demo.shaders.loading) {
-    demo.shaders.loading = shader_new_from_default(S("basic"));
-    demo.models.color_cube = model_new_primitive(MODEL_CUBE_COLOR);
-  }
-
-  if (await_count) {
-    cheesy_loading_animation(game, dt);
-    return 0;
-  };
-
-  str_write("[Demo.Load] Async load finished");
+  // Assign static sets of game params
+  //////////////////////////////////////////////////////////////////////////////
 
   game->camera.perspective.far = 10000.0f;
   game->on_window_resize = demo_callback_window_resize;
@@ -285,31 +282,21 @@ bool wasp_load(Game game, int await_count, float dt) {
   rt_build(game->demo->render_target, game->window);
   rt_build(game->demo->render_target_scaled, game->resolution);
 
-  mat_build_all();
-
   // Set params for PBR render group
   _renderer_pbr.shader = game->demo->shaders.light_inst;
   _renderer_pbr.groups = map_rg_new();
 
-  // Assign static sets of game params
   game->input.keymap = span_keymap(input_map, ARRAY_COUNT(input_map));
   game->input.touch.fingers = span_fingers(touch_fingers, ARRAY_COUNT(touch_fingers));
   game->scenes = span_scene(demo_scenes, ARRAY_COUNT(demo_scenes));
   game->graphics->renderers = span_renderer(renderers, ARRAY_COUNT(renderers));
 
-  // Load scene models...
-  demo.models.gear = model_new_from_obj(file_model_gear);
-  demo.models.box = model_new_primitive(MODEL_CUBE);
-  demo.models.frame = model_new_primitive(MODEL_FRAME);
-  demo.models.grid = model_new_grid_default(100);
-  demo.models.gizmo = model_new_grid_default(0);
-
   // Delete async loaded resources
-  file_delete(&file_model_gear);
+  //file_delete(&file_model_gear);
 
   str_write("[Demo.Load] Loading complete!");
 
-  return 1;
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -317,7 +304,10 @@ bool wasp_load(Game game, int await_count, float dt) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool wasp_update(Game game, float dt) {
-  game_update(game, dt);
+  if (wasp_await_count())
+    cheesy_loading_animation(game, dt);
+  else
+    game_update(game, dt);
   return true;
 }
 
@@ -331,6 +321,8 @@ bool wasp_update(Game game, float dt) {
 #include <string.h>
 
 void wasp_render(Game game) {
+  if (wasp_await_count()) return;
+
   rt_bind(demo.render_target);
   game_render(game);
 

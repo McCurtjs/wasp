@@ -22,6 +22,7 @@
 * SOFTWARE.
 */
 
+#define MCLIB_INTERNAL_IMPL
 #include "model.h"
 
 #include "gl.h"
@@ -35,13 +36,11 @@
 #include "../loaders/obj.h"
 
 typedef struct Model_Internal_Mesh {
-  model_type_t type;
-  vertex_format_t format;
-  index_t vert_count;
-  index_t index_count;
-  bool ready;
+  MODEL_PROPS;
 
   // Secrets
+
+  String name_internal;
 
   union {
     GLuint buffers[2];
@@ -70,6 +69,7 @@ Model model_new_from_obj(File file) {
   assert(model);
 
   model->type = MODEL_MESH;
+
   model_obj_t obj = file_load_obj(file);
 
   if (!obj.verts || !obj.verts->size) {
@@ -80,6 +80,8 @@ Model model_new_from_obj(File file) {
   model->format = obj.format;
   model->vert_count = obj.verts->size;
   model->index_count = obj.indices->size;
+  model->name_internal = obj.name;
+  model->name = obj.name->slice;
 
   glGenBuffers(2, model->buffers);
 

@@ -31,6 +31,7 @@
 #include "vertex.h"
 
 typedef struct model_obj_t {
+  String name;
   Array verts;
   Array indices;
   vertex_format_t format;

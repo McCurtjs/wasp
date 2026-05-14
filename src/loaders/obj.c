@@ -126,6 +126,10 @@ model_obj_t file_load_obj(File file) {
           }
         } break;
 
+        case 'o': {
+          model.name = str_copy(slice_drop(line, i));
+        } break;
+
         // Skip past the line if it's a comment, object name, or whatever 's' is
         default: {
           i = line.length;
@@ -135,6 +139,10 @@ model_obj_t file_load_obj(File file) {
 
     }
 
+  }
+
+  if (!model.name) {
+    model.name = str_copy(str_between_last(file->name, "/", "."));
   }
 
   model.indices = arr_new_reserve(uint, faces->size);

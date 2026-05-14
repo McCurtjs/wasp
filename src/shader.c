@@ -255,14 +255,14 @@ static Shader_Internal* _shader_get_or_create(slice_t name) {
 
   if (!_all_shaders_map) _all_shaders_map = map_shader_new();
 
-  Shader_Internal** in_map = map_shader_ref(_all_shaders_map, name);
-  if (in_map) {
-    return *in_map;
-  }
+  Shader_Internal* ret =
+    map_shader_get_or_default(_all_shaders_map, name, NULL);
+
+  if (ret) return ret;
 
   String name_copy = str_copy(name);
 
-  Shader_Internal* ret = malloc(sizeof(Shader_Internal));
+  ret = malloc(sizeof(Shader_Internal));
   assert(ret);
 
   *ret = (Shader_Internal) {
@@ -370,7 +370,7 @@ static bool _shader_link_check(Shader_Internal* shader) {
 Shader shader_new_from_default(slice_t name) {
   assert(_shader_is_default_name(name));
 
-  str_log("[Shader.new] Building shder from default: {}", name);
+  str_log("[Shader.new] Building shader from default: {}", name);
 
   return shader_new(name, slice_empty, slice_empty);
 }
@@ -498,12 +498,15 @@ Shader shader_new_from_files(
 // Shader loading management
 ////////////////////////////////////////////////////////////////////////////////
 
-index_t shader_manage_update(void) {
+void shader_loading_manager(void) {
   assert(thread_is_main());
+
+  if (_all_parts_map == NULL) return;
+  if (_all_shaders_map == NULL) return;
 
   // TODO: move the loop checking shader reloads here
 
-  if (_shaders_linked_count == _all_shaders_map->size) return 0;
+  if (_shaders_linked_count == _all_shaders_map->size) return;
 
   gl_shader_t* map_foreach(part, _all_parts_map) {
     if (part->status == S_LOADING) {
@@ -521,7 +524,11 @@ index_t shader_manage_update(void) {
       _shader_link_check(shader);
     }
   }
+}
 
+////////////////////////////////////////////////////////////////////////////////
+
+index_t shader_loading_count(void) {
   index_t ret = _all_shaders_map->size - _shaders_linked_count;
   assert(ret >= 0);
   return ret;

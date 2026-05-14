@@ -34,7 +34,8 @@ typedef enum status_t {
   S_ERROR,
   S_NOT_FOUND,
   S_COMPILING,
-  S_LINKING
+  S_LINKING,
+  S_BUILDING
 } status_t;
 
 #endif

@@ -185,7 +185,7 @@ SDL_AppResult SDL_AppInit(void** app_state, int argc, char* argv[]) {
 
   app.previous_time = SDL_GetTicks();
 
-  if (!wasp_preload(app.game)) return SDL_APP_FAILURE;
+  if (!wasp_load(app.game)) return SDL_APP_FAILURE;
 
   return SDL_APP_CONTINUE;
 }
@@ -203,25 +203,11 @@ SDL_AppResult SDL_AppIterate(void* app_state) {
   ImGui_ImplSDL3_NewFrame();
   igNewFrame();
 
-  file_manage_queue();
-  shader_check_updates();
+  file_loading_manager();
+  shader_loading_manager();
+  mat_loading_manager();
 
-  if (!app.loading_done) {
-    float load_time = (float)current_time / 1000.f;
-
-    index_t await_count = 0;
-    await_count += img_loading_count();
-    await_count += file_async_count();
-
-    if (!wasp_load(app.game, (int)await_count, dt)) {
-      goto swap_frames;
-    }
-
-    app.loading_done = true;
-    str_log("[App.Load] Loaded - time elapsed: {}", load_time);
-  }
-
-  wasp_update(app.game, dt);
+  app.game->should_exit |= !wasp_update(app.game, dt);
 
   if (app.game->should_exit) {
     return SDL_APP_SUCCESS;
@@ -229,15 +215,11 @@ SDL_AppResult SDL_AppIterate(void* app_state) {
 
   wasp_render(app.game);
 
-swap_frames:
-
   igRender();
   ImGui_ImplOpenGL3_RenderDrawData(igGetDrawData());
 
   SDL_GL_SwapWindow(app.window);
 
-  if (app.game->should_exit)
-    return SDL_APP_SUCCESS;
   return SDL_APP_CONTINUE;
 }
 
@@ -280,4 +262,17 @@ void SDL_AppQuit(void* app_state, SDL_AppResult result) {
   if (app.window) {
     SDL_DestroyWindow(app.window);
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+index_t wasp_await_count(void) {
+  index_t count = 0;
+
+  count += file_loading_count();
+  count += img_loading_count();
+  count += shader_loading_count();
+  count += mat_loading_count();
+
+  return count;
 }

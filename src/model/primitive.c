@@ -22,6 +22,7 @@
 * SOFTWARE.
 */
 
+#define MCLIB_INTERNAL_IMPL
 #include "model.h"
 #include "gl.h"
 
@@ -36,11 +37,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct Model_Internal_Primitive {
-  model_type_t type;
-  vertex_format_t format;
-  index_t vert_count;
-  index_t index_count;
-  bool ready;
+  MODEL_PROPS;
 
   // Hidden
   GLuint vbo;
@@ -52,6 +49,8 @@ typedef struct Model_Internal_Primitive {
 ////////////////////////////////////////////////////////////////////////////////
 
 static Model _model_new_cube(void) {
+  static slice_t _name_cube = STRL("cube");
+
   Model_Internal_Primitive* model = malloc(sizeof(Model_Internal_Primitive));
   assert(model);
 
@@ -63,6 +62,7 @@ static Model _model_new_cube(void) {
 
   *model = (Model_Internal_Primitive) {
     .type = MODEL_CUBE,
+    .name = _name_cube,
     .format = VF_UV_NORM,
     .vert_count = 36,
     .index_count = 0,
@@ -79,6 +79,8 @@ static Model _model_new_cube(void) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static Model _model_new_cube_color(void) {
+  static slice_t _name_cube_color = STRL("cube_color");
+
   Model_Internal_Primitive* model = malloc(sizeof(Model_Internal_Primitive));
   assert(model);
 
@@ -88,8 +90,9 @@ static Model _model_new_cube_color(void) {
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
   glBufferData(GL_ARRAY_BUFFER, size, primitive_cube_color, GL_STATIC_DRAW);
 
-  *model = (Model_Internal_Primitive) {
+  *model = (Model_Internal_Primitive){
     .type = MODEL_CUBE_COLOR,
+    .name = _name_cube_color,
     .format = VF_COLOR,
     .vert_count = 14,
     .index_count = 0,
@@ -106,6 +109,8 @@ static Model _model_new_cube_color(void) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static Model _model_new_frame(void) {
+  static slice_t _name_frame = STRL("frame");
+
   Model_Internal_Primitive* model = malloc(sizeof(Model_Internal_Primitive));
   assert(model);
 
@@ -117,6 +122,7 @@ static Model _model_new_frame(void) {
 
   *model = (Model_Internal_Primitive) {
     .type = MODEL_FRAME,
+    .name = _name_frame,
     .format = VF_POS_ONLY,
     .vert_count = 3,
     .index_count = 0,

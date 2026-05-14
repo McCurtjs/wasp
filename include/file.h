@@ -49,8 +49,8 @@ typedef struct _opaque_File_t {
 
 File        file_new(slice_t filename, file_mode_t mode);
 
-void        file_manage_queue(void);
-index_t     file_async_count(void);
+void        file_loading_manager(void);
+index_t     file_loading_count(void);
 
 void        file_delete(File*);
 span_byte_t file_release_data(File);

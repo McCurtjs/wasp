@@ -82,32 +82,39 @@ typedef struct model_sprites_t {
   vec2i grid;
 } model_sprites_t;
 
+#define MODEL_PROPS                   \
+  CONST model_type_t    type;         \
+  CONST slice_t         name;         \
+  CONST vertex_format_t format;       \
+  CONST index_t         vert_count;   \
+  CONST index_t         index_count;  \
+  CONST bool            ready         //
+
 typedef struct _opaque_Model_t {
-  const model_type_t type;
-  const vertex_format_t format;
-  const index_t vert_count;
-  const index_t index_count;
-  const bool ready;
+  MODEL_PROPS;
 
   union {
-    model_grid_t grid;
+    model_grid_t    grid;
     model_sprites_t sprites;
   };
 }* Model;
 
-Model model_new_primitive(model_type_t type);
-Model model_new_sprites(vec2i dim);
-Model model_new_grid(model_grid_param_t grid);
-Model model_new_grid_default(int extent);
-Model model_new_from_obj(File file);
+Model   model_new_primitive(model_type_t type);
+Model   model_new_sprites(vec2i dim);
+Model   model_new_grid(model_grid_param_t grid);
+Model   model_new_grid_default(int extent);
+Model   model_new_from_obj(File file);
 
-void  model_delete(Model* model);
+void    model_delete(Model* model);
 
-void  model_render(Model model);
-void  model_bind(const Model model);
-void  model_render_instanced(const Model model, index_t count);
+void    model_render(Model model);
+void    model_bind(const Model model);
+void    model_render_instanced(const Model model, index_t count);
 
-void  model_sprites_add(
-        Model spr, vec2 pos, vec2 scale, index_t frame, bool mirror);
+void    model_loading_manager(void);
+index_t model_loading_count(void);
+
+void    model_sprites_add(
+          Model spr, vec2 pos, vec2 scale, index_t frame, bool mirror);
 
 #endif

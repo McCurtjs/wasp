@@ -45,7 +45,8 @@ Shader  shader_new(slice_t name, slice_t vert_text, slice_t frag_text);
 Shader  shader_new_from_name(slice_t name);
 Shader  shader_new_from_files(slice_t name, slice_t vert_file, slice_t frag_name);
 
-index_t shader_manage_update(void);
+void    shader_loading_manager(void);
+index_t shader_loading_count(void);
 
 void    shader_load_async(Shader);
 void    shader_build(Shader);

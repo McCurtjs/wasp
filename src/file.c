@@ -127,7 +127,7 @@ File file_new(slice_t filename, file_mode_t mode) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void file_manage_queue(void) {
+void file_loading_manager(void) {
   SDL_AsyncIOOutcome result;
 
   while (SDL_GetAsyncIOResult(_sdl_queue, &result)) {
@@ -170,7 +170,7 @@ void file_manage_queue(void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-index_t file_async_count(void) {
+index_t file_loading_count(void) {
   return _async_loading_count;
 }
 

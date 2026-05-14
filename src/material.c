@@ -57,29 +57,41 @@ typedef struct Material_Internal {
   Material_Internal* m = (Material_Internal*)(m_in);                          \
   assert(m)                                                                   //
 
-HMap _all_materials = NULL;
+#define con_type Material_Internal*
+#define con_prefix material
+#include "map.h"
+#undef con_prefix
+#undef con_type
+
+static HMap_material  _all_materials_map = NULL;
+static index_t        _materials_built_count = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
-// Initializes a new material
+// Helpers for handling each stage of loading and building a material
 ////////////////////////////////////////////////////////////////////////////////
 
-Material mat_new(slice_t name, mat_params_t params) {
-  if (!_all_materials) {
-    _all_materials =
-      map_new(slice_t, Material, slice_hash_vptr, slice_compare_vptr);
-  }
+Material_Internal* _mat_new(slice_t filename, mat_params_t params) {
+  assert(!slice_is_empty(filename));
 
-  res_ensure_t in_map = map_ensure(_all_materials, &name);
+  if (!_all_materials_map) _all_materials_map = map_material_new();
 
-  if (!in_map.is_new) {
-    str_log("[Material.new] Name already in use: {}", name);
-    return *(Material*)in_map.value;
-  }
+  slice_t name = slice_until(filename, S("."));
 
-  Material_Internal* ret = malloc(sizeof(Material_Internal));
+  Material_Internal* ret =
+    map_material_get_or_default(_all_materials_map, name, NULL);
+
+  if (ret) return ret;
+
+  ret = malloc(sizeof(Material_Internal));
   assert(ret);
 
-  String name_str = str_copy(name);
+  String filename_copy = str_copy(filename);
+  name = slice_until_last(filename_copy->slice, S("."));
+  slice_t ext = slice_after_last(filename_copy->slice, S("."));
+
+  if (ext.size == 0) {
+    ext = S("jpg");
+  }
 
   if (params.atlas_dimensions.x <= 0 || params.atlas_dimensions.y <= 0) {
     params.atlas_dimensions = i2ones;
@@ -87,98 +99,43 @@ Material mat_new(slice_t name, mat_params_t params) {
 
   *ret = (Material_Internal) {
     .pub = {
-      .name = name_str->slice,
+      .name = name,
+      .status = S_NEW,
       .layers = params.atlas_dimensions.x * params.atlas_dimensions.y,
       .weight_normal = 1.0f,
       .weight_roughness = 0.5f,
       .weight_metalness = 0.0f,
-      .ready = false,
       .params = params,
     },
-    .name_internal = name_str,
-    .ext = S("jpg"),
+    .name_internal = filename_copy,
+    .ext = ext,
     .img = NULL,
   };
 
-  *(Material*)in_map.value = (Material)ret;
+  map_material_insert(_all_materials_map, name, ret);
 
-  return (Material)ret;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-Material mat_new_load(slice_t name, mat_params_t params) {
-  Material ret = mat_new(name, params);
-  mat_load_async(ret);
-  return ret;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Initializes a new material using texture atlases
-////////////////////////////////////////////////////////////////////////////////
-
-Material  mat_new_atlas(slice_t name, mat_params_t p, vec2i dim) {
-  p.atlas_dimensions = dim;
-  return mat_new(name, p);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-Material  mat_new_atlas_load(slice_t name, mat_params_t p, vec2i dim) {
-  p.atlas_dimensions = dim;
-  return mat_new_load(name, p);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Gets an existing material from the map
-////////////////////////////////////////////////////////////////////////////////
-
-Material mat_get(slice_t name) {
-  if (!_all_materials) return NULL;
-  Material* material = map_ref(_all_materials, &name);
-  assert(material);
-  return *material;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-Array_slice mat_get_names(void) {
-  if (!_all_materials) return NULL;
-  Array_slice ret = arr_slice_new_reserve(_all_materials->size);
-  Material* map_foreach(material, _all_materials) {
-    arr_slice_push_back(ret, (*material)->name);
-  }
   return ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void mat_set_ext(Material m_in, slice_t ext) {
-  MATERIAL_INTERNAL;
-  m->ext = ext;
-}
+void _mat_load_async(Material_Internal* m, view_slice_t filenames) {
+  assert(m);
+  assert(filenames.end > filenames.begin);
 
-////////////////////////////////////////////////////////////////////////////////
-// Loads the material texture images, asynchronously in WASM mode
-////////////////////////////////////////////////////////////////////////////////
+  if (m->pub.status != S_NEW) { assert(m->img); return; }
+  assert(m->img == NULL);
 
-void mat_load_async(Material mat) {
-  span_slice_t name = span_slice(&mat->name, 1);
-  mat_load_multi_async(mat, name.view);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-void mat_load_multi_async(Material m_in, view_slice_t filenames) {
-  MATERIAL_INTERNAL;
-
-  // Don't re-load if we've alrady loaded or are already loading
-  if (m->pub.ready || m->img) return;
-
+  // Get the correct grid size for the map (if it's an atlas)
   m->pub.layers = view_slice_size(filenames);
   if (m->pub.layers == 1) {
     vec2i dim = m->pub.params.atlas_dimensions;
     m->pub.layers = dim.x * dim.y;
+  }
+  else {
+    // Doesn't currently support multiple files each with multiple images
+    assert(m->pub.params.atlas_dimensions.x = 1);
+    assert(m->pub.params.atlas_dimensions.y = 1);
   }
 
   assert(m->pub.layers > 0);
@@ -214,24 +171,40 @@ void mat_load_multi_async(Material m_in, view_slice_t filenames) {
     assert(*img); // MSVC doesn't understand pointers to pointer
     img = &(*img)->next;
   }
+
+  assert(m->img);
+  m->pub.status = S_LOADING;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void mat_load_all_async(void) {
-  Material* map_foreach(material, _all_materials) {
-    mat_load_async(*material);
+void _mat_load_check(Material_Internal* m) {
+  assert(m);
+  assert(m->pub.status == S_LOADING);
+  assert(m->img);
+
+  status_t ret = S_BUILDING;
+
+  mat_images_t* img = m->img;
+  while (img) {
+    for (index_t i = 0; i < MAT_MAP_COUNT; ++i) {
+      if (m->pub.params.use_map[i] && img->images[i]->status != S_READY) {
+        return;
+      }
+    }
+    img = img->next;
   }
+
+  m->pub.status = S_BUILDING;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Builds the material textures from the loaded images
-////////////////////////////////////////////////////////////////////////////////
 
-void mat_build(Material m_in) {
-  MATERIAL_INTERNAL;
-  if (m->pub.ready) return;
-  if (!m->img) return;
+void _mat_build_check(Material_Internal* m) {
+  assert(m);
+  assert(m->img);
+
+  if (m->pub.status != S_BUILDING) return;
 
   vec2i dim = m->pub.params.atlas_dimensions;
 
@@ -297,17 +270,17 @@ void mat_build(Material m_in) {
     }
     assert(!img);
 
-    // Cleanup all those images we loaded
-    img = m->img;
-    while (img) {
-      for (int i = 0; i < MAT_MAP_COUNT; ++i) {
-        if (img->images[i]) img_delete(&img->images[i]);
-      }
-
-      mat_images_t* prev = img;
-      img = img->next;
-      free(prev);
-    }
+    //// Cleanup all those images we loaded
+    //img = m->img;
+    //while (img) {
+    //  for (int i = 0; i < MAT_MAP_COUNT; ++i) {
+    //    if (img->images[i]) img_delete(&img->images[i]);
+    //  }
+    //
+    //  mat_images_t* prev = img;
+    //  img = img->next;
+    //  free(prev);
+    //}
   }
 
   // Set up default maps for unused material attributes
@@ -323,13 +296,96 @@ void mat_build(Material m_in) {
     }
   }
 
-  m->pub.ready = true;
+  m->pub.status = S_READY;
+  ++_materials_built_count;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void mat_build_all(void) {
-  Material* map_foreach(material, _all_materials) {
-    mat_build(*material);
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// Initialization functions to create materials
+////////////////////////////////////////////////////////////////////////////////
+
+Material mat_new(slice_t filename, mat_params_t params) {
+  Material_Internal* ret = _mat_new(filename, params);
+  assert(ret);
+
+  if (ret->pub.status != S_NEW) {
+    str_log("[Material.new] Name already in use: {}", ret->pub.name);
+    return (Material)ret;
   }
+
+  view_slice_t name = view_slice(&ret->pub.name, 1);
+  _mat_load_async(ret, name);
+  return (Material)ret;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+Material mat_new_atlas(slice_t name, mat_params_t p, vec2i dim) {
+  p.atlas_dimensions = dim;
+  return mat_new(name, p);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+Material mat_new_multi(slice_t name, mat_params_t p, view_slice_t filenames) {
+  Material_Internal* ret = _mat_new(name, p);
+  assert(ret);
+
+  if (ret->pub.status != S_NEW) {
+    str_log("[Material.new_multi] Name already in use: {}", ret->pub.name);
+    return (Material)ret;
+  }
+
+  _mat_load_async(ret, filenames);
+  return (Material)ret;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Functions to manage the async loading
+////////////////////////////////////////////////////////////////////////////////
+
+void mat_loading_manager(void) {
+  Material_Internal** map_foreach(pmat, _all_materials_map) {
+    Material_Internal* m = *pmat;
+
+    if (m->pub.status == S_LOADING) {
+      _mat_load_check(m);
+    }
+
+    if (m->pub.status == S_BUILDING) {
+      _mat_build_check(m);
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+index_t mat_loading_count(void) {
+  index_t ret = _all_materials_map->size - _materials_built_count;
+  assert(ret >= 0);
+  return ret;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Gets an existing material from the map
+////////////////////////////////////////////////////////////////////////////////
+
+Material mat_get(slice_t name) {
+  if (!_all_materials_map) return NULL;
+  return (Material)map_material_get_or_default(_all_materials_map, name, NULL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+Array_slice mat_get_names(void) {
+  if (!_all_materials_map) return NULL;
+  Array_slice ret = arr_slice_new_reserve(_all_materials_map->size);
+  Material_Internal* map_foreach(m, _all_materials_map) {
+    arr_slice_push_back(ret, m->pub.name);
+  }
+  return ret;
 }
