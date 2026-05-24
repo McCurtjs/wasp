@@ -204,10 +204,7 @@ SDL_AppResult SDL_AppIterate(void* app_state) {
   ImGui_ImplSDL3_NewFrame();
   igNewFrame();
 
-  file_loading_manager();
-  shader_loading_manager();
-  mat_loading_manager();
-  model_loading_manager();
+  wasp_loading_manager();
 
   app.game->should_exit |= !wasp_update(app.game, dt);
 
@@ -264,18 +261,4 @@ void SDL_AppQuit(void* app_state, SDL_AppResult result) {
   if (app.window) {
     SDL_DestroyWindow(app.window);
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-index_t wasp_await_count(void) {
-  index_t count = 0;
-
-  count += file_loading_count();
-  count += img_loading_count();
-  count += shader_loading_count();
-  count += mat_loading_count();
-  count += model_loading_count();
-
-  return count;
 }

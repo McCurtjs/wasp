@@ -351,7 +351,7 @@ typedef ptrdiff_t GLintptr;
 
 #define GL_UNPACK_FLIP_Y_WEBGL            0x9240
 
-GLenum  glGetError();
+GLenum  glGetError(void);
 void    glGetIntegerv(GLenum pname, GLint * data);
 void    glViewport(GLint x, GLint y, GLsizei width, GLsizei height);
 void    glEnable(GLenum cap);

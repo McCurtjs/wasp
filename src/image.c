@@ -26,32 +26,33 @@
 #include "image.h"
 #include "str.h"
 
+typedef struct Image_Internal {
+  struct _opaque_Image_t pub;
+
+  String filename_internal;
+} Image_Internal;
+
 #ifndef __WASM__
 # define STB_IMAGE_IMPLEMENTATION
 # include "stb_image.h"
 # include "SDL3/SDL.h"
 
 static SDL_AtomicInt _img_loading_count = { 0 };
+
 #else
 # include <string.h>
 # include <stdlib.h> // malloc, free
-# include "wasm.h"
+# include "wasp.h"
 
 static index_t _img_loading_count = 0;
 
-extern void* js_image_open(Image img, const char* src, uint src_len);
+extern void* js_image_open(Image_Internal* img, const char* src, uint src_len);
 extern void  js_image_delete(void* data_id);
 extern void  js_image_extract(void* dst, void* src, int dst_channels);
 
 extern void* js_buffer_create(const byte* bytes, uint size);
 extern void  js_buffer_delete(void* data_id);
 #endif
-
-typedef struct Image_Internal {
-  struct _opaque_Image_t pub;
-
-  String filename_internal;
-} Image_Internal;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -71,7 +72,7 @@ static Image_Internal* _img_load_default_helper(Image_Internal* image) {
   if (image->pub.status == S_READY) {
     image->pub.status = S_READY;
     image->pub.filename = image->filename_internal->slice;
-    IMG_SET_HANDLE(image, image->channels);
+    IMG_SET_HANDLE(image, image->pub.channels);
   }
   return image;
 }
@@ -85,7 +86,7 @@ static Image_Internal _img_default_error = {
   .pub = {
     .type = IMG_ERROR,
     .status = S_READY,
-    .size = { 4, 4 },
+    .size = {.i = { 4, 4 }},
     .channels = 4,
     .blend = false,
     .data = (byte[]) {
@@ -112,7 +113,7 @@ static Image_Internal _img_default_white = {
   .pub = {
     .type = IMG_DEFAULT,
     .status = S_READY,
-    .size = { 1, 1 },
+    .size = {.i = { 1, 1 }},
     .channels = 4,
     .blend = false,
     .data = (byte[]) { F, F, F, F },
@@ -134,7 +135,7 @@ static Image_Internal _img_default_normal = {
   .pub = {
     .type = IMG_DEFAULT,
     .status = S_READY,
-    .size = { 1, 1 },
+    .size = {.i = { 1, 1 }},
     .channels = 4,
     .blend = false,
     .data = (byte[]) { 127, 127, 255, 255 },
@@ -173,14 +174,15 @@ void export(img_open_async_done)(
   }
   else {
     js_image_delete(img->handle);
-    *img = *_img_load_default_error();
+    Image_Internal* img_internal = (Image_Internal*)img;
+    *img_internal = *_img_load_default_error();
     str_log("[Image.new]   Failed ({}): using default", img->handle);
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-Image img_new(String filename) {
+Image img_new_str(String filename) {
   assert(!str_is_null_or_empty(filename));
   Image_Internal* ret = malloc(sizeof(*ret));
   assert(ret);
@@ -196,8 +198,8 @@ Image img_new(String filename) {
   };
 
   ++_img_loading_count;
-  ret->handle = js_image_open(ret, filename->begin, filename->length);
-  str_log("[Image.new] Loading: {}, Async ID: {}", filename, ret->handle);
+  ret->pub.handle = js_image_open(ret, filename->begin, filename->length);
+  str_log("[Image.new] Loading: {}, Async ID: {}", filename, ret->pub.handle);
   return (Image)ret;
 }
 
@@ -228,7 +230,7 @@ static int SDLCALL _img_load_async(void* data) {
     *img = *_img_load_default_error();
   }
 
-  SDL_AtomicDecRef(&_img_loading_count);
+  SDL_AddAtomicInt(&_img_loading_count, -1);
 
   return 0;
 }
@@ -254,7 +256,7 @@ Image img_new_str(String filename) {
   SDL_Thread* thread = SDL_CreateThread(_img_load_async, filename->begin, ret);
 
   if (thread) {
-    SDL_AtomicIncRef(&_img_loading_count);
+    SDL_AddAtomicInt(&_img_loading_count, 1);
     SDL_DetachThread(thread);
   }
   else {
@@ -508,7 +510,7 @@ void img_resolve(Image _img) {
   assert(img->pub.type == IMG_HANDLE);
 
 #ifdef __WASM__
-  assert(!img->data);
+  assert(!img->pub.data);
   size_t size_bytes = img->pub.width * img->pub.height * img->pub.channels;
   img->pub.data = malloc(size_bytes);
   js_image_extract(img->pub.data, img->pub.handle, img->pub.channels);

@@ -58,7 +58,7 @@ Model model_new_sprites(vec2i grid) {
 
   *sprites = (Model_Internal_Sprites) {
     .type = MODEL_SPRITES,
-    .name = STRL("hi"),
+    .name = _name_sprites,
     .status = S_READY,
     .format = VF_SPRITES,
     .vert_count = 0,

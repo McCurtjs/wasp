@@ -39,6 +39,7 @@ typedef struct File_Internal {
   index_t       size;
 } File_Internal;
 
+#ifndef __WASM__
 static char* _sdl_modes[FM_COUNT] = {
   "r",
   "w",
@@ -47,10 +48,9 @@ static char* _sdl_modes[FM_COUNT] = {
 };
 
 static SDL_AsyncIOQueue* _sdl_queue = NULL;
-
-#ifndef __WASM__
-static index_t _async_loading_count = 0;
 #endif
+
+static index_t _async_loading_count = 0;
 
 #ifdef _MSC_VER
 
@@ -62,14 +62,16 @@ static index_t _async_loading_count = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-File file_new(slice_t filename, file_mode_t mode) {
+File_Internal* _file_new(slice_t filename, file_mode_t mode) {
   assert(!slice_is_empty(filename));
   assert(mode >= 0 && mode < FM_COUNT);
 
+#ifndef __WASM__
   if (!_sdl_queue) {
     _sdl_queue = SDL_CreateAsyncIOQueue();
     assert(_sdl_queue);
   }
+#endif
 
   File_Internal* ret = malloc(sizeof(File_Internal));
   assert(ret);
@@ -81,18 +83,42 @@ File file_new(slice_t filename, file_mode_t mode) {
       .name = name_copy->slice,
       .status = S_NEW,
       .mode = mode,
-      .data = NULL,
     },
     .stream = NULL,
     .name_internal = name_copy,
   };
 
+  return ret;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void _file_assign_buffer(File_Internal* file, void* buffer, index_t size) {
+  file->buffer = buffer;
+
+  // Connect the public data handles for the file data
+  file->pub.slice = (slice_t) {
+    .begin = buffer,
+    .size = size
+  };
+
+  file->pub.data = (view_byte_t) {
+    .begin = buffer,
+    .end = (byte*)buffer + size,
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef __WASM__
+File file_new(slice_t filename, file_mode_t mode) {
+  File_Internal* ret = _file_new(filename, mode);
+
   str_log("[File.new] Loading: {}", filename);
 
-#ifdef __WASM__
-  assert(mode == FM_READ);
-#else
-  ret->stream = SDL_AsyncIOFromFile(name_copy->begin, _sdl_modes[mode]);
+  ret->stream = SDL_AsyncIOFromFile(
+    ret->name_internal->begin, _sdl_modes[mode]
+  );
 
   if (mode != FM_READ && mode != FM_READ_WRITE) return (File)ret;
 
@@ -120,14 +146,66 @@ File file_new(slice_t filename, file_mode_t mode) {
       str_log("[File.new] Could not start loading file: {}", filename);
     }
   }
-#endif
+
+  return (File)ret;
+}
+#else
+
+#include "wasp.h"
+
+extern SDL_AsyncIO* js_file_create(File_Internal*, const char* name, int len);
+extern void         js_file_open_async(SDL_AsyncIO* stream);
+extern bool         js_file_read(SDL_AsyncIO* stream, void* dst, index_t size);
+extern void         js_file_close(SDL_AsyncIO* stream);
+
+void export(file_open_async_done)(File_Internal* file, index_t size) {
+  assert(file);
+  assert(file->pub.status == S_LOADING);
+
+  --_async_loading_count;
+
+  if (!size) {
+    str_log("[File.read] Failed to open file: {}", file->pub.name);
+    file->pub.status = S_NOT_FOUND;
+    return;
+  }
+
+  file->buffer = malloc(size);
+  assert(file->buffer);
+
+  if (!js_file_read(file->stream, file->buffer, size)) {
+    str_log("[File.read] Failed to read from file: {}", file->pub.name);
+    file->pub.status = S_FAILED;
+    return;
+  }
+
+  _file_assign_buffer(file, file->buffer, size);
+
+  file->pub.status = S_READY;
+}
+
+File file_new(slice_t filename, file_mode_t mode) {
+  assert(mode == FM_READ);
+  File_Internal* ret = _file_new(filename, mode);
+
+  slice_t name = ret->name_internal->slice;
+  ret->stream = js_file_create(ret, name.begin, name.size);
+  assert(ret->stream);
+
+  ret->pub.status = S_LOADING;
+  ++_async_loading_count;
+
+  js_file_open_async(ret->stream);
 
   return (File)ret;
 }
 
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 
 void file_loading_manager(void) {
+#ifndef __WASM__
   SDL_AsyncIOOutcome result;
 
   while (SDL_GetAsyncIOResult(_sdl_queue, &result)) {
@@ -150,22 +228,14 @@ void file_loading_manager(void) {
       file->pub.name, result.bytes_transferred, result.bytes_requested
     );
 
-    // Connect the public data handles for the file data
-    file->pub.slice = (slice_t) {
-      .begin = result.buffer,
-      .length = result.bytes_transferred
-    };
-
-    file->pub.data = (view_byte_t) {
-      .begin = result.buffer,
-      .end = (byte*)result.buffer + result.bytes_requested,
-    };
+    _file_assign_buffer(file, result.buffer, result.bytes_requested);
 
     file->pub.status = S_READY;
 
     bool should_flush = file->pub.mode != FM_READ;
     SDL_CloseAsyncIO(file->stream, should_flush, _sdl_queue, file);
   }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -185,8 +255,12 @@ void file_delete(File* _file) {
   if (file->buffer) free(file->buffer);
 
   if (file->stream) {
+#ifndef __WASM__
     assert(_sdl_queue);
     SDL_CloseAsyncIO(file->stream, false, _sdl_queue, NULL);
+#else
+    js_file_close(file->stream);
+#endif
   }
 
   str_delete(&file->name_internal);

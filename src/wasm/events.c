@@ -24,7 +24,7 @@
 
 #include "SDL3/SDL.h"
 #include "types.h"
-#include "wasm.h"
+#include "wasp.h"
 #include "str.h"
 #include <stdlib.h>
 #include <ctype.h>

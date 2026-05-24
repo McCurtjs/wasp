@@ -79,6 +79,8 @@ static void _wizard_movement(Game game, entity_t* e, float dt) {
 
   if (game->scene_time == 0.0f) fake_target = v3zero;
 
+  bool is_firing = input_pressed(IN_CLICK) || game->input.touch.count >= 2;
+
   demo_t* demo = game->demo;
 
   vec3 target = demo->target;
@@ -90,7 +92,7 @@ static void _wizard_movement(Game game, entity_t* e, float dt) {
   if (distance + 0.1f < WIZARD_SPEED / 3.f) {
     max_move *= (distance + 0.1f) / (WIZARD_SPEED / 3.f);
   }
-  if (input_pressed(IN_CLICK) || game->input.touch.count >= 2) {
+  if (is_firing) {
     max_move /= 2.0f;
   }
   if (distance <= max_move) {
@@ -101,6 +103,13 @@ static void _wizard_movement(Game game, entity_t* e, float dt) {
     entity_translate(e, v3scale(dir, max_move));
   }
 
+  // While firing, update the target position
+  if (is_firing && distance < 5.f) {
+    demo->target = v3add(e->pos, to_target);
+    demo->target.y = 0;
+  }
+
+  // Adjust camera angle based on direction of target
   to_target = v3sub(target, fake_target);
   distance = v3mag(to_target);
   max_move = WIZARD_FAKE_SPEED * dt;

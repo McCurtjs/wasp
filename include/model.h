@@ -26,6 +26,7 @@
 #define WASP_MODEL_H_
 
 #include "types.h"
+
 #include "status.h"
 #include "mat.h"
 #include "array.h"

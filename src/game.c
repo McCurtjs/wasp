@@ -26,7 +26,6 @@
 #include "game.h"
 
 #include "quat.h"
-#include "wasm.h"
 #include "light.h"
 #include "graphics.h"
 #include "wasp.h"
@@ -404,7 +403,7 @@ void game_update(Game _game, float dt) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Renders visisble game objects
+// Renders visible game objects
 ////////////////////////////////////////////////////////////////////////////////
 
 void game_render(Game _game) {

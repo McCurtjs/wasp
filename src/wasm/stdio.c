@@ -25,7 +25,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "wasm.h"
+#include "wasp.h"
 
 extern int    js_fopen(const char* path, int path_len);
 extern void   js_fopen_async(int data_id);

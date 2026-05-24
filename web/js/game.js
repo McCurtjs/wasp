@@ -2,7 +2,7 @@
 import { sdl } from "./bind/wasm_const.js";
 import { wasm_import_base } from "./bind/wasm_base.js";
 import { wasm_import_gl } from "./bind/wasm_gl.js";
-import { wasm_import_stdio } from "./bind/wasm_stdio.js";
+import { wasm_import_stdio } from "./bind/wasm_io.js";
 import { wasm_import_image } from "./bind/wasm_image.js";
 
 class Game {
@@ -16,8 +16,8 @@ class Game {
     this.data = {};
     this.initialized = false;
     this.await_count = 0;
-    this.ready = false;
     this.tests_only = false;
+    this.frame_time = 0;
 
     this.utf8 = {
       decoder: new TextDecoder("utf-8"),

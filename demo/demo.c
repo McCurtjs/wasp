@@ -24,7 +24,6 @@
 
 #include "demo.h"
 #include "wasp.h"
-#include "wasm.h"
 
 #include "SDL3/SDL.h"
 #include "gl.h"
@@ -111,9 +110,9 @@ static scene_load_fn_t demo_scenes[] =
 // Pre-initializer to set window size and title
 ////////////////////////////////////////////////////////////////////////////////
 
-static void _slice_write_disable(slice_t str) {
-  UNUSED(str);
-}
+//static void _slice_write_disable(slice_t str) {
+//  UNUSED(str);
+//}
 
 void wasp_init(app_defaults_t* game) {
   game->window = v2i(1024, 768);

@@ -1,7 +1,7 @@
 /*******************************************************************************
 * MIT License
 *
-* Copyright (c) 2025 Curtis McCoy
+* Copyright (c) 2026 Curtis McCoy
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -22,7 +22,7 @@
 * SOFTWARE.
 */
 
-#include "wasm.h"
+#include "wasp.h"
 
 #include "str.h"
 
@@ -76,3 +76,30 @@ void wasm_alert(slice_t slice) {
   fprintf(stderr, "%.*s", length, slice.begin);
 }
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+
+#include "file.h"
+#include "image.h"
+#include "shader.h"
+#include "material.h"
+#include "model.h"
+
+void wasp_loading_manager(void) {
+  file_loading_manager();
+  shader_loading_manager();
+  mat_loading_manager();
+  model_loading_manager();
+}
+
+index_t wasp_await_count(void) {
+  index_t count = 0;
+
+  count += file_loading_count();
+  count += img_loading_count();
+  count += shader_loading_count();
+  count += mat_loading_count();
+  count += model_loading_count();
+
+  return count;
+}

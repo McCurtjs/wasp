@@ -27,7 +27,7 @@
 #include <SDL3/SDL.h>
 #include "gl.h"
 
-#include "wasm.h"
+#include "wasp.h"
 #include "render_target.h"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -238,7 +238,7 @@ static void _process_finger_cancelled(Game game, SDL_TouchFingerEvent* touch) {
 
 uint event_process_system(Game game, void* system_event) {
   SDL_Event* event = system_event;
-  
+
   switch(event->type) {
 
 #ifndef __WASM__

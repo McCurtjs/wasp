@@ -225,8 +225,6 @@ void model_render_instanced(const Model model, index_t count) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void model_loading_manager(void) {
-  index_t loading_count = 0;
-
   if (!_loaded_models) _loaded_models = arr_new(Model);
 
   for (index_t i = 0; i < _new_models->size;) {

@@ -183,8 +183,6 @@ void _mat_load_check(Material_Internal* m) {
   assert(m->pub.status == S_LOADING);
   assert(m->img);
 
-  status_t ret = S_BUILDING;
-
   mat_images_t* img = m->img;
   while (img) {
     for (index_t i = 0; i < MAT_MAP_COUNT; ++i) {

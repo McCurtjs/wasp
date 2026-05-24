@@ -93,6 +93,10 @@ typedef enum {
 #define SDL_BUTTON_X1MASK   SDL_BUTTON(SDL_BUTTON_X1)
 #define SDL_BUTTON_X2MASK   SDL_BUTTON(SDL_BUTTON_X2)
 
+typedef struct SDL_AsyncIO SDL_AsyncIO;
+
+typedef struct SDL_AsyncIOQueue SDL_AsyncIOQueue;
+
 typedef enum SDL_AppResult
 {
     SDL_APP_CONTINUE,   /**< Value that requests that the app continue from the main callbacks. */

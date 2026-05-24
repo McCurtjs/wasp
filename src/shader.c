@@ -26,22 +26,22 @@
 #include "shader.h"
 #undef MCLIB_INTERNAL_IMPL
 
+#include "wasp.h"
 #include "str.h"
 #include "file.h"
 #include "material.h"
 #include "map.h"
 #include "thread.h"
 
-// Have to undefine this here becuase apparently windows also defines it
+#include "data/inline_shaders.h"
+
+// Have to undefine this here because apparently windows also defines it
 #undef CONST
+
+#include "gl.h"
 
 #include <string.h>
 #include <stdlib.h>
-
-#include "gl.h"
-#include "wasm.h"
-
-#include "data/inline_shaders.h"
 
 typedef enum shader_part_type_t {
   ST_UNKNOWN,
@@ -141,7 +141,8 @@ static bool _part_build_check(gl_shader_t* s) {
 
   s->handle = glCreateShader(type);
   assert(s->handle);
-  glShaderSource(s->handle, 1, &s->text->begin, &size);
+  const char* source = s->text->begin;
+  glShaderSource(s->handle, 1, &source, &size);
   glCompileShader(s->handle);
   glGetShaderiv(s->handle, GL_COMPILE_STATUS, &status);
 
@@ -391,7 +392,7 @@ Shader shader_new(slice_t name, slice_t vert_text, slice_t frag_text) {
   String frag_name = str_concat(name, "_frag");
 
   // Set up vertex part
-  gl_shader_t* vert = 
+  gl_shader_t* vert =
     _part_get_or_create(ST_VERTEX, vert_name->slice, vert_text);
 
   assert(vert);
@@ -399,7 +400,7 @@ Shader shader_new(slice_t name, slice_t vert_text, slice_t frag_text) {
   status_t vert_status = vert->status;
 
   // Set up fragment part
-  gl_shader_t* frag = 
+  gl_shader_t* frag =
     _part_get_or_create(ST_FRAGMENT, frag_name->slice, frag_text);
 
   assert(frag);
@@ -497,6 +498,8 @@ Shader shader_new_from_files(
 ////////////////////////////////////////////////////////////////////////////////
 // Shader loading management
 ////////////////////////////////////////////////////////////////////////////////
+
+#include "wasp.h"
 
 void shader_loading_manager(void) {
   assert(thread_is_main());

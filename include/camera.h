@@ -32,6 +32,16 @@ enum camera_type_t {
   CAMERA_ORTHOGRAPHIC
 };
 
+// minwindef for some reason defines "near" and "far", but we want to use those
+//    names, so undefine them here (they're blank anyway).
+#ifdef near
+# undef near
+#endif
+
+#ifdef far
+# undef far
+#endif
+
 typedef struct camera_perspective_params_t {
   float fov, aspect, near, far;
 } camera_perspective_params_t;
