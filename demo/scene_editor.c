@@ -721,7 +721,20 @@ void _behavior_gear_rotate_ccw(Game game, entity_t* e, float dt) {
 
 void _behavior_stare(Game game, entity_t* e, float dt) {
   UNUSED(dt);
-  entity_set_rotation(e, q3look(v3sub(game->camera.pos, e->pos), v3up));
+  vec3 forward = v3norm(v3sub(game->camera.pos, e->pos));
+  quat q = v3look(forward, v3up);
+  //quat q = v3rotation(v3front, forward);
+  entity_set_rotation(e, q);
+
+  vec3 actual = v3rotate(v3front, q);
+
+  draw_push();
+  draw.vector_offset = e->pos;
+  draw.color = c4green;
+  draw_vector(forward);
+  draw.color = c4blue;
+  draw_vector(actual);
+  draw_pop();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
