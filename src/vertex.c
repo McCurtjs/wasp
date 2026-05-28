@@ -33,6 +33,11 @@
 //    value is null. We're not actually dereferencing the object though, but
 //    MSVC doesn't know that.
 # pragma warning ( disable : 6011 )
+
+// Disable warning for the _vert_format[...] return line:
+//    C33010: "Unchecked lower bound for enum format used as index"
+// Obviously the bound is being checked in the assert...
+# pragma warning ( disable : 33010 )
 #endif
 
 typedef struct vert_format_desc_t {

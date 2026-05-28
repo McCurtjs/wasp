@@ -28,6 +28,7 @@
 #include "light.h"
 #include "graphics.h"
 #include "str.h"
+#include "particles.h"
 
 #define CAMERA_SPEED 0.8f
 
@@ -980,6 +981,7 @@ scene_unload_fn_t scene_load_gears(Game game) {
   }); //*/
 
   //* Bigger Crate
+  slotkey_t crate_id =
   entity_add(&(entity_desc_t) {
     .name = S("Medium Crate"),
     .model = demo->models.box,
@@ -1079,6 +1081,27 @@ scene_unload_fn_t scene_load_gears(Game game) {
     .pos = v3f(-20, 7, -20),
     .color = v3f(0.0f, 0.9f, 0.4f),
   });
+  //*/
+
+  //* Particle test
+  ParticleEffect effect = ps_add_effect(
+    game->particle_system, S("test"), PF_DEFAULT, EF_DEFAULT
+  );
+
+  effect->emitter_defaults.duration = 0;
+  //effect->emitter_defaults.offset = PI / 8.f;
+  effect->emitter_defaults.rate = 40;
+  effect->emitter_defaults.particle_defaults.speed = 15;
+  effect->emitter_defaults.particle_defaults.duration = 2.f;
+  effect->emitter_defaults.particle_variance.size = 0.3f;
+  effect->emitter_defaults.particle_variance.speed = 4.f;
+  effect->emitter_defaults.particle_variance.duration = 1.f;
+  effect->on_particle_update = pb_gravity;
+  effect->emitter_defaults.dir = q4axang(v3x, PI / 2.f);
+
+  ParticleEmitter emitter = ps_add_emitter(effect);
+  emitter->entity_id = crate_id;
+
   //*/
 
   return NULL;

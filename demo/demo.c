@@ -44,12 +44,12 @@ renderer_t* renderer_basic = &_renderer_basic;
 
 static renderer_t _renderer_pbr = {
   .name = "PBR",
-  .entity_register = renderer_callback_entity_register,
-  .entity_update = renderer_callback_entity_update,
-  .entity_unregister = renderer_callback_entity_unregister,
-  .entity_attributes = renderer_callback_entity_attributes,
-  .instance_update = renderer_callback_instance_update,
-  .render = renderer_callback_render,
+  .entity_register    = renderer_callback_entity_register,
+  .entity_update      = renderer_callback_entity_update,
+  .entity_unregister  = renderer_callback_entity_unregister,
+  .entity_attributes  = renderer_callback_entity_attributes,
+  .instance_update    = renderer_callback_instance_update,
+  .render             = renderer_callback_render,
 };
 renderer_t* renderer_pbr = &_renderer_pbr;
 
@@ -92,10 +92,9 @@ static keybind_t input_map[] = {
   { .name = IN_DECREASE, .key = SDLK_DOWN },
   { .name = IN_INCREASE_FAST, .key = SDLK_PAGEUP },
   { .name = IN_DECREASE_FAST, .key = SDLK_PAGEDOWN },
-  { .name = IN_JUMP, .type = BT_TOUCH, .touch = &(touch_button_t) {
-    .pos = svNzero, .radius = 0.1f
+  { .name = IN_JUMP, .type = BT_TOUCH, 
+    .touch = &(touch_button_t) { .pos = svNzero, .radius = 0.1f}
   },
-  }
 };
 
 static touch_t touch_fingers[10];

@@ -46,12 +46,15 @@ static const vert_format_desc_t _attrib_format[AF_SUPPORTED_MAX] = {
   { sizeof(attribute_tint_t) },
   { sizeof(attribute_material_t) },
   { sizeof(attribute_material_tint_t) },
+  { sizeof(attribute_particle_point_t) }
 };
 
-static inline void _attribute_bind_base(attribute_format_t format, Shader s) {
+static void _attribute_bind_transform(attribute_format_t f, Shader s) {
   const attribute_base_t* base = NULL;
-  const GLsizei stride = _attrib_format[format].size;
+  const GLsizei stride = _attrib_format[f].size;
+
   GLuint i = shader_attribute_loc(s, "model_matrix");
+  if (i < 0) return;
 
   glEnableVertexAttribArray(i);
   glVertexAttribPointer(i, 4, GL_FLOAT, false, stride, &base->transform.col[0]);
@@ -73,6 +76,8 @@ static inline void _attribute_bind_base(attribute_format_t format, Shader s) {
 static inline void _attribute_bind_tint(Shader s) {
   const attribute_tint_t* base = NULL;
   const GLsizei stride = sizeof(*base);
+  _attribute_bind_transform(AF_TINT, s);
+
   GLint i = shader_attribute_loc(s, "model_tint");
   if (i < 0) return;
 
@@ -84,6 +89,8 @@ static inline void _attribute_bind_tint(Shader s) {
 static inline void _attribute_bind_material(Shader s) {
   const attribute_material_t* base = NULL;
   const GLsizei stride = sizeof(*base);
+  _attribute_bind_transform(AF_MATERIAL, s);
+
   GLint i = shader_attribute_loc(s, "model_material_index");
   if (i < 0) return;
 
@@ -95,6 +102,7 @@ static inline void _attribute_bind_material(Shader s) {
 static inline void _attribute_bind_material_tint(Shader s) {
   const attribute_material_tint_t* base = NULL;
   const GLsizei stride = sizeof(*base);
+  _attribute_bind_transform(AF_MATERIAL_TINT, s);
 
   GLint mat = shader_attribute_loc(s, "model_material_index");
   if (mat >= 0) {
@@ -111,18 +119,42 @@ static inline void _attribute_bind_material_tint(Shader s) {
   }
 }
 
+static void _attribute_bind_particle_base(attribute_format_t format, Shader s) {
+  const vec3* base = NULL;
+  const GLsizei stride = _attrib_format[format].size;
+
+  GLint i = shader_attribute_loc(s, "model_pos");
+  if (i < 0) return;
+
+  glEnableVertexAttribArray(i);
+  glVertexAttribPointer(i, v3floats, GL_FLOAT, false, stride, &base->x);
+  glVertexAttribDivisor(i, 1);
+}
+
+static inline void _attribute_bind_particle_point(Shader s) {
+  const attribute_particle_point_t* base = NULL;
+  const GLsizei stride = sizeof(*base);
+  _attribute_bind_particle_base(AF_PARTICLE_POINT, s);
+
+  GLint i = shader_attribute_loc(s, "model_scale");
+  if (i < 0) return;
+
+  glEnableVertexAttribArray(i);
+  glVertexAttribPointer(i, 1, GL_FLOAT, false, stride, &base->scale);
+  glVertexAttribDivisor(i, 1);
+}
+
 void attribute_bind(attribute_format_t format, Shader s) {
   assert(format >= 0 && format < AF_SUPPORTED_MAX);
   if (format == AF_NONE) return;
 
-  _attribute_bind_base(format, s);
-
   switch (format) {
-    case AF_TRANSFORM_ONLY:                                   break;
-    case AF_TINT:           _attribute_bind_tint(s);          break;
-    case AF_MATERIAL:       _attribute_bind_material(s);      break;
-    case AF_MATERIAL_TINT:  _attribute_bind_material_tint(s); break;
-    default:                assert(false);                    break;
+    case AF_TRANSFORM_ONLY:                                     break;
+    case AF_TINT:           _attribute_bind_tint(s);            break;
+    case AF_MATERIAL:       _attribute_bind_material(s);        break;
+    case AF_MATERIAL_TINT:  _attribute_bind_material_tint(s);   break;
+    case AF_PARTICLE_POINT: _attribute_bind_particle_point(s);  break;
+    default:                assert(false);                      break;
   }
 }
 

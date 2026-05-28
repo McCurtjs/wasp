@@ -1,7 +1,8 @@
 
 #include "mat.h"
 
-//https://stackoverflow.com/questions/28375338/cube-using-single-gl-triangle-strip
+// Triangle strip defining a cube with colored vertices
+// https://stackoverflow.com/questions/28375338/cube-using-single-gl-triangle-strip
 static const float primitive_cube_color[] = {
   // position         color
   -0.5, -0.5,  0.5,   1, 1, 1,  // white
@@ -20,6 +21,7 @@ static const float primitive_cube_color[] = {
    0.5, -0.5, -0.5,   0, 1, 1,  // cyan
 };
 
+// Non-indexed triangle list defining a 1x1 cube centered at the origin
 static const float primitive_cube_uv_norm[] = {
   // position         uv        normal        tangent
    0.5,-0.5, 0.5,     0, 0,     1, 0, 0,      0, 0,-1, 1, // right
@@ -65,8 +67,18 @@ static const float primitive_cube_uv_norm[] = {
    0.5,-0.5,-0.5,     0, 0,     0, 0,-1,     -1, 0, 0, 1,
 };
 
+// Large single triangle to be clipped and used for full-screen render passes
 static const vec3 primitive_frame[] = {
   {.f={-1.0f, -1.0f,  0.0f }},
   {.f={ 3.0f, -1.0f,  0.0f }},
   {.f={-1.0f,  3.0f,  0.0f }},
+};
+
+// Triangle strip describing a 1x1 quad centered at the origin
+static const float primitive_particle[] = {
+  // position         uv
+  -0.5, 0.5, 0.0,     0, 1,
+  -0.5,-0.5, 0.0,     0, 0,
+   0.5, 0.5, 0.0,     1, 1,
+   0.5,-0.5, 0.0,     1, 0
 };

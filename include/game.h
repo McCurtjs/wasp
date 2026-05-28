@@ -40,6 +40,7 @@
 
 typedef struct _opaque_Game_t* Game;
 typedef struct _opaque_Graphics_t* Graphics;
+typedef struct _opaque_ParticleSystem_t* ParticleSystem;
 
 typedef void (*event_resize_window_fn_t)(Game game);
 
@@ -81,6 +82,7 @@ typedef struct _opaque_Game_t {
 
   // systems
   Graphics      CONST graphics;
+  ParticleSystem CONST particle_system;
 
   // game setup
   input_t             input;

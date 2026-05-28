@@ -46,9 +46,9 @@ typedef void (*entity_create_fn_t)(Game game, entity_t* e);
 typedef void (*entity_delete_fn_t)(Game game, entity_t* e);
 
 typedef struct transform_t {
-  quat  rot;
   vec3  pos;
   float scale;
+  quat  rot;
 } transform_t;
 
 typedef struct entity_desc_t {
@@ -63,9 +63,9 @@ typedef struct entity_desc_t {
   union {
     transform_t       transform;
     struct {
-      quat            rot;
       vec3            pos;
       float           scale;
+      quat            rot;
     };
   };
 

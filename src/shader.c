@@ -105,6 +105,7 @@ static index_t      _shaders_linked_count = 0;
 static bool _shader_is_default_name(slice_t name) {
   return  str_eq(name, "quad")
   ||      str_eq(name, "basic")
+  ||      str_eq(name, "particle")
   ;
 }
 
@@ -121,6 +122,10 @@ static gl_shader_t* _part_check_default(slice_t name) {
     return _part_get_or_create(ST_VERTEX, name, S(shader_basic_vert));
   if (str_eq(name, "basic_frag"))
     return _part_get_or_create(ST_FRAGMENT, name, S(shader_basic_frag));
+  if (str_eq(name, "particle_vert"))
+    return _part_get_or_create(ST_VERTEX, name, S(shader_particle_vert));
+  if (str_eq(name, "particle_frag"))
+    return _part_get_or_create(ST_FRAGMENT, name, S(shader_particle_frag));
   return NULL;
 }
 

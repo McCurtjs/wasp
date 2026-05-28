@@ -145,6 +145,38 @@ static Model _model_new_frame(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Single-triangle for full-screen rendering/deferred
+////////////////////////////////////////////////////////////////////////////////
+
+static Model _model_new_particle(void) {
+  static slice_t _name_particle = STRL("particle");
+
+  Model_Internal_Primitive* model = malloc(sizeof(*model));
+  assert(model);
+
+  GLsizeiptr size = sizeof(primitive_particle);
+  GLuint vbo;
+  glGenBuffers(1, &vbo);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  glBufferData(GL_ARRAY_BUFFER, size, primitive_particle, GL_STATIC_DRAW);
+
+  *model = (Model_Internal_Primitive) {
+    .type = MODEL_PARTICLE,
+    .name = _name_particle,
+    .status = S_READY,
+    .format = VF_UV,
+    .vert_count = 4,
+    .index_count = 0,
+    .vbo = vbo,
+    .vao = 0,
+  };
+
+  arr_insert_back(_new_models, &model);
+
+  return (Model)model;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Joint new basic primitive function
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -159,6 +191,9 @@ Model model_new_primitive(model_type_t type) {
 
     case MODEL_FRAME:
       return _model_new_frame();
+
+    case MODEL_PARTICLE:
+      return _model_new_particle();
 
     default:
       str_log("[Model.new_primitive] Not a primitive type: {}", (int)type);
@@ -178,6 +213,7 @@ void _model_bind_primitive(Model model) {
   assert(prim->type == MODEL_CUBE
       || prim->type == MODEL_CUBE_COLOR
       || prim->type == MODEL_FRAME
+      || prim->type == MODEL_PARTICLE
   );
   assert(prim->status == S_READY);
   assert(prim->vbo);
@@ -237,4 +273,16 @@ void _model_render_prim_strip(Model model) {
 
   glDrawArrays(GL_TRIANGLE_STRIP, 0, (GLsizei)prim->vert_count);
   glBindVertexArray(0);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void _model_render_prim_strip_inst(Model model, index_t count) {
+  Model_Internal_Primitive* prim = (Model_Internal_Primitive*)model;
+  assert(prim);
+  assert(prim->type == MODEL_PARTICLE);
+
+  glDrawArraysInstanced(
+    GL_TRIANGLE_STRIP, 0, (GLsizei)prim->vert_count, (GLsizei)count
+  );
 }

@@ -54,6 +54,7 @@ target_sources(Wasp PRIVATE
   src/instance_attributes.c
   src/material.c
   src/model.c
+  src/particles.c
   src/render_target.c
   src/renderer.c
   src/shader.c
@@ -81,6 +82,7 @@ target_sources(Wasp PRIVATE
   include/light.h
   include/material.h
   include/model.h
+  include/particles.h
   include/render_target.h
   include/renderer.h
   include/shader.h

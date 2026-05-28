@@ -73,15 +73,16 @@ typedef void (model_render_fn_t)(Model model);
 typedef void (model_render_inst_fn_t)(const Model model, index_t count);
 
 // Internal model binding and render functions defined in ./models directory
-extern model_build_fn_t   _model_build_mesh;
-extern model_bind_fn_t    _model_bind_primitive;
-extern model_bind_fn_t    _model_bind_sprites;
-extern model_bind_fn_t    _model_bind_mesh;
-extern model_render_fn_t  _model_render_grid;
-extern model_render_fn_t  _model_render_prim;
-extern model_render_fn_t  _model_render_prim_strip;
-extern model_render_fn_t  _model_render_sprites;
-extern model_render_fn_t  _model_render_mesh;
+extern model_build_fn_t       _model_build_mesh;
+extern model_bind_fn_t        _model_bind_primitive;
+extern model_bind_fn_t        _model_bind_sprites;
+extern model_bind_fn_t        _model_bind_mesh;
+extern model_render_fn_t      _model_render_grid;
+extern model_render_fn_t      _model_render_prim;
+extern model_render_fn_t      _model_render_prim_strip;
+extern model_render_inst_fn_t _model_render_prim_strip_inst;
+extern model_render_fn_t      _model_render_sprites;
+extern model_render_fn_t      _model_render_mesh;
 
 typedef struct model_management_fns_t {
   model_build_fn_t*       build;
@@ -112,6 +113,11 @@ static model_management_fns_t model_management_fns[MODEL_TYPES_COUNT] = {
   // MODEL_FRAME - Full-screen frame model for deferred rendering
   { .bind           = _model_bind_primitive
   , .render_single  = _model_render_prim
+  },
+
+  // MODEL_PARTICLE - 1x1 particle centered at 0,0 for billboard particles
+  { .bind           = _model_bind_primitive
+  , .render_inst    = _model_render_prim_strip_inst
   },
 
   // MODEL_SPRITES - Accumulated collection of sprites

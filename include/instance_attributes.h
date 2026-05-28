@@ -37,11 +37,12 @@ typedef struct _opaque_Shader_t* Shader;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum attribute_format_t {
-  AF_NONE,            // no associated per-instnace attributes
+  AF_NONE,            // no associated per-instance attributes
   AF_TRANSFORM_ONLY,  // attribute_base_t
   AF_TINT,            // attribute_tint_t
   AF_MATERIAL,        // attribute_material_t
   AF_MATERIAL_TINT,   // attribute_material_tint_t
+  AF_PARTICLE_POINT,
   AF_SUPPORTED_MAX
 } attribute_format_t;
 
@@ -64,6 +65,18 @@ typedef struct attribute_material_tint_t {
   int     material_index;
   color4b tint;
 } attribute_material_tint_t;
+
+typedef struct attribute_particle_point_t {
+  vec3    pos;
+  float   scale;
+} attribute_particle_point_t;
+
+typedef struct attribute_particle_basic_t {
+  vec3    pos;
+  vec2    scale;
+  quat    rot;
+  vec4b   color;
+} attribute_particle_basic_t;
 
 void      attribute_bind(attribute_format_t, Shader);
 void      attribute_bind_as(attribute_format_t actual, attribute_format_t as);

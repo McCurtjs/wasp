@@ -28,6 +28,7 @@
 #include "quat.h"
 #include "light.h"
 #include "graphics.h"
+#include "particles.h"
 #include "wasp.h"
 
 #define con_type struct entity_t
@@ -194,7 +195,7 @@ Game export(game_init) (int x, int y) {
 Game game_new(String title, vec2i window_size) {
   Game_Internal* ret = malloc(sizeof(Game_Internal));
   assert(ret);
-  *ret = (Game_Internal) {
+  *ret = (Game_Internal){
     .pub = {
       .window = window_size,
       .resolution = window_size,
@@ -202,6 +203,7 @@ Game game_new(String title, vec2i window_size) {
       .scene = 0,
       .scene_time = 0,
       .graphics = gfx_new(),
+      .particle_system = ps_new(),
       .input = {
         .triggered = input_triggered,
         .pressed = input_pressed,
@@ -398,6 +400,9 @@ void game_update(Game _game, float dt) {
   }
   arr_id_clear(game->entity_updates);
 
+  // Execute the particle system simulation
+  ps_update(game->pub.particle_system, dt);
+
   // Reset button triggers (only one frame on trigger/release)
   input_reset(&game->pub.input);
 }
@@ -428,6 +433,8 @@ void game_render(Game _game) {
   }
 
   gfx_render(game->pub.graphics, _game);
+
+  ps_render(game->pub.particle_system, &_game->camera);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
