@@ -223,6 +223,7 @@ struct _opaque_ParticleSystem_t {
 ParticleSystem  ps_new(void);
 void            ps_update(ParticleSystem, float dt);
 void            ps_render(ParticleSystem, camera_t*);
+void            ps_reset(ParticleSystem);
 void            ps_delete(ParticleSystem*);
 
 ParticleEffect  ps_add_effect(ParticleSystem,

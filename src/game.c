@@ -131,6 +131,9 @@ static void _game_scene_close(Game_Internal* game) {
 
   // Clear out instance data from the renderers
   gfx_clear_instances(game->pub.graphics);
+
+  // Clear out emitters and instances from particle system
+  ps_reset(game->pub.particle_system);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

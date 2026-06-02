@@ -385,6 +385,26 @@ void ps_render(ParticleSystem _ps, camera_t* camera) {
 // System and Effect management and creation
 ////////////////////////////////////////////////////////////////////////////////
 
+void _ps_reset_effect(ParticleEffect_Internal* effect) {
+  arr_clear(effect->instances);
+  arr_particle_clear(effect->metadata);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void ps_reset(ParticleSystem _ps) {
+  assert(_ps);
+  ParticleSystem_Internal* ps = (ParticleSystem_Internal*)_ps;
+
+  ParticleEffect_Internal** map_foreach(peffect, ps->effects) {
+    _ps_reset_effect(*peffect);
+  }
+
+  smap_emitter_clear(ps->emitters);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 void ps_delete(ParticleSystem* system) {
   UNUSED(system);
 }
