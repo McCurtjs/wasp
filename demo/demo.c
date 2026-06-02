@@ -53,8 +53,15 @@ static renderer_t _renderer_pbr = {
 };
 renderer_t* renderer_pbr = &_renderer_pbr;
 
-static renderer_t* renderers[] = {
-  &_renderer_basic, &_renderer_pbr
+static renderer_t _renderer_particles = {
+  .name = "particles",
+  .render = renderer_callback_render_particles
+};
+
+static renderer_t* renderers[] =
+{ &_renderer_basic
+, &_renderer_pbr
+, &_renderer_particles
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -277,6 +284,9 @@ bool wasp_load(Game game) {
   rt_build(game->demo->render_target, game->window);
   rt_build(game->demo->render_target_scaled, game->resolution);
 
+  _renderer_pbr.render_target = demo.render_target;
+  _renderer_particles.render_target = demo.render_target;
+
   // Set params for PBR render group
   _renderer_pbr.shader = game->demo->shaders.light_inst;
   _renderer_pbr.groups = map_rg_new();
@@ -315,19 +325,22 @@ bool wasp_update(Game game, float dt) {
 void wasp_render(Game game) {
   if (wasp_await_count()) return;
 
-  rt_bind(demo.render_target);
+  rt_bind_clear(demo.render_target);
   game_render(game);
 
-  Texture lights = tex_from_lights();
-
-  rt_bind(game->demo->render_target_scaled);
-  //rt_bind_default();
+  if (i2eq(game->resolution, game->window)) {
+    rt_bind_clear_default();
+  }
+  else {
+    rt_bind_clear(game->demo->render_target_scaled);
+  }
 
   Shader shader = demo.shaders.frame;
   if (demo.active_shader == 1) {
     shader = demo.shaders.warhol;
   }
 
+  Texture lights = tex_from_lights();
   shader_bind(shader);
   int tex_sampler = shader_uniform_loc(shader, "samp_tex");
   int norm_sampler = shader_uniform_loc(shader, "samp_norm");
@@ -344,11 +357,13 @@ void wasp_render(Game game) {
 
   model_render(demo.models.frame);
 
-  rt_bind_default();
-  shader_bind(demo.shaders.pass);
-  int frame_sampler = shader_uniform_loc(demo.shaders.pass, "samp_frame");
-  tex_apply(demo.render_target_scaled->textures[0], 0, frame_sampler);
-  model_render(demo.models.frame);
+  if (!i2eq(game->resolution, game->window)) {
+    rt_bind_clear_default();
+    shader_bind(demo.shaders.pass);
+    int frame_sampler = shader_uniform_loc(demo.shaders.pass, "samp_frame");
+    tex_apply(demo.render_target_scaled->textures[0], 0, frame_sampler);
+    model_render(demo.models.frame);
+  }
 
   tex_delete(&lights);
 }

@@ -56,6 +56,8 @@ static const GLenum _rt_depth_attachments[] = {
   0, GL_DEPTH_ATTACHMENT, GL_DEPTH_STENCIL_ATTACHMENT
 };
 
+extern vec2i game_get_window_size(void);
+
 ////////////////////////////////////////////////////////////////////////////////
 // Initialize a render target
 ////////////////////////////////////////////////////////////////////////////////
@@ -85,7 +87,7 @@ RenderTarget _rt_new(index_t size, depth_format_t df, tex_format_t formats[]) {
       .formats = (tex_format_t*)format_loc,
       .depth_format = df,
       .clear_color = v3f(0.f, 0.f, 0.8f),
-      .ready = false,
+      .status = S_NEW,
     },
     .handle = 0,
     .depth_buffer = 0,
@@ -106,9 +108,9 @@ RenderTarget _rt_new(index_t size, depth_format_t df, tex_format_t formats[]) {
 // Build the textures and OpenGL objects for the render target
 ////////////////////////////////////////////////////////////////////////////////
 
-bool rt_build(RenderTarget rt_in, vec2i screen) {
+status_t rt_build(RenderTarget rt_in, vec2i screen) {
   RT_INTERNAL;
-  if (rt->pub.ready) return false;
+  if (rt->pub.status == S_READY) return S_READY;
 
   rt->pub.resolution = screen;
 
@@ -173,21 +175,21 @@ bool rt_build(RenderTarget rt_in, vec2i screen) {
   // check success of the result
   GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
   if (status == GL_FRAMEBUFFER_COMPLETE) {
-    rt->pub.ready = true;
+    rt->pub.status = S_READY;
   }
   else {
     str_log("[RenderTarget.build] Failed with error: 0x{!x}", status);
-    rt->pub.ready = false;
+    rt->pub.status = S_ERROR;
   }
 
-  return rt->pub.ready;
+  return rt->pub.status;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Clears out textures and the depth buffer from this render target
 ////////////////////////////////////////////////////////////////////////////////
 
-void rt_clear(RenderTarget rt_in) {
+void rt_reset(RenderTarget rt_in) {
   RT_INTERNAL;
 
   if (rt->handle) {
@@ -207,7 +209,7 @@ void rt_clear(RenderTarget rt_in) {
     rt->pub.textures = NULL;
   }
 
-  rt->pub.ready = false;
+  rt->pub.status = S_NEW;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -216,12 +218,29 @@ void rt_clear(RenderTarget rt_in) {
 
 void rt_bind(RenderTarget rt_in) {
   RT_INTERNAL;
-  if (!rt->pub.ready) {
+  if (rt->pub.status != S_READY) {
     str_write("[RenderTarget.bind] Target not ready");
     return;
   }
 
   glBindFramebuffer(GL_FRAMEBUFFER, rt->handle);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void rt_bind_default(void) {
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glBindRenderbuffer(GL_RENDERBUFFER, 0);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Binds and clears the contents of the buffer
+////////////////////////////////////////////////////////////////////////////////
+
+void rt_bind_clear(RenderTarget rt_in) {
+  RT_INTERNAL;
+
+  rt_bind(rt_in);
 
   color3 c = rt->pub.clear_color;
   glViewport(0, 0, rt->pub.resolution.w, rt->pub.resolution.h);
@@ -231,15 +250,9 @@ void rt_bind(RenderTarget rt_in) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Binds the default backbuffer/screen
-////////////////////////////////////////////////////////////////////////////////
 
-extern vec2i game_get_window_size(void);
-
-void rt_bind_default(void) {
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  glBindRenderbuffer(GL_RENDERBUFFER, 0);
-
+void rt_bind_clear_default(void) {
+  rt_bind_default();
   vec2i window = game_get_window_size();
   glViewport(0, 0, window.w, window.h);
 
@@ -266,10 +279,10 @@ void rt_resize(RenderTarget rt, vec2i screen) {
   rt_bind_default();
 
   if (rt) {
-    rt_clear(rt);
+    rt_reset(rt);
     rt_build(rt, screen);
 
-    if (!rt->ready) {
+    if (rt->status != S_READY) {
       str_write("[RenderTarget.resize] Failed to resize");
     }
   }
@@ -282,7 +295,7 @@ void rt_resize(RenderTarget rt, vec2i screen) {
 void rt_delete(RenderTarget* rt_in) {
   if (!rt_in || !*rt_in) return;
   RenderTarget_Internal* rt = (RenderTarget_Internal*)*rt_in;
-  rt_clear((RenderTarget)rt);
+  rt_reset((RenderTarget)rt);
   free(rt);
   *rt_in = NULL;
 }

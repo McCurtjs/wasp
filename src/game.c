@@ -433,8 +433,6 @@ void game_render(Game _game) {
   }
 
   gfx_render(game->pub.graphics, _game);
-
-  ps_render(game->pub.particle_system, &_game->camera);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

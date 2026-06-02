@@ -26,6 +26,7 @@
 #define WASP_RENDER_TARGET_H_
 
 #include "types.h"
+#include "status.h"
 #include "vec.h"
 #include "texture.h"
 
@@ -37,25 +38,27 @@ typedef enum depth_format_t {
 } depth_format_t;
 
 typedef struct _opaque_RenderTarget_t {
+  CONST status_t              status;
   CONST vec2i                 resolution;
   CONST index_t               slot_count;
   CONST Texture       * CONST textures;
   CONST tex_format_t  * CONST formats;
   CONST depth_format_t        depth_format;
         color3                clear_color;
-  CONST bool                  ready;
 }* RenderTarget;
 
 RenderTarget _rt_new(index_t size, depth_format_t, tex_format_t formats[]);
 #define rt_new(depth_fmt, ...) \
   _rt_new(_va_count(__VA_ARGS__), depth_fmt, (tex_format_t[]) { __VA_ARGS__ })
 
-bool rt_build(RenderTarget rt, vec2i screen);
-void rt_clear(RenderTarget rt);
-void rt_bind(RenderTarget rt);
-void rt_bind_default(void);
-bool rt_is_bound(RenderTarget rt);
-void rt_resize(RenderTarget rt, vec2i screen);
-void rt_delete(RenderTarget* rt);
+status_t  rt_build(RenderTarget rt, vec2i screen);
+void      rt_reset(RenderTarget rt);
+void      rt_bind(RenderTarget rt);
+void      rt_bind_default(void);
+void      rt_bind_clear(RenderTarget rt);
+void      rt_bind_clear_default(void);
+bool      rt_is_bound(RenderTarget rt);
+void      rt_resize(RenderTarget rt, vec2i screen);
+void      rt_delete(RenderTarget* rt);
 
 #endif

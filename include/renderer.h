@@ -29,6 +29,7 @@
 
 #include "model.h"
 #include "material.h"
+#include "render_target.h"
 #include "entity.h"
 #include "instance_attributes.h"
 
@@ -119,6 +120,7 @@ typedef struct renderer_t {
   renderer_render_fn_t            render;
   HMap_rg                         groups;
   Shader                          shader;
+  RenderTarget                    render_target;
 } renderer_t;
 
 void      renderer_clear_instances(renderer_t*);
@@ -133,6 +135,7 @@ void      renderer_callback_entity_unregister(Entity);
 void*     renderer_callback_entity_attributes(Entity, bool modify);
 void      renderer_callback_instance_update(render_group_t*);
 bool      renderer_callback_render(renderer_t*, Game);
+bool      renderer_callback_render_particles(renderer_t*, Game);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Span type for defining collection of renderers for a pipeline

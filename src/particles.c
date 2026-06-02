@@ -169,16 +169,16 @@ void _emitter_create_particle(ParticleEmitter emitter, particle_t particle) {
     break;
 
     case ES_BOX: {
-      vec3 right = q4right(emitter->dir);
-      vec3 up = q4up(emitter->dir);
+      vec3 right = v3rotate(v3right, emitter->dir);
+      vec3 up = v3rotate(v3up, emitter->dir);
       v3add_eq(&pos, v3scale(right, emitter->size.x * (frand() * 2.f - 1.f)));
       v3add_eq(&pos, v3scale(up,    emitter->size.y * (frand() * 2.f - 1.f)));
       v3add_eq(&pos, v3scale(dir,   emitter->size.z * (frand() * 2.f - 1.f)));
     } break;
 
     case ES_DISC: {
-      vec3 right = q4right(emitter->dir);
-      vec3 up = q4up(emitter->dir);
+      vec3 right = v3rotate(v3right, emitter->dir);
+      vec3 up = v3rotate(v3up, emitter->dir);
       vec2 disc = v2scale(v2rand_dir(), emitter->radius);
       v3add_eq(&pos, v3scale(right, disc.x));
       v3add_eq(&pos, v3scale(up, disc.y));

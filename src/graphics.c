@@ -113,6 +113,15 @@ void gfx_render(Graphics _gfx, Game game) {
   renderer_t** span_foreach(renderer_ptr, gfx->renderers) {
     renderer_t* renderer = *renderer_ptr;
 
+    if (renderer->render_target) {
+      assert(renderer->render_target->status == S_READY);
+      rt_bind(renderer->render_target);
+    }
+    else
+    {
+      rt_bind_default();
+    }
+
     if (renderer->instance_update) {
       _renderer_update_instances(renderer);
     }

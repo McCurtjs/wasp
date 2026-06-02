@@ -342,3 +342,16 @@ bool renderer_callback_render(renderer_t* renderer, Game game) {
 
   return true;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Renderer callback for particle systems
+////////////////////////////////////////////////////////////////////////////////
+
+#include "particles.h"
+
+bool renderer_callback_render_particles(renderer_t* renderer, Game game) {
+  UNUSED(renderer);
+
+  ps_render(game->particle_system, &game->camera);
+  return true;
+}
