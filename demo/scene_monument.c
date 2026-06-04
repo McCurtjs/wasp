@@ -60,7 +60,7 @@ void _behavior_camera_monument(Game game, entity_t* e, float dt) {
   vec2 rotation = v2f(xrot, yrot);
   if (v2mag(rotation) > epsilon) {
     rotation = v2norm(rotation);
-    rotation = v2scale(rotation, dt * 1.8f);
+    rotation = v2scale(rotation, 0.03f);
     rotation.x *= -1.f;
     entity_translate(e, v23xz(rotation));
   }
@@ -68,6 +68,15 @@ void _behavior_camera_monument(Game game, entity_t* e, float dt) {
   if (v3mag(e->pos) > epsilon) {
     vec3 half = v3scale(e->pos, 0.6f * dt);
     camera_rotate_local(&game->camera, half);
+
+    if (input_pressed(IN_RIGHT)) {
+      camera_rotate_local(&game->camera, (vec3) { 0, -0.24f * dt, 0 });
+    }
+
+    if (input_pressed(IN_LEFT)) {
+      camera_rotate_local(&game->camera, (vec3) { 0, 0.24f * dt, 0 });
+    }
+
     entity_set_position(e, v3sub(e->pos, half));
   }
 
@@ -100,10 +109,20 @@ void _behavior_camera_monument(Game game, entity_t* e, float dt) {
   }
 
   vec3 direction = game->camera.front;
-  plane_speed += v3dot(direction, v3down) * dt * 9.8f;
+  plane_speed += v3dot(direction, v3down) * 9.8f * dt;
+
+  if (input_pressed(IN_JUMP)) {
+    plane_speed += 30.f * dt;
+  }
+
+  if (input_pressed(IN_DOWN)) {
+    plane_speed -= 16.f * dt;
+  }
+
   if (plane_speed < PLANE_SPEED_MIN) {
     plane_speed = PLANE_SPEED_MIN;
   }
+
 
   direction = v3scale(game->camera.front, plane_speed * dt);
   game->camera.pos = v3add(game->camera.pos, direction);
@@ -132,7 +151,7 @@ void _behavior_camera_monument(Game game, entity_t* e, float dt) {
 
 void _behavior_gear_rotate_sun(Game game, entity_t* e, float dt) {
   UNUSED(game);
-  entity_rotate_a(e, v3down, dt);
+  entity_rotate_a(e, v3back, dt);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -213,7 +232,7 @@ scene_unload_fn_t scene_load_monument(Game game) {
     .tint = b4white,
     .material = demo->materials.renderite,
     .pos = v3add(sun_pos, v3f(0, 30, 0)),
-    .rot = q4axang(v3x, d2r(-90.f)),
+    .rot = q4down,
     .scale = 15.f,
     .behavior = _behavior_gear_rotate_sun,
   });

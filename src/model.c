@@ -29,12 +29,12 @@
 #include "array.h"
 #include "str.h"
 
-static array_t _all_models_array = {
+static array_t _new_models_array = {
   .element_size = sizeof(Model)
 };
 static Array _loaded_models = NULL;
 
-Array _new_models = &_all_models_array;
+Array _new_models = &_new_models_array;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -252,6 +252,42 @@ void model_loading_manager(void) {
       ++i;
     }
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+Model model_get(slice_t name) {
+  if (!_loaded_models) return NULL;
+  Model* arr_foreach(pm, _loaded_models) {
+    if (slice_eq(name, (*pm)->name)) {
+      return *pm;
+    }
+  }
+  return NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+Array_slice model_get_names(void) {
+  if (!_loaded_models) return NULL;
+  Array_slice ret = arr_slice_new_reserve(_loaded_models->size);
+  Model* arr_foreach(pm, _loaded_models) {
+    arr_slice_push_back(ret, (*pm)->name);
+  }
+  return ret;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+Array_slice model_get_names_inst(void) {
+  if (!_loaded_models) return NULL;
+  Array_slice ret = arr_slice_new_reserve(_loaded_models->size);
+  Model* arr_foreach(pm, _loaded_models) {
+    if (model_management_fns[(*pm)->type].render_inst != NULL) {
+      arr_slice_push_back(ret, (*pm)->name);
+    }
+  }
+  return ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

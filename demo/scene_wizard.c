@@ -69,7 +69,7 @@ void _behavior_wizard_level(Game game, entity_t* e, float dt) {
     }
   }
   entity_set_position(e, game->demo->target);
-  entity_rotate_a(e, v3down, dt);
+  entity_rotate_a(e, v3back, dt);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -304,7 +304,7 @@ scene_unload_fn_t scene_load_wizard(Game game) {
     .onrender = render_pbr,
     .tint = b4black,
     .material = demo->materials.renderite,
-    .rot = q4axang(v3x, d2r(90.f)),
+    .rot = q4up,
     .scale = 0.06f,
     .behavior = _behavior_wizard_level,
   });

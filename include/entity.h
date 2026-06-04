@@ -141,6 +141,7 @@ mat4      entity_transform(Entity);
 void      entity_set_renderer(Entity, renderer_t*);
 void      entity_set_hidden(Entity, bool is_hidden);
 void      entity_set_static(Entity, bool is_static);
+void      entity_set_model(Entity, Model);
 void      entity_set_material(Entity, Material);
 
 void      entity_set_material_index(Entity, index_t);

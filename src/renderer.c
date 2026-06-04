@@ -126,7 +126,7 @@ static void _render_group_expand_update_range(
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void _renderer_callback_unregister_internal(
+static void _renderer_callback_unregister_internal(
   Entity e, render_group_key_t key
 ) {
   render_group_t* group = map_rg_ref(e->renderer->groups, key);

@@ -594,6 +594,16 @@ mat4 entity_transform(Entity entity) {
   return m4trs(entity->pos, entity->rot, entity->scale);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
+static void _entity_set_dirty(Entity entity) {
+  if (!entity->is_dirty_renderer) {
+    Game_Internal* game = game_get_local_internal();
+    entity->is_dirty_renderer = true;
+    arr_id_add_back(game->entity_updates, entity->id);
+  }
+}
+
 void entity_set_renderer(Entity entity, renderer_t* renderer) {
   assert(entity);
   if (!renderer) {
@@ -601,14 +611,6 @@ void entity_set_renderer(Entity entity, renderer_t* renderer) {
   }
   else {
     renderer_entity_register(renderer, entity);
-  }
-}
-
-static void _entity_set_dirty(Entity entity) {
-  if (!entity->is_dirty_renderer) {
-    Game_Internal* game = game_get_local_internal();
-    entity->is_dirty_renderer = true;
-    arr_id_add_back(game->entity_updates, entity->id);
   }
 }
 
@@ -632,7 +634,20 @@ void entity_set_static(Entity entity, bool is_static) {
   _entity_set_dirty(entity);
 }
 
-////////////////////////////////////////////////////////////////////////////////
+void entity_set_model(Entity entity, Model model) {
+  assert(entity);
+  assert(model);
+  if (model == entity->model) return;
+
+  if (entity->renderer) {
+    renderer_entity_unregister(entity);
+    entity->model = model;
+    renderer_entity_register(entity->renderer, entity);
+  }
+  else {
+    entity->model = model;
+  }
+}
 
 void entity_set_material(Entity entity, Material material) {
   assert(entity);
@@ -653,6 +668,8 @@ void entity_set_material(Entity entity, Material material) {
     entity->material = material;
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
 
 void entity_set_material_index(Entity entity, index_t index) {
   assert(entity);

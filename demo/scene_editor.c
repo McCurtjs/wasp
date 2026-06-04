@@ -619,7 +619,12 @@ void _editor_panel_entity_transform(Game game, Entity entity) {
   igEnd();
 }
 
-void _editor_panel_entity_rendering(Game game, Entity entity) {
+
+void render_basic(Game game, Entity e);
+void render_debug(Game game, Entity e);
+void render_pbr(Game game, Entity e);
+
+void _editor_panel_entity_rendering(Game game, Entity e) {
   UNUSED(game);
 
   if (igBegin("Entity", NULL, flags_inspector)) {
@@ -628,25 +633,53 @@ void _editor_panel_entity_rendering(Game game, Entity entity) {
       igPushItemWidth(-1);
       igBeginChild_Str("panel_renderer", v2imsubmenu, child_flags, 0);
 
-      if (entity->renderer) {
-        igText("Renderer: %s", entity->renderer->name);
-        igText("Shader: %s", entity->renderer->shader->name.begin);
-        igText("Render id: %d - %llu", sk_index(entity->render_id), sk_unique(entity->render_id));
+      if (e->renderer) {
+        igText("Renderer: %s", e->renderer->name);
+        igText("Shader: %s", e->renderer->shader->name.begin);
+        igText("Render id: %d - %llu", sk_index(e->render_id), sk_unique(e->render_id));
       }
 
-      if (entity->onrender) {
-        igText("Renderer: onrender");
-      }
+      if (e->onrender == render_basic)      igText("On-Render: basic");
+      else if (e->onrender == render_debug) igText("On-Render: debug");
+      else if (e->onrender == render_pbr)   igText("On-Render: PBR (single)");
+      else if (e->onrender != NULL)         igText("On-Render: unknown");
+
+      igEndChild();
+      igPopItemWidth();
+    }
+
+  }
+
+  igEnd();
+}
+
+void _editor_panel_entity_model(Game game, Entity entity) {
+  UNUSED(game);
+
+  if (igBegin("Entity", NULL, flags_inspector)) {
+
+    if (igCollapsingHeader_BoolPtr("Model", NULL, ImGuiTreeNodeFlags_DefaultOpen)) {
+      igPushItemWidth(-1);
+      igBeginChild_Str("panel_model", v2imsubmenu, child_flags, 0);
 
       if (entity->model) {
-        model_type_t type = entity->model->type;
-        if (type >= 0 && type < MODEL_TYPES_COUNT) {
-          igText("Model type: %s", entity->model->name.begin);
-        }
-      }
 
-      if (!entity->renderer && !entity->onrender) {
-        igText("Non-renderable");
+        Array_slice model_names = model_get_names_inst();
+
+        if (!arr_slice_is_null_or_empty(model_names)) {
+          if (igBeginCombo("##model_select", entity->model->name.begin, 0)) {
+            slice_t* arr_foreach(name, model_names) {
+              bool is_selected = slice_eq(*name, entity->material->name);
+              if (igSelectable_Bool(name->begin, is_selected, 0, v2imzero)) {
+                Model new_model = model_get(*name);
+                entity_set_model(entity, new_model);
+              }
+            }
+            igEndCombo();
+          }
+        }
+
+        arr_slice_delete(&model_names);
       }
 
       igEndChild();
@@ -779,6 +812,7 @@ void behavior_editor(Game game, entity_t* e, float dt) {
   _editor_panel_entity_tools(game, entity);
   _editor_panel_entity_transform(game, entity);
   _editor_panel_entity_rendering(game, entity);
+  _editor_panel_entity_model(game, entity);
   _editor_panel_entity_material(game, entity);
   _editor_panel_entity_attributes(game, entity);
 }

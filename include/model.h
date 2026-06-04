@@ -33,6 +33,7 @@
 #include "texture.h"
 #include "vertex.h"
 #include "slice.h"
+#include "array_slice.h"
 
 typedef enum model_type_t {
   MODEL_NONE = 0,
@@ -102,26 +103,27 @@ typedef struct _opaque_Model_t {
   };
 }* Model;
 
-Model   model_new_primitive(model_type_t type);
-Model   model_new_sprites(vec2i dim);
-Model   model_new_grid(model_grid_param_t grid);
-Model   model_new_grid_default(int extent);
-Model   model_new_load_obj(slice_t filename);
-Model   model_new_from_obj(slice_t obj_text);
+Model       model_new_primitive(model_type_t type);
+Model       model_new_sprites(vec2i dim);
+Model       model_new_grid(model_grid_param_t grid);
+Model       model_new_grid_default(int extent);
+Model       model_new_load_obj(slice_t filename);
+Model       model_new_from_obj(slice_t obj_text);
 
-//Array_slice   model_list(void);
-//Model   model_get(slice_t name);
+void        model_delete(Model* model);
 
-void    model_delete(Model* model);
+void        model_bind(const Model model);
+void        model_render(Model model);
+void        model_render_instanced(const Model model, index_t count);
 
-void    model_render(Model model);
-void    model_bind(const Model model);
-void    model_render_instanced(const Model model, index_t count);
+void        model_loading_manager(void);
+index_t     model_loading_count(void);
 
-void    model_loading_manager(void);
-index_t model_loading_count(void);
+Model       model_get(slice_t name);
+Array_slice model_get_names(void);
+Array_slice model_get_names_inst(void);
 
-void    model_sprites_add(
-          Model spr, vec2 pos, vec2 scale, index_t frame, bool mirror);
+void        model_sprites_add(
+              Model spr, vec2 pos, vec2 scale, index_t frame, bool mirror);
 
 #endif
