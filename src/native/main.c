@@ -69,6 +69,7 @@ void APIENTRY gl_debug_output
     case 0x20092: return; // shader compilation performance warning
     case 0x00008: return; // "Redundant state change" (in glBindFrameBuffer)
     case 0x20043: return; // "Rasterization quality warning" when dim == 0
+    case 0x20061: return; // "The driver allocated storage for renderbuffer 1"
     default: break;
   }
 

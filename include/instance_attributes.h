@@ -78,6 +78,23 @@ typedef struct attribute_particle_basic_t {
   vec4b   color;
 } attribute_particle_basic_t;
 
+typedef struct attribute_proto_t {
+  mat4    transform;
+  color4b tint;
+  int     material_index;
+} attribute_proto_t;
+
+typedef struct attributes_t {
+  union {
+    mat4 transform;
+    attribute_tint_t tint;
+    attribute_material_t material;
+    attribute_material_tint_t material_tint;
+    attribute_particle_point_t particle;
+    attribute_particle_basic_t particle_ext;
+  };
+} attributes_t;
+
 void      attribute_bind(attribute_format_t, Shader);
 void      attribute_bind_as(attribute_format_t actual, attribute_format_t as);
 

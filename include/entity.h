@@ -55,6 +55,7 @@ typedef struct entity_desc_t {
   slotkey_t           user_id;
   slotkey_t           parent_id;
   slice_t             name;
+  String              name_str;
 
   Model               model;
   Material            material;
@@ -70,8 +71,8 @@ typedef struct entity_desc_t {
   };
 
   color4b             tint;
-  bool                is_static;
   bool                is_hidden;
+  bool                is_static;
 
   renderer_t*         renderer;
 
@@ -85,6 +86,8 @@ typedef struct entity_t {
   // Entity basic attributes and identifiers
   slotkey_t           CONST id;
   slotkey_t           CONST parent_id;
+  slotkey_t           CONST child_id;
+  slotkey_t           CONST sibling_id;
   slotkey_t                 user_id;
   String                    name;
   float                     create_time;
@@ -104,6 +107,10 @@ typedef struct entity_t {
   slotkey_t           CONST render_id;
   Model               CONST model;
   Material            CONST material;
+
+  // Rendering Attributes
+  index_t             CONST material_index;
+  color4b             CONST tint;
 
   // Flags
   bool                CONST is_hidden;
@@ -134,12 +141,10 @@ mat4      entity_transform(Entity);
 void      entity_set_renderer(Entity, renderer_t*);
 void      entity_set_hidden(Entity, bool is_hidden);
 void      entity_set_static(Entity, bool is_static);
-
-void      entity_set_tint(Entity, color4b tint_color);
-color4b   entity_get_tint(Entity);
 void      entity_set_material(Entity, Material);
+
 void      entity_set_material_index(Entity, index_t);
-index_t   entity_get_material_index(Entity);
+void      entity_set_tint(Entity, color4b tint_color);
 
 void      entity_set_position(Entity, vec3 new_pos);
 void      entity_set_rotation(Entity, quat new_rot);

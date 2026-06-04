@@ -102,19 +102,19 @@ typedef struct particle_base_t {
 } particle_base_t;
 
 typedef struct particle_t {
-  particle_base_t*              base;
+  particle_base_t*                base;
   union {
-    particle_inst_t*            inst;
-    particle_inst_point_t*      inst_point;
-    particle_inst_rot_t*        inst_rot;
-    particle_inst_color_t*      inst_color;
-    particle_inst_rot_color_t*  inst_rot_color;
+    particle_inst_t*              inst;
+    particle_inst_point_t*        inst_point;
+    particle_inst_rot_t*          inst_rot;
+    particle_inst_color_t*        inst_color;
+    particle_inst_rot_color_t*    inst_rot_color;
   };
 } particle_t;
 
-typedef struct _opaque_Shader_t*          Shader;
-typedef struct texture_t*                 Texture;
-typedef struct _opaque_Model_t*           Model;
+typedef struct _opaque_Shader_t*  Shader;
+typedef struct texture_t*         Texture;
+typedef struct _opaque_Model_t*   Model;
 
 // \brief Manages all particles of a given type and its respective emitters
 //

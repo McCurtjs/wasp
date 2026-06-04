@@ -83,22 +83,20 @@ static void _renderer_update_instances(renderer_t* renderer) {
     if (group->update_full) {
       assert(group->instances->size <= SK_INDEX_MAX);
       group->update_range_low = 0;
-      group->update_range_high = (int32_t)group->instances->size - 1;
+      group->update_range_high = group->instances->size - 1;
       group->update_full = false;
     }
 
     if (group->update_range_low >= 0) {
       if (group->update_range_high >= group->instances->size) {
         // possible when items are removed from the list
-        group->update_range_high = (int32_t)group->instances->size - 1;
+        group->update_range_high = group->instances->size - 1;
       }
-      if (group->update_range_low >= group->instances->size) {
-        group->update_range_low = (int32_t)group->instances->size - 1;
+
+      if (group->update_range_low <= group->update_range_high) {
+        renderer->instance_update(group);
       }
-      assert(group->update_range_low < group->instances->size);
-      assert(group->update_range_high < group->instances->size);
-      assert(group->update_range_high >= 0);
-      renderer->instance_update(group);
+
       group->update_range_low = -1;
       group->update_range_high = -1;
     }

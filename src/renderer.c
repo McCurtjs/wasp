@@ -106,6 +106,26 @@ void renderer_entity_unregister(Entity entity) {
 // "Default" callback functions to use for renderers (still need to assign)
 ////////////////////////////////////////////////////////////////////////////////
 
+static void _render_group_expand_update_range(
+  render_group_t* group, slotkey_t key
+) {
+  index_t index = pmap_index(group->instances, key);
+  if (index == group->instances->size) return;
+
+  if (group->update_range_low < 0) {
+    group->update_range_low = index;
+    group->update_range_high = index;
+  }
+  else if (index < group->update_range_low) {
+    group->update_range_low = index;
+  }
+  else if (index > group->update_range_high) {
+    group->update_range_high = index;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 void _renderer_callback_unregister_internal(
   Entity e, render_group_key_t key
 ) {
@@ -117,19 +137,21 @@ void _renderer_callback_unregister_internal(
 
 ////////////////////////////////////////////////////////////////////////////////
 
-static void _render_group_expand_update_range(
-  render_group_t* group, int32_t index
-) {
-  if (group->update_range_low < 0) {
-    group->update_range_low = index;
-    group->update_range_high = index;
-  }
-  else if (index < group->update_range_low) {
-    group->update_range_low = index;
-  }
-  else if (index > group->update_range_high) {
-    group->update_range_high = index;
-  }
+static void _renderer_set_attributes(Entity e, void* att) {
+  assert(e);
+  assert(att);
+  assert(e->renderer);
+  assert(e->renderer->shader);
+
+  attribute_format_t attrib_format = e->renderer->shader->attrib_format;
+
+  *((mat4*)att) = entity_transform(e);
+
+  color4b* tint_color = attribute_ref_tint(attrib_format, att);
+  if (tint_color) *tint_color = e->tint;
+
+  int* material_index = attribute_ref_material_index(attrib_format, att);
+  if (material_index) *material_index = (int)e->material_index;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,21 +182,14 @@ slotkey_t renderer_callback_entity_register(Entity e, Game game) {
 
   // add instance to the group and save its instance id
   PackedMap instances = group_slot.value->instances;
-  bool expanded = instances->size == instances->capacity;
-  slotkey_t ret = pmap_insert(instances,
-    &(attribute_base_t) {
-      .transform = entity_transform(e),
-    }
-  );
+  index_t old_capacity = instances->capacity;
+  slotkey_t ret;
+  void* att = pmap_emplace(instances, &ret);
+  assert(att);
 
-  // flag the modified value range for update
+  _renderer_set_attributes(e, att);
+
   group_slot.value->update_full = true;
-  if (expanded) {
-    group_slot.value->update_full = true;
-  }
-  else {
-    _render_group_expand_update_range(group_slot.value, sk_index(ret));
-  }
 
   return ret;
 }
@@ -198,13 +213,12 @@ slotkey_t renderer_callback_entity_update(Entity e) {
   assert(group);
   assert(group->instances);
 
-  attribute_base_t* att = pmap_ref(group->instances, e->render_id);
+  void* att = pmap_ref(group->instances, e->render_id);
   assert(att);
 
-  // Update default supported attribute values
-  att->transform = entity_transform(e);
+  _renderer_set_attributes(e, att);
+  _render_group_expand_update_range(group, e->render_id);
 
-  _render_group_expand_update_range(group, sk_index(e->render_id));
   return e->render_id;
 }
 
@@ -225,7 +239,7 @@ void* renderer_callback_entity_attributes(Entity e, bool update) {
   assert(attributes);
 
   if (update) {
-    _render_group_expand_update_range(group, sk_index(e->render_id));
+    _render_group_expand_update_range(group, e->render_id);
   }
 
   return attributes;
@@ -251,7 +265,7 @@ void renderer_callback_instance_update(render_group_t* group) {
   if (!group->instance_buffer) return;
 
   // adding one to the count because range_high is inclusive
-  int32_t update_count = group->update_range_high - group->update_range_low + 1;
+  index_t update_count = group->update_range_high - group->update_range_low + 1;
 
   glBindBuffer(GL_ARRAY_BUFFER, group->instance_buffer);
 
@@ -266,10 +280,11 @@ void renderer_callback_instance_update(render_group_t* group) {
   }
   // update a range if we only have a few changes
   else {
+    byte* data_start = group->instances->begin;
     glBufferSubData(GL_ARRAY_BUFFER
     , group->instances->element_size * group->update_range_low
     , group->instances->element_size * update_count
-    , pmap_ref_index(group->instances, group->update_range_low)
+    , group->instances->element_size * group->update_range_low + data_start
     );
   }
 

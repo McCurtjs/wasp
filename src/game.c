@@ -466,23 +466,40 @@ slotkey_t entity_add(const entity_desc_t* proto) {
 
   float scale = proto->scale ? proto->scale : 1.0f;
 
+  // Get the name of the new object from the prototype (multiple options)
+  assert(!proto->name_str || proto->name.size == 0);
+  String name = str_empty;
+  if (proto->name_str) {
+    name = proto->name_str;
+  }
+  else if (proto->name.size) {
+    assert(slice_is_valid(proto->name));
+    name = str_copy(proto->name);
+  }
+
   *entity = (entity_t) {
     .id = key,
     .parent_id = SK_NULL,
-    .name = proto->name.begin ? str_copy(proto->name) : str_empty,
-    .pos = proto->pos,
-    .rot = rotation,
-    .scale = scale,
+    .child_id = SK_NULL,
+    .sibling_id = SK_NULL,
+    .user_id = SK_NULL,
+    .name = name,
     .create_time = game->pub.scene_time,
+    .rot = rotation,
+    .pos = proto->pos,
+    .scale = scale,
+    .renderer = proto->renderer,
+    .render_id = SK_NULL,
     .model = proto->model,
     .material = proto->material,
-    .onrender = proto->onrender,
-    .renderer = proto->renderer,
+    .material_index = proto->material_index,
+    .tint = b4white,
+    .is_hidden = proto->is_hidden,
+    .is_static = proto->is_static,
     .behavior = proto->behavior,
+    .onrender = proto->onrender,
     .oncreate = proto->oncreate,
     .ondelete = proto->ondelete,
-    .is_static = proto->is_static,
-    .is_hidden = proto->is_hidden,
   };
 
   entity->name = proto->name.begin ? str_copy(proto->name) : str_empty;
@@ -617,64 +634,19 @@ void entity_set_static(Entity entity, bool is_static) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct {
-  void* attributes;
-  attribute_format_t format;
-} attribs_t;
-
-static inline attribs_t _entity_attribs(
-  Entity entity, bool modify, bool(*attribute_has_check)(attribute_format_t)
-) {
-  assert(entity);
-  renderer_t* renderer = entity->renderer;
-
-  assert(renderer);
-  assert(renderer->shader);
-  attribute_format_t attrib_format = renderer->shader->attrib_format;
-
-  if (!renderer->entity_attributes || !attribute_has_check(attrib_format)) {
-    return (attribs_t) { NULL, attrib_format };
-  }
-
-  return (attribs_t) {
-    .attributes = renderer->entity_attributes(entity, modify),
-    .format = attrib_format,
-  };
-}
-
-void entity_set_tint(Entity entity, color4b tint) {
-  attribs_t ref = _entity_attribs(entity, true, attribute_has_tint);
-  if (!ref.attributes) return;
-
-  color4b* color = attribute_ref_tint(ref.format, ref.attributes);
-  if (!color) return;
-  *color = tint;
-}
-
-color4b entity_get_tint(Entity entity) {
-  attribs_t ref = _entity_attribs(entity, false, attribute_has_tint);
-  if (!ref.attributes) return b4white;
-
-  color4b* color = attribute_ref_tint(ref.format, ref.attributes);
-  if (!color) return b4white;
-  return *color;
-}
-
 void entity_set_material(Entity entity, Material material) {
   assert(entity);
   assert(material);
   if (material == entity->material) return;
-  index_t mat_index = 0;
+
   if (entity->renderer) {
-    if (entity->material) {
-      renderer_entity_unregister(entity);
-      mat_index = entity_get_material_index(entity);
-    }
+    renderer_entity_unregister(entity);
     entity->material = material;
     renderer_entity_register(entity->renderer, entity);
-    if (mat_index >= material->layers) {
-      assert(material->layers > 0);
-      mat_index = material->layers - 1;
+
+    if (entity->material_index >= material->layers) {
+      entity->material_index = material->layers - 1;
+      assert(entity->material_index >= 0);
     }
   }
   else {
@@ -683,26 +655,18 @@ void entity_set_material(Entity entity, Material material) {
 }
 
 void entity_set_material_index(Entity entity, index_t index) {
+  assert(entity);
   assert(index >= 0);
-  attribs_t ref = _entity_attribs(entity, true, attribute_has_material_index);
-  if (!ref.attributes) return;
-
   assert(entity->material);
   assert(index < entity->material->layers);
-
-  int* mat = attribute_ref_material_index(ref.format, ref.attributes);
-  if (!mat) return;
-  *mat = (int)index;
+  entity->material_index = index;
+  _entity_set_dirty(entity);
 }
 
-index_t entity_get_material_index(Entity entity) {
-  attribs_t ref = _entity_attribs(entity, false, attribute_has_material_index);
-  if (!ref.attributes) return 0;
-  assert(entity->material);
-
-  int* index = attribute_ref_material_index(ref.format, ref.attributes);
-  if (!index) return 0;
-  return (index_t)*index;
+void entity_set_tint(Entity entity, color4b tint) {
+  assert(entity);
+  entity->tint = tint;
+  _entity_set_dirty(entity);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

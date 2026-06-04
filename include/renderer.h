@@ -93,8 +93,8 @@ typedef struct render_group_t {
   PackedMap instances;
   uint vao;
   uint instance_buffer;
-  int32_t update_range_low;
-  int32_t update_range_high;
+  index_t update_range_low;
+  index_t update_range_high;
   bool update_full;
 } render_group_t;
 

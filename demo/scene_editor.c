@@ -219,8 +219,6 @@ static void _normalize_floats_fixed(float* floats, int count, int fixed_ind) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#endif // ifndef __WASM__
-
 #include <float.h>
 
 typedef enum editor_mode_t {
@@ -229,6 +227,567 @@ typedef enum editor_mode_t {
   EM_ROTATE,
   EM_CREATE
 } editor_mode_t;
+
+ImVec2_c v2imzero = { 0 };
+ImVec2_c v2imsubmenu = { 234, 0 };
+ImVec2_c v2imbtnsize = { 20, 20 };
+ImVec4_c v4imbtnselcolor = { 0, 0.4f, 0.8f, 1 };
+
+ImVec2_c _get_winsize(Game game) {
+  return (ImVec2_c) { 250, (float)game->window.h };
+}
+
+ImGuiWindowFlags flags_information
+= ImGuiWindowFlags_NoMove
+| ImGuiWindowFlags_NoResize
+| ImGuiWindowFlags_NoScrollbar
+//| ImGuiWindowFlags_AlwaysAutoResize
+;
+
+ImGuiWindowFlags flags_inspector
+= ImGuiWindowFlags_NoMove
+| ImGuiWindowFlags_NoResize
+| ImGuiWindowFlags_NoCollapse
+| ImGuiWindowFlags_NoScrollbar
+;
+
+ImGuiChildFlags child_flags
+= ImGuiChildFlags_AlwaysAutoResize
+| ImGuiChildFlags_Borders
+| ImGuiChildFlags_AutoResizeY
+| ImGuiChildFlags_AutoResizeX
+;
+
+ImGuiTooltipFlags tooltip_flags
+= ImGuiHoveredFlags_DelayNormal
+;
+
+static bool           _show_ui = false;
+static bool           _panel_open_information = true;
+static int            _rotation_format = 0;
+static editor_mode_t  _edit_mode = EM_SELECT;
+static slotkey_t      _selected = { 0 };
+static quat           _selected_rot = { 0 };
+static vec3           _selected_axis = { 0 };
+static vec3           _selected_euler = { 0 };
+static float          _selected_angle = 0;
+
+void _editor_panel_info_scenes(Game game) {
+  const char* scenes[] =
+  { "1 - Editor"
+  , "2 - Magicks"
+  , "3 - Flight"
+  };
+
+  _panel_open_information = igBegin("Information", NULL, flags_information);
+
+  if (_panel_open_information) {
+    igText("Scene:");
+    ImGuiComboFlags flags = ImGuiComboFlags_NoArrowButton;
+    igPushItemWidth(-1);
+    if (igBeginCombo("##scene_select", scenes[game->scene], flags)
+    ) {
+      for (int i = 0; i < (int)ARRAY_COUNT(scenes); ++i) {
+        if (igSelectable_Bool(scenes[i], i == game->scene, 0, v2imzero)) {
+          game->next_scene = i;
+        }
+      }
+      igEndCombo();
+    }
+    igPopItemWidth();
+  }
+  igEnd();
+}
+
+void _editor_panel_info_tools(Game game) {
+  UNUSED(game);
+
+  if (igBegin("Information", NULL, flags_information)) {
+    igText("Tools:");
+    igBeginChild_Str("panel_tools", v2imsubmenu, child_flags, 0);
+    editor_mode_t new_mode = _edit_mode;
+
+    if (_edit_mode == EM_SELECT) igPushStyleColor_Vec4(ImGuiCol_Button, v4imbtnselcolor);
+    if (igButton("S", v2imbtnsize)) {
+      new_mode = EM_SELECT;
+    }
+    if (igIsItemHovered(tooltip_flags)) igSetTooltip("Select mode");
+    if (_edit_mode == EM_SELECT) igPopStyleColor(1);
+
+    igSameLine(0, 5);
+
+    if (_edit_mode == EM_TRANSLATE) igPushStyleColor_Vec4(ImGuiCol_Button, v4imbtnselcolor);
+    if (igButton("T", v2imbtnsize)) {
+      new_mode = EM_TRANSLATE;
+    }
+    if (igIsItemHovered(tooltip_flags)) igSetTooltip("Translate mode");
+    if (_edit_mode == EM_TRANSLATE) igPopStyleColor(1);
+
+    igSameLine(0, 5);
+
+    if (_edit_mode == EM_ROTATE) igPushStyleColor_Vec4(ImGuiCol_Button, v4imbtnselcolor);
+    if (igButton("R", v2imbtnsize)) {
+      new_mode = EM_ROTATE;
+    }
+    if (igIsItemHovered(tooltip_flags)) igSetTooltip("Rotate mode");
+    if (_edit_mode == EM_ROTATE) igPopStyleColor(1);
+
+    igSameLine(0, 5);
+
+    if (_edit_mode == EM_CREATE) igPushStyleColor_Vec4(ImGuiCol_Button, v4imbtnselcolor);
+    if (igButton("C", v2imbtnsize)) {
+      new_mode = EM_CREATE;
+    }
+    if (igIsItemHovered(tooltip_flags)) igSetTooltip("Create mode");
+    if (_edit_mode == EM_CREATE) igPopStyleColor(1);
+
+    igEndChild();
+
+    _edit_mode = new_mode;
+  }
+
+  igEnd();
+}
+
+void _editor_panel_info_stats(Game game) {
+  if (igBegin("Information", NULL, flags_information)) {
+    if (igCollapsingHeader_BoolPtr("Stats", NULL, ImGuiTreeNodeFlags_DefaultOpen)) {
+      igBeginChild_Str("panel_stats", v2imsubmenu, child_flags, 0);
+      igText("FPS: %.3f", 1.0f / game->frame_time);
+
+      bool vsync = gfx_get_vsync();
+      if (igCheckbox("V-Sync", &vsync)) {
+        gfx_set_vsync(vsync);
+      }
+
+      igText("Entities: %d", entity_count());
+      igText("Lights: %d", light_count());
+
+      igText("Resolution");
+      if (igInputInt2("##resolution", game->resolution.i, ImGuiInputTextFlags_None)) {
+        game->on_window_resize(game);
+      }
+
+      igEndChild();
+    }
+  }
+  igEnd();
+}
+
+void _editor_panel_info_shortcuts(Game game) {
+  UNUSED(game);
+
+  if (igBegin("Information", NULL, flags_information)) {
+    if (igCollapsingHeader_BoolPtr("Shortcuts", NULL, 0)) {
+      igBeginChild_Str("panel_help", v2imsubmenu, child_flags, 0);
+      igText("[O] Move camera");
+      igText("[I] Rotate camera");
+      igText("[C] Snap to selection");
+      igText("[R] Set light pos");
+      igEndChild();
+    }
+  }
+  igEnd();
+}
+
+void _editor_panel_info_entities(Game game) {
+  ImVec2_c v2imwinsize = _get_winsize(game);
+
+  if (game->scene == 2) return;
+
+  igSetNextWindowPos(v2imzero, ImGuiCond_Appearing, v2imzero);
+  igSetNextWindowSize(v2imwinsize, ImGuiCond_Always);
+
+  if (igBegin("Information", NULL, flags_information)) {
+    if (igCollapsingHeader_BoolPtr("Entities", NULL, ImGuiTreeNodeFlags_DefaultOpen)) {
+      float y = igGetCursorScreenPos().y;
+      float h = (float)game->window.h - 5;
+      igBeginChild_Str("panel_entities", (ImVec2_c) { 234, h - y }, child_flags, 0);
+      entity_t* entity = entity_ref(_selected);
+      //const char* selected_str = entity ? entity->name->begin : "<None>";
+      //if (igBeginCombo("##entity_select", selected_str, 0)) {
+
+      igPushItemWidth(-1);
+      if (igBeginListBox("##entity_select", (ImVec2_c) {-FLT_MIN, -FLT_MIN} )) {
+        if (igSelectable_Bool("<None>", _selected.hash == 0, 0, v2imzero)) {
+          _selected = SK_NULL;
+        }
+        for (slotkey_t id = SK_NULL; entity = entity_next(&id), entity;) {
+          bool is_selected = entity->id.hash == _selected.hash;
+          String label = str_format("{}##{}", entity->name, sk_unique(id));
+          if (igSelectable_Bool(label->begin, is_selected, 0, v2imzero)) {
+            _selected = entity->id;
+            _selected_euler = v3euler(entity->rot);
+            _selected_axis = q4axis(entity->rot);
+            _selected_angle = q4angle(entity->rot);
+            _selected_rot = entity->rot;
+          }
+          str_delete(&label);
+        }
+        //igEndCombo();
+        igEndListBox();
+      }
+
+      igPopItemWidth();
+      igEndChild();
+    }
+  }
+  igEnd();
+}
+
+void _editor_panel_info_ext_monument(Game game) {
+  if (game->scene != 2) return;
+
+  if (igBegin("Information", NULL, flags_inspector)) {
+    if (igCollapsingHeader_BoolPtr("Scene Info", NULL, ImGuiTreeNodeFlags_DefaultOpen)) {
+      igBeginChild_Str("panel_monument", v2imsubmenu, child_flags, 0);
+      igText("Extent");
+      igSliderInt(
+        "##mon_extent", &game->demo->monument_extent, 0, 100, NULL, 0);
+
+      igText("Spacing");
+      igSliderInt(
+        "##mon_spacing", &game->demo->monument_size, 0, 500, NULL, 0);
+
+      if (igButton("Apply", v2imzero)) {
+        game->next_scene = 2;
+      }
+      igSameLine(0, 5);
+      if (igButton("Reset", v2imzero)) {
+        game->demo->monument_extent = 10;
+        game->demo->monument_size = 200;
+        game->next_scene = 2;
+      }
+      igEndChild();
+    }
+  }
+  igEnd();
+}
+
+void _entity_center(Game game, Entity entity) {
+  vec3 target_ray = v3sub(game->demo->target, game->camera.pos);
+  game->demo->target = entity->pos;
+  game->camera.pos = v3sub(entity->pos, target_ray);
+}
+
+void _editor_panel_entity_basic(Game game, Entity entity) {
+  ImVec2_c top_right = (ImVec2_c){ (float)game->window.w, 0 };
+  igSetNextWindowPos(top_right, ImGuiCond_Always, (ImVec2_c) { 1, 0 });
+  igSetNextWindowSize(_get_winsize(game), ImGuiCond_Always);
+
+  if (igBegin("Entity", NULL, flags_inspector)) {
+    igText("ID: %d - %llu", sk_index(entity->id), sk_unique(entity->id));
+
+    char name_buffer[1000];
+    memcpy(name_buffer, entity->name->begin, MIN(1000, entity->name->size + 1));
+
+    igPushItemWidth(-1);
+    if (igInputText("##Name", name_buffer, 1000, 0, NULL, NULL)) {
+      str_delete(&entity->name);
+      entity->name = str_copy(name_buffer);
+    }
+    igPopItemWidth();
+  }
+  igEnd();
+}
+
+void _editor_panel_entity_tools(Game game, Entity entity) {
+  if (igBegin("Entity", NULL, flags_inspector)) {
+
+    if (igButton("Center", v2imzero)) {
+      _entity_center(game, entity);
+    }
+
+    igSameLine(0, 5);
+
+    if (igButton("Delete", v2imzero)) {
+      entity_remove(entity->id);
+    }
+
+    bool fake_hidden = entity->is_hidden;
+    if (igCheckbox("Hidden", &fake_hidden)) {
+      entity_set_hidden(entity, fake_hidden);
+    }
+
+    bool fake_static = entity->is_static;
+    if (igCheckbox("Static", &fake_static)) {
+      entity_set_static(entity, fake_static);
+    }
+  }
+  igEnd();
+}
+
+void _editor_panel_entity_transform(Game game, Entity entity) {
+  UNUSED(game);
+
+  if (igBegin("Entity", NULL, flags_inspector)) {
+
+    if (igCollapsingHeader_BoolPtr("Transform"
+    , NULL, ImGuiTreeNodeFlags_DefaultOpen)
+    ) {
+      igPushItemWidth(-1);
+      igBeginChild_Str("panel_transform", v2imsubmenu, child_flags, 0);
+
+      const char* rotation_formats[] =
+      { "Euler"
+      , "Axis-Angle"
+      , "Quaternion"
+      };
+
+      igText("Rotation format:");
+      igPushItemWidth(-1);
+      if (igBeginCombo("##scene_select"
+      , rotation_formats[_rotation_format], ImGuiComboFlags_NoArrowButton)
+      ) {
+        for (int i = 0; i < (int)ARRAY_COUNT(rotation_formats); ++i) {
+          if (igSelectable_Bool
+          ( rotation_formats[i]
+          , i == _rotation_format
+          , 0
+          , v2imzero
+          )) {
+            _rotation_format = i;
+            _selected_euler = v3euler(entity->rot);
+            _selected_axis = q4axis(entity->rot);
+            _selected_angle = q4angle(entity->rot);
+            _selected_rot = entity->rot;
+          }
+        }
+        igEndCombo();
+      }
+      igPopItemWidth();
+
+      igText("Position:");
+      vec3 fake_pos = entity->pos;
+      if (igDragFloat3("##ety_position"
+      , fake_pos.f, 0.1f, -99999.f, 99999.f, "%.2f", 0)
+      ) {
+        entity_set_position(entity, fake_pos);
+      }
+
+      igText("Rotation:");
+      if (_rotation_format == 0) {
+        vec3 euler = _selected_euler;
+        if (igDragFloat3("##ety_rot_euler"
+        , euler.f, 0.01f, -TAU, TAU, "%.2f", ImGuiSliderFlags_WrapAround)
+        ) {
+          entity_set_rotation(entity, q4euler(euler));
+          _selected_euler = euler;
+        }
+      }
+      else if (_rotation_format == 1) {
+        vec3 axis = _selected_axis;
+        float angle = _selected_angle;
+        if (igDragFloat3("##ety_rot_axis"
+        , axis.f, 0.005f, -1.f, 1.f, "%.2f", ImGuiSliderFlags_WrapAround)
+        ) {
+          entity_set_rotation_a(entity, v3norm(axis), angle);
+          _selected_axis = axis;
+        }
+
+        if (igDragFloat("##ety_rot_angle"
+        , &angle, 0.005f, 0, TAU, "%.2f", ImGuiSliderFlags_WrapAround)
+        ) {
+          entity_set_rotation_a(entity, v3norm(axis), angle);
+          _selected_angle = angle;
+        }
+      }
+      else if (_rotation_format == 2) {
+        quat rotation = entity->rot;
+        if (igSliderFloat4("##ety_rotation"
+        , rotation.f, -1.f, 1.f, "%.3f", 0)
+        ) {
+          int changed = 0;
+          for (int i = 1; i < q4floats; ++i)
+             if (rotation.f[i] != entity->rot.f[i]) changed = i;
+          _normalize_floats_fixed(rotation.f, 4, changed);
+          entity_set_rotation(entity, rotation);
+        }
+      }
+
+      igText("Scale (uniform):");
+      float scale = entity->scale;
+      if (igDragFloat("##ety_scale"
+      , &scale, 0.1f, 0.01f, 9999.0f, "%.2f", ImGuiSliderFlags_Logarithmic)) {
+        entity_set_scale(entity, scale);
+      }
+
+      igEndChild();
+      igPopItemWidth();
+    }
+  }
+  igEnd();
+}
+
+void _editor_panel_entity_rendering(Game game, Entity entity) {
+  UNUSED(game);
+
+  if (igBegin("Entity", NULL, flags_inspector)) {
+
+    if (igCollapsingHeader_BoolPtr("Renderer", NULL, ImGuiTreeNodeFlags_DefaultOpen)) {
+      igPushItemWidth(-1);
+      igBeginChild_Str("panel_renderer", v2imsubmenu, child_flags, 0);
+
+      if (entity->renderer) {
+        igText("Renderer: %s", entity->renderer->name);
+        igText("Shader: %s", entity->renderer->shader->name.begin);
+        igText("Render id: %d - %llu", sk_index(entity->render_id), sk_unique(entity->render_id));
+      }
+
+      if (entity->onrender) {
+        igText("Renderer: onrender");
+      }
+
+      if (entity->model) {
+        model_type_t type = entity->model->type;
+        if (type >= 0 && type < MODEL_TYPES_COUNT) {
+          igText("Model type: %s", entity->model->name.begin);
+        }
+      }
+
+      if (!entity->renderer && !entity->onrender) {
+        igText("Non-renderable");
+      }
+
+      igEndChild();
+      igPopItemWidth();
+    }
+
+  }
+
+  igEnd();
+}
+
+void _editor_panel_entity_material(Game game, Entity entity) {
+  UNUSED(game);
+
+  if (igBegin("Entity", NULL, flags_inspector)) {
+
+    if (igCollapsingHeader_BoolPtr("Material", NULL, ImGuiTreeNodeFlags_DefaultOpen)) {
+      igBeginChild_Str("panel_material", v2imsubmenu, child_flags, 0);
+
+      if (entity->material) {
+        Array_slice material_names = mat_get_names();
+
+        if (!arr_slice_is_null_or_empty(material_names)) {
+          if (igBeginCombo("##material_select", entity->material->name.begin, 0)) {
+            slice_t* arr_foreach(name, material_names) {
+              bool is_selected = slice_eq(*name, entity->material->name);
+              if (igSelectable_Bool(name->begin, is_selected, 0, v2imzero)) {
+                Material new_material = mat_get(*name);
+                entity_set_material(entity, new_material);
+              }
+            }
+            igEndCombo();
+          }
+        }
+
+        arr_slice_delete(&material_names);
+      }
+      else {
+        igText("None");
+      }
+
+      igEndChild();
+    }
+  }
+  igEnd();
+}
+
+void _editor_panel_entity_attributes(Game game, Entity entity) {
+  UNUSED(game);
+
+  if (!entity->renderer) return;
+
+  if (igBegin("Entity", NULL, flags_inspector)) {
+    if (igCollapsingHeader_BoolPtr("Instance", NULL, ImGuiTreeNodeFlags_DefaultOpen)) {
+      igBeginChild_Str("panel_instance", v2imsubmenu, child_flags, 0);
+
+      attribute_format_t attrib_format = entity->renderer->shader->attrib_format;
+
+      if (attribute_has_material_index(attrib_format)
+        && entity->material && entity->material->layers > 0
+      ) {
+        int index = (int)entity->material_index;
+        int layers = (int)entity->material->layers;
+
+        igText("Material Index:");
+        if (igSliderInt("##ety_mat_index", &index, 0, layers - 1, NULL, ImGuiSliderFlags_AlwaysClamp)) {
+          entity_set_material_index(entity, index);
+        }
+      }
+
+      if (attribute_has_tint(attrib_format)) {
+        color4 color = v4vc(entity->tint);
+
+        igText("Tint Color:");
+        if (igSliderFloat3("##ety_tint", color.f, 0.f, 1.f, "%.3f", 0)) {
+          entity_set_tint(entity, v4cv(color));
+        }
+      }
+
+      igEndChild();
+    }
+  }
+
+  igEnd();
+}
+
+void behavior_editor(Game game, entity_t* e, float dt) {
+  UNUSED(dt);
+  UNUSED(e);
+
+  // Pressing F2 will toggle UI
+  if (input_triggered(IN_TOGGLE_UI)) _show_ui ^= 1;
+
+  if (!_show_ui) return;
+
+  _editor_panel_info_scenes(game);
+  _editor_panel_info_tools(game);
+  _editor_panel_info_stats(game);
+  _editor_panel_info_shortcuts(game);
+  _editor_panel_info_entities(game);
+  _editor_panel_info_ext_monument(game);
+
+  if (!_panel_open_information) return;
+  if (_selected.hash == 0) return;
+
+  entity_t* entity = entity_ref(_selected);
+
+  if (!entity) return;
+
+  if (input_triggered(IN_CAM_CENTER)) {
+    _entity_center(game, entity);
+  }
+
+  if (input_triggered(IN_DELETE_OBJECT)) {
+    entity_remove(entity->id);
+  }
+
+  const touch_t* touch = input_touch_get(&game->input, 0);
+  if (touch) {
+    vec2 pos_adj = v2f((float)game->window.x, (float)game->window.y);
+    pos_adj = v2mul(pos_adj, touch->pos);
+    vec3 ray = camera_ray(&game->camera, pos_adj);
+    float t;
+    if (v3ray_plane(game->camera.pos, ray, v3origin, v3up, &t)) {
+      entity_set_position(entity, v3add(game->camera.pos, v3scale(ray, t)));
+    }
+  }
+
+  _editor_panel_entity_basic(game, entity);
+  _editor_panel_entity_tools(game, entity);
+  _editor_panel_entity_transform(game, entity);
+  _editor_panel_entity_rendering(game, entity);
+  _editor_panel_entity_material(game, entity);
+  _editor_panel_entity_attributes(game, entity);
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+// General grid and level switching behavior
+////////////////////////////////////////////////////////////////////////////////
 
 void behavior_grid_toggle(Game game, entity_t* e, float dt) {
   UNUSED(dt);
@@ -278,409 +837,7 @@ void behavior_grid_toggle(Game game, entity_t* e, float dt) {
   }
 
 #ifndef __WASM__
-  static bool show_ui = false;
-
-  if (input_triggered(IN_TOGGLE_UI)) {
-    show_ui ^= 1;
-  }
-
-  if (!show_ui) return;
-
-  ImVec2_c v2imzero = { 0 };
-  ImVec2_c v2imwinsize = { 250, (float)game->window.h };
-  ImVec2_c v2imsubmenu = { 234, 0 };
-  ImVec2_c v2imbtnsize = { 20, 20 };
-  ImVec4_c v4imbtnselcolor = { 0, 0.4f, 0.8f, 1 };
-
-  ImGuiWindowFlags flags_information
-    = ImGuiWindowFlags_NoMove
-    | ImGuiWindowFlags_NoResize
-    | ImGuiWindowFlags_NoScrollbar
-    //| ImGuiWindowFlags_AlwaysAutoResize
-    ;
-
-  ImGuiWindowFlags flags_inspector
-    = ImGuiWindowFlags_NoMove
-    | ImGuiWindowFlags_NoResize
-    | ImGuiWindowFlags_NoCollapse
-    | ImGuiWindowFlags_NoScrollbar
-    ;
-
-  ImGuiChildFlags child_flags
-    = ImGuiChildFlags_AlwaysAutoResize
-    | ImGuiChildFlags_Borders
-    | ImGuiChildFlags_AutoResizeY
-    | ImGuiChildFlags_AutoResizeX
-    ;
-
-  ImGuiTooltipFlags tooltip_flags
-    = ImGuiHoveredFlags_DelayNormal
-    ;
-
-  static slotkey_t selected = { 0 };
-
-  static editor_mode_t edit_mode = EM_SELECT;
-
-  igSetNextWindowPos(v2imzero, ImGuiCond_Appearing, v2imzero);
-  igSetNextWindowSize(v2imwinsize, ImGuiCond_Always);
-
-  if (igBegin("Information", NULL, flags_information)) {
-    //float screen_y = igGetCursorScreenPos().y;
-
-    igText("Scene:");
-    const char* scenes[] = { "1 - Editor", "2 - Magicks", "3 - Flight" };
-    igPushItemWidth(-1);
-    if (igBeginCombo("##scene_select", scenes[game->scene], ImGuiComboFlags_NoArrowButton)) {
-      for (int i = 0; i < (int)ARRAY_COUNT(scenes); ++i) {
-        if (igSelectable_Bool(scenes[i], i == game->scene, 0, v2imzero)) {
-          game->next_scene = i;
-        }
-      }
-      igEndCombo();
-    }
-    igPopItemWidth();
-
-    igText("Tools:");
-    igBeginChild_Str("panel_tools", v2imsubmenu, child_flags, 0);
-    editor_mode_t new_mode = edit_mode;
-
-    if (edit_mode == EM_SELECT) igPushStyleColor_Vec4(ImGuiCol_Button, v4imbtnselcolor);
-    if (igButton("S", v2imbtnsize)) {
-      new_mode = EM_SELECT;
-    }
-    if (igIsItemHovered(tooltip_flags)) igSetTooltip("Select mode");
-    if (edit_mode == EM_SELECT) igPopStyleColor(1);
-
-    igSameLine(0, 5);
-
-    if (edit_mode == EM_TRANSLATE) igPushStyleColor_Vec4(ImGuiCol_Button, v4imbtnselcolor);
-    if (igButton("T", v2imbtnsize)) {
-      new_mode = EM_TRANSLATE;
-    }
-    if (igIsItemHovered(tooltip_flags)) igSetTooltip("Translate mode");
-    if (edit_mode == EM_TRANSLATE) igPopStyleColor(1);
-
-    igSameLine(0, 5);
-
-    if (edit_mode == EM_ROTATE) igPushStyleColor_Vec4(ImGuiCol_Button, v4imbtnselcolor);
-    if (igButton("R", v2imbtnsize)) {
-      new_mode = EM_ROTATE;
-    }
-    if (igIsItemHovered(tooltip_flags)) igSetTooltip("Rotate mode");
-    if (edit_mode == EM_ROTATE) igPopStyleColor(1);
-
-    igSameLine(0, 5);
-
-    if (edit_mode == EM_CREATE) igPushStyleColor_Vec4(ImGuiCol_Button, v4imbtnselcolor);
-    if (igButton("C", v2imbtnsize)) {
-      new_mode = EM_CREATE;
-    }
-    if (igIsItemHovered(tooltip_flags)) igSetTooltip("Create mode");
-    if (edit_mode == EM_CREATE) igPopStyleColor(1);
-
-    igEndChild();
-
-    edit_mode = new_mode;
-
-    if (igCollapsingHeader_BoolPtr("Stats", NULL, ImGuiTreeNodeFlags_DefaultOpen)) {
-      igBeginChild_Str("panel_stats", v2imsubmenu, child_flags, 0);
-      igText("FPS: %.3f", 1.0f / game->frame_time);
-      igText("Entities: %d", entity_count());
-      igText("Lights: %d", light_count());
-
-      bool vsync = gfx_get_vsync();
-      if (igCheckbox("V-Sync", &vsync)) {
-        gfx_set_vsync(vsync);
-      }
-
-      igText("Resolution");
-      if (igInputInt2("##resolution", game->resolution.i, ImGuiInputTextFlags_None)) {
-        game->on_window_resize(game);
-      }
-
-      igEndChild();
-    }
-
-    if (igCollapsingHeader_BoolPtr("Shortcuts", NULL, 0)) {
-      igBeginChild_Str("panel_help", v2imsubmenu, child_flags, 0);
-      igText("[O] Move camera");
-      igText("[I] Rotate camera");
-      igText("[C] Snap to selection");
-      igText("[R] Set light pos");
-      igEndChild();
-    }
-
-    if (igCollapsingHeader_BoolPtr("Entities", NULL, ImGuiTreeNodeFlags_DefaultOpen)) {
-      float y = igGetCursorScreenPos().y;
-      float h = (float)game->window.h - 5;
-      igBeginChild_Str("panel_entities", (ImVec2_c) { 234, h - y }, child_flags, 0);
-      entity_t* entity = entity_ref(selected);
-      //const char* selected_str = entity ? entity->name->begin : "<None>";
-      //if (igBeginCombo("##entity_select", selected_str, 0)) {
-
-      igPushItemWidth(-1);
-      if (igBeginListBox("##entity_select", (ImVec2_c) {-FLT_MIN, -FLT_MIN} )) {
-        if (igSelectable_Bool("<None>", selected.hash == 0, 0, v2imzero)) {
-          selected = SK_NULL;
-        }
-        for (slotkey_t id = SK_NULL; entity = entity_next(&id), entity;) {
-          bool is_selected = entity->id.hash == selected.hash;
-          String label = str_format("{}##{}", entity->name, sk_unique(id));
-          if (igSelectable_Bool(label->begin, is_selected, 0, v2imzero)) {
-            selected = entity->id;
-          }
-          str_delete(&label);
-        }
-        //igEndCombo();
-        igEndListBox();
-      }
-
-      igPopItemWidth();
-      igEndChild();
-    }
-  }
-  igEnd();
-
-  bool information_open = igBegin("Information", NULL, flags_inspector);
-  if (information_open) {
-    if (game->scene == 2) {
-      igText("Scene Info");
-      igBeginChild_Str("panel_monument", v2imsubmenu, child_flags, 0);
-      igText("Extent");
-      igSliderInt(
-        "##mon_extent", &game->demo->monument_extent, 0, 100, NULL, 0);
-
-      igText("Spacing");
-      igSliderInt(
-        "##mon_spacing", &game->demo->monument_size, 0, 500, NULL, 0);
-
-      if (igButton("Apply", v2imzero)) {
-        game->next_scene = 2;
-      }
-      igSameLine(0, 5);
-      if (igButton("Reset", v2imzero)) {
-        game->demo->monument_extent = 10;
-        game->demo->monument_size = 200;
-        game->next_scene = 2;
-      }
-      igEndChild();
-    }
-  }
-  igEnd();
-
-  if (!information_open) return;
-
-  if (selected.hash == 0) {
-    return;
-  }
-
-  entity_t* entity = entity_ref(selected);
-
-  if (!entity) return;
-
-  bool do_center = false;
-  bool do_delete = false;
-
-  if (input_triggered(IN_CAM_CENTER)) {
-    do_center = true;
-  }
-
-  if (input_triggered(IN_DELETE_OBJECT)) {
-    do_delete = true;
-  }
-
-  const touch_t* touch = input_touch_get(&game->input, 0);
-  if (touch) {
-    vec2 pos_adj = v2f((float)game->window.x, (float)game->window.y);
-    pos_adj = v2mul(pos_adj, touch->pos);
-    vec3 ray = camera_ray(&game->camera, pos_adj);
-    float t;
-    if (v3ray_plane(game->camera.pos, ray, v3origin, v3up, &t)) {
-      entity_set_position(entity, v3add(game->camera.pos, v3scale(ray, t)));
-    }
-  }
-
-  ImVec2_c top_right = (ImVec2_c){ (float)game->window.w, 0 };
-  igSetNextWindowPos(top_right, ImGuiCond_Always, (ImVec2_c) { 1, 0 });
-  igSetNextWindowSize(v2imwinsize, ImGuiCond_Always);
-
-  if (igBegin("Entity", NULL, flags_inspector)) {
-
-    if (entity) {
-      igText("ID: %d - %llu", sk_index(entity->id), sk_unique(entity->id));
-
-      {
-        char name_buffer[1000];
-        memcpy(name_buffer, entity->name->begin, MIN(1000, entity->name->size+1));
-        igPushItemWidth(-1);
-        if (igInputText("##Name", name_buffer, 1000, 0, NULL, NULL)) {
-          str_delete(&entity->name);
-          entity->name = str_copy(name_buffer);
-        }
-        igPopItemWidth();
-      }
-
-      if (igButton("Center", v2imzero)) {
-        do_center = true;
-      }
-
-      igSameLine(0, 5);
-
-      if (igButton("Delete", v2imzero)) {
-        do_delete = true;
-      }
-
-      bool fake_hidden = entity->is_hidden;
-      if (igCheckbox("Hidden", &fake_hidden)) {
-        entity_set_hidden(entity, fake_hidden);
-      }
-
-      bool fake_static = entity->is_static;
-      if (igCheckbox("Static", &fake_static)) {
-        entity_set_static(entity, fake_static);
-      }
-
-      if (igCollapsingHeader_BoolPtr("Transform", NULL, ImGuiTreeNodeFlags_DefaultOpen)) {
-        igPushItemWidth(-1);
-        igBeginChild_Str("panel_transform", v2imsubmenu, child_flags, 0);
-
-        igText("Position:");
-        vec3 fake_pos = entity->pos;
-        if (igDragFloat3("##ety_position",
-          fake_pos.f, 0.1f, -99999.f, 99999.f, "%.2f", 0)
-          ) {
-          entity_set_position(entity, fake_pos);
-        }
-
-        igText("Rotation (quaternion):");
-        quat rotation = entity->rot;
-        if (igSliderFloat4("##ety_rotation", rotation.f, -1.f, 1.f, "%.3f", 0)) {
-          int changed = 0;
-          for (int i = 1; i < q4floats; ++i)
-            if (rotation.f[i] != entity->rot.f[i]) changed = i;
-          _normalize_floats_fixed(rotation.f, 4, changed);
-          entity_set_rotation(entity, rotation);
-        }
-
-        igText("Rotation (axis-angle):");
-        vec3 axis = v3norm(q4axis(entity->rot));
-        vec3 test = axis;
-        float angle = q4angle(entity->rot);
-        if (igSliderFloat3("##ety_rot_axis", axis.f, -1.f, 1.f, "%.2f", 0)) {
-          int changed = 0;
-          for (int i = 1; i < v3floats; ++i)
-            if (axis.f[i] != test.f[i]) changed = i;
-          _normalize_floats_fixed(axis.f, 3, changed);
-          entity_set_rotation_a(entity, axis, angle);
-        }
-
-        if (igDragFloat("##ety_rot_angle", &angle, 0.01f, 0, TAU, "%.2f", ImGuiSliderFlags_WrapAround)) {
-          entity_set_rotation_a(entity, axis, angle);
-        }
-
-
-        igText("Scale (uniform):");
-        float scale = entity->scale;
-        if (igDragFloat("##ety_scale", &scale, 0.025f, 0.01f, 9999.0f, "%.2f", ImGuiSliderFlags_Logarithmic)) {
-          entity_set_scale(entity, scale);
-        }
-
-        igEndChild();
-        igPopItemWidth();
-      }
-
-
-      if (igCollapsingHeader_BoolPtr("Rendering", NULL, ImGuiTreeNodeFlags_DefaultOpen)) {
-        igPushItemWidth(-1);
-        igBeginChild_Str("panel_rendering", v2imsubmenu, child_flags, 0);
-
-        if (entity->renderer) {
-          igText("Renderer: %s", entity->renderer->name);
-          igText("Shader: %s", entity->renderer->shader->name.begin);
-          igText("Render id: %d - %llu", sk_index(entity->render_id), sk_unique(entity->render_id));
-        }
-
-        if (entity->onrender) {
-          igText("Renderer: onrender");
-        }
-
-        if (entity->model) {
-          model_type_t type = entity->model->type;
-          if (type >= 0 && type < MODEL_TYPES_COUNT) {
-            igText("Model type: %s", entity->model->name.begin);
-          }
-        }
-
-        if (entity->material) {
-          igText("Material:");
-          Array_slice material_names = mat_get_names();
-
-          if (!arr_slice_is_null_or_empty(material_names)) {
-            if (igBeginCombo("##material_select", entity->material->name.begin, 0)) {
-              slice_t* arr_foreach(name, material_names) {
-                bool is_selected = slice_eq(*name, entity->material->name);
-                if (igSelectable_Bool(name->begin, is_selected, 0, v2imzero)) {
-                  Material new_material = mat_get(*name);
-                  entity_set_material(entity, new_material);
-                }
-              }
-              igEndCombo();
-            }
-          }
-
-          arr_slice_delete(&material_names);
-        }
-
-        if (entity->renderer) {
-          attribute_format_t attrib_format = entity->renderer->shader->attrib_format;
-
-          if (attribute_has_material_index(attrib_format)
-            && entity->material && entity->material->layers > 0
-            ) {
-            int index = (int)entity_get_material_index(entity);
-            int layers = (int)entity->material->layers;
-
-            igText("Material Index:");
-            if (igSliderInt("##ety_mat_index", &index, 0, layers - 1, NULL, ImGuiSliderFlags_AlwaysClamp)) {
-              entity_set_material_index(entity, index);
-            }
-          }
-
-          if (attribute_has_tint(attrib_format)) {
-            color4 color = v4vc(entity_get_tint(entity));
-
-            igText("Tint Color:");
-            if (igSliderFloat4("##ety_tint", color.f, 0.f, 1.f, "%.3f", 0)) {
-              entity_set_tint(entity, v4cv(color));
-            }
-          }
-        }
-
-        if (!entity->renderer && !entity->onrender) {
-          igText("Non-renderable");
-        }
-
-        igEndChild();
-        igPopItemWidth();
-      }
-    }
-    else {
-      igText("No entity selected");
-    }
-
-  }
-
-  if (do_center) {
-    vec3 target_ray = v3sub(game->demo->target, game->camera.pos);
-    game->demo->target = entity->pos;
-    game->camera.pos = v3sub(entity->pos, target_ray);
-  }
-
-  if (do_delete) {
-    entity_remove(entity->id);
-  }
-
-  igEnd();
+  behavior_editor(game, e, dt);
 #endif
 }
 
