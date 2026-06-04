@@ -46,7 +46,7 @@ static void _model_render_instanced(const Model model, index_t count) {
     // indexed draw
     glDrawElementsInstanced
     ( GL_TRIANGLES
-    , (GLsizei)model->vert_count
+    , (GLsizei)model->index_count
     , GL_UNSIGNED_INT
     , 0
     , (GLsizei)count

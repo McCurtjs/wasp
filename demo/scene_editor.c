@@ -1079,7 +1079,7 @@ scene_unload_fn_t scene_load_gears(Game game) {
     .model = demo->models.gear,
     .material = demo->materials.grass,
     .pos = v3f(0, 7, -12),
-    .onrender = render_pbr,
+    .renderer = renderer_pbr,
     .behavior = _behavior_gear_rotate_cw,
   }); //*/
 
@@ -1089,7 +1089,7 @@ scene_unload_fn_t scene_load_gears(Game game) {
     .model = demo->models.gear,
     .material = demo->materials.sands,
     .pos = v3f(20.5f, -1.5f, -12),
-    .onrender = render_pbr,
+    .renderer = renderer_pbr,
     .behavior = _behavior_gear_rotate_ccw,
   }); //*/
 
@@ -1099,7 +1099,7 @@ scene_unload_fn_t scene_load_gears(Game game) {
     .model = demo->models.gear,
     .material = demo->materials.mudds,
     .pos = v3f(43.f, -1.5f, -12),
-    .onrender = render_pbr,
+    .renderer = renderer_pbr,
     .behavior = _behavior_gear_rotate_cw,
   }); //*/
 
