@@ -479,6 +479,20 @@ ParticleEffect ps_get_effect(ParticleSystem _ps, slice_t name) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+
+Array_slice ps_get_effect_names(ParticleSystem _ps) {
+  assert(_ps);
+  ParticleSystem_Internal* ps = (ParticleSystem_Internal*)_ps;
+  Array_slice names = arr_slice_new();
+
+  slice_t** map_foreach(pname, ps->effects) {
+    arr_slice_write_back(names, *pname);
+  }
+
+  return names;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Emitter Functionality
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -521,6 +535,14 @@ ParticleEmitter ps_get_emitter(ParticleSystem _system, slotkey_t emitter_id) {
   assert(_system == emitter->effect->system);
 
   return emitter;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+ParticleEmitter ps_get_next_emitter(ParticleSystem _system, slotkey_t* iter) {
+  assert(_system);
+  ParticleSystem_Internal* system = (ParticleSystem_Internal*)_system;
+  return smap_emitter_next(system->emitters, iter);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

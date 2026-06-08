@@ -271,6 +271,7 @@ static quat           _selected_rot = { 0 };
 static vec3           _selected_axis = { 0 };
 static vec3           _selected_euler = { 0 };
 static float          _selected_angle = 0;
+static slotkey_t      _selected_emitter = { 0 };
 
 void _editor_panel_info_scenes(Game game) {
   const char* scenes[] =
@@ -409,9 +410,11 @@ void _editor_panel_info_entities(Game game) {
 
       igPushItemWidth(-1);
       if (igBeginListBox("##entity_select", (ImVec2_c) {-FLT_MIN, -FLT_MIN} )) {
+
         if (igSelectable_Bool("<None>", _selected.hash == 0, 0, v2imzero)) {
           _selected = SK_NULL;
         }
+
         for (slotkey_t id = SK_NULL; entity = entity_next(&id), entity;) {
           bool is_selected = entity->id.hash == _selected.hash;
           String label = str_format("{}##{}", entity->name, sk_unique(id));
@@ -421,8 +424,33 @@ void _editor_panel_info_entities(Game game) {
             _selected_axis = q4axis(entity->rot);
             _selected_angle = q4angle(entity->rot);
             _selected_rot = entity->rot;
+            _selected_emitter = SK_NULL;
           }
           str_delete(&label);
+
+          if (!is_selected) continue;
+
+          slotkey_t iter = SK_NULL;
+          loop {
+            ParticleEmitter emitter = ps_get_next_emitter(
+              game->particle_system, &iter
+            );
+            until (emitter == NULL);
+
+            if (emitter->entity_id.hash != _selected.hash) continue;
+
+            label = str_format("- Emitter: {} {1}##{1}",
+              emitter->effect->name, sk_unique(emitter->id)
+            );
+
+            if (igSelectable_Bool(
+              label->begin, emitter->id.hash == _selected_emitter.hash, 0, v2imzero
+            )) {
+              _selected_emitter = emitter->id;
+            };
+
+            str_delete(&label);
+          }
         }
         //igEndCombo();
         igEndListBox();
@@ -766,6 +794,69 @@ void _editor_panel_entity_attributes(Game game, Entity entity) {
   igEnd();
 }
 
+void _editor_panel_emitter_basic(Game game, ParticleEmitter emitter) {
+  ImVec2_c top_right = (ImVec2_c){ (float)game->window.w, 0 };
+  igSetNextWindowPos(top_right, ImGuiCond_Always, (ImVec2_c) { 1, 0 });
+  igSetNextWindowSize(_get_winsize(game), ImGuiCond_Always);
+
+  if (igBegin("Emitter", NULL, flags_inspector)) {
+    igText("ID: %d - %llu", sk_index(emitter->id), sk_unique(emitter->id));
+
+    igText("Effect:");
+
+    Array_slice effect_names = ps_get_effect_names(game->particle_system);
+    if (igBeginCombo("##emitter_select", emitter->effect->name.begin, 0)) {
+      slice_t* arr_foreach(name, effect_names) {
+        bool is_selected = slice_eq(*name, emitter->effect->name);
+        if (igSelectable_Bool(name->begin, is_selected, 0, v2imzero)) {
+        }
+      }
+      igEndCombo();
+    }
+
+    if (igCollapsingHeader_BoolPtr("Parameters", NULL, ImGuiTreeNodeFlags_DefaultOpen)) {
+      igBeginChild_Str("panel_emitter_params", v2imsubmenu, child_flags, 0);
+
+      const char* emitter_shape_names[ES_SHAPE_COUNT] = {
+        "Point", "Sphere", "Box (aligned)", "Box", "Disc"
+      };
+
+      igText("Shape");
+      if (igBeginCombo("##shape_select", emitter_shape_names[emitter->shape], 0)) {
+        for (int i = 0; i < ES_SHAPE_COUNT; ++i) {
+          if (igSelectable_Bool
+          ( emitter_shape_names[i]
+          , i == emitter->shape
+          , 0
+          , v2imzero
+          )) {
+            emitter->shape = i;
+          }
+        }
+        igEndCombo();
+      }
+
+
+      igEndChild();
+    }
+
+    if (igCollapsingHeader_BoolPtr("Particles", NULL, ImGuiTreeNodeFlags_DefaultOpen)) {
+      igBeginChild_Str("panel_emitter_particles", v2imsubmenu, child_flags, 0);
+
+      igText("Size:");
+      if (emitter->effect->format == PF_DEFAULT) {
+        igSliderFloat3("##particle_size", &emitter->particle_defaults.size, 0.1f, 10.f, "%.3f", 0);
+      }
+      else if (emitter->effect->format == PF_POINT) {
+        igSliderFloat("##particle_size_f", &emitter->particle_defaults.size, 0.1f, 10.f, "%.3f", 0);
+      }
+
+      igEndChild();
+    }
+  }
+  igEnd();
+}
+
 void behavior_editor(Game game, entity_t* e, float dt) {
   UNUSED(dt);
   UNUSED(e);
@@ -808,13 +899,21 @@ void behavior_editor(Game game, entity_t* e, float dt) {
     }
   }
 
-  _editor_panel_entity_basic(game, entity);
-  _editor_panel_entity_tools(game, entity);
-  _editor_panel_entity_transform(game, entity);
-  _editor_panel_entity_rendering(game, entity);
-  _editor_panel_entity_model(game, entity);
-  _editor_panel_entity_material(game, entity);
-  _editor_panel_entity_attributes(game, entity);
+  if (_selected_emitter.hash == 0) {
+    _editor_panel_entity_basic(game, entity);
+    _editor_panel_entity_tools(game, entity);
+    _editor_panel_entity_transform(game, entity);
+    _editor_panel_entity_rendering(game, entity);
+    _editor_panel_entity_model(game, entity);
+    _editor_panel_entity_material(game, entity);
+    _editor_panel_entity_attributes(game, entity);
+  }
+  else {
+    ParticleEmitter emitter =
+      ps_get_emitter(game->particle_system, _selected_emitter);
+
+    _editor_panel_emitter_basic(game, emitter);
+  }
 }
 
 #endif

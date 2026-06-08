@@ -28,6 +28,7 @@
 #include "types.h"
 #include "vec.h"
 #include "slice.h"
+#include "array_slice.h"
 #include "slotkey.h"
 #include "instance_attributes.h"
 #include "camera.h"
@@ -58,6 +59,7 @@ typedef enum emitter_shape_t {
   ES_BOX_ALIGNED,
   ES_BOX,
   ES_DISC,
+  ES_SHAPE_COUNT
 } emitter_shape_t;
 
 typedef struct particle_inst_t {
@@ -229,9 +231,11 @@ void            ps_delete(ParticleSystem*);
 ParticleEffect  ps_add_effect(ParticleSystem,
                   slice_t name, particle_format_t, effect_flags_t);
 ParticleEffect  ps_get_effect(ParticleSystem, slice_t name);
+Array_slice     ps_get_effect_names(ParticleSystem);
 
 ParticleEmitter ps_add_emitter(ParticleEffect);
 ParticleEmitter ps_get_emitter(ParticleSystem, slotkey_t emitter_id);
+ParticleEmitter ps_get_next_emitter(ParticleSystem, slotkey_t* emitter_id_iter);
 
 // \brief basic particle behaviors
 particle_behavior_fn_t pb_gravity;

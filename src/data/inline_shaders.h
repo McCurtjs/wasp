@@ -36,10 +36,17 @@ void main() {\n\
 
 static const char shader_particle_frag[] = "\
 #version 300 es\n\
-in highp vec2 vUV;\n\
-layout(location = 0) out highp vec4 frag_color;\n\
+precision highp float;\n\
+in vec2 vUV;\n\
+layout(location = 0) out vec3 frag_color;\n\
+layout(location = 1) out vec2 frag_norm;\n\
+layout(location = 2) out vec4 frag_props;\n\
+layout(location = 3) out float frag_depth;\n\
 void main() {\n\
-  frag_color = vec4(vUV.x, vUV.y, 0.0, 1.0);\n\
+  frag_color = vec3(vUV.x, vUV.y, 0.0);\n\
+  frag_norm = vUV;\n\
+  frag_props = vec4(0.0);\n\
+  frag_depth = gl_FragCoord.z;\n\
 }\n";
 
 static const char shader_quad_vert[] = "\
