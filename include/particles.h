@@ -232,6 +232,7 @@ ParticleEffect  ps_add_effect(ParticleSystem,
                   slice_t name, particle_format_t, effect_flags_t);
 ParticleEffect  ps_get_effect(ParticleSystem, slice_t name);
 Array_slice     ps_get_effect_names(ParticleSystem);
+bool            ps_set_effect_name(ParticleEffect, slice_t);
 
 ParticleEmitter ps_add_emitter(ParticleEffect);
 ParticleEmitter ps_get_emitter(ParticleSystem, slotkey_t emitter_id);

@@ -221,17 +221,26 @@ static void _normalize_floats_fixed(float* floats, int count, int fixed_ind) {
 
 #include <float.h>
 
+typedef enum object_mode_t {
+  OM_ENTITIES,
+  OM_EFFECTS,
+  OM_EMITTERS,
+  OM_COUNT
+} object_mode_t;
+
 typedef enum editor_mode_t {
   EM_SELECT,
   EM_TRANSLATE,
   EM_ROTATE,
-  EM_CREATE
+  EM_CREATE,
+  EM_COUNT
 } editor_mode_t;
 
 ImVec2_c v2imzero = { 0 };
 ImVec2_c v2imsubmenu = { 234, 0 };
 ImVec2_c v2imbtnsize = { 20, 20 };
 ImVec4_c v4imbtnselcolor = { 0, 0.4f, 0.8f, 1 };
+ImVec2_c v2imfillspace = { -FLT_MIN, -FLT_MIN };
 
 ImVec2_c _get_winsize(Game game) {
   return (ImVec2_c) { 250, (float)game->window.h };
@@ -265,13 +274,15 @@ ImGuiTooltipFlags tooltip_flags
 static bool           _show_ui = false;
 static bool           _panel_open_information = true;
 static int            _rotation_format = 0;
+static object_mode_t  _object_mode = OM_ENTITIES;
 static editor_mode_t  _edit_mode = EM_SELECT;
-static slotkey_t      _selected = { 0 };
+static slotkey_t      _selected_entity = { 0 };
+static slotkey_t      _selected_emitter = { 0 };
+static ParticleEffect _selected_effect = NULL;
 static quat           _selected_rot = { 0 };
 static vec3           _selected_axis = { 0 };
 static vec3           _selected_euler = { 0 };
 static float          _selected_angle = 0;
-static slotkey_t      _selected_emitter = { 0 };
 
 void _editor_panel_info_scenes(Game game) {
   const char* scenes[] =
@@ -391,7 +402,248 @@ void _editor_panel_info_shortcuts(Game game) {
   igEnd();
 }
 
+Entity _editor_set_entity(Game game, slotkey_t entity_id) {
+  UNUSED(game);
+
+  Entity ret = entity_ref(entity_id);
+
+  if (ret) {
+    _selected_entity = entity_id;
+    _selected_euler = v3euler(ret->rot);
+    _selected_axis = q4axis(ret->rot);
+    _selected_angle = q4angle(ret->rot);
+    _selected_rot = ret->rot;
+  }
+  else {
+    _selected_entity = SK_NULL;
+  }
+
+  _selected_emitter = SK_NULL;
+  _selected_effect = NULL;
+
+  return ret;
+}
+
+ParticleEffect _editor_set_effect(Game game, slice_t effect_name) {
+  ParticleEffect ret = ps_get_effect(game->particle_system, effect_name);
+
+  _selected_effect = ret;
+  _selected_entity = SK_NULL;
+
+  ParticleEmitter emitter = NULL;
+  if (_selected_emitter.hash) {
+    emitter = ps_get_emitter(game->particle_system, _selected_emitter);
+  }
+
+  if (!emitter || emitter->effect != ret) {
+    _selected_emitter = SK_NULL;
+  }
+
+  return ret;
+}
+
+ParticleEmitter _editor_set_emitter(Game game, slotkey_t emitter_id) {
+  ParticleEmitter ret = ps_get_emitter(game->particle_system, emitter_id);
+
+  if (ret) {
+    _selected_emitter = emitter_id;
+    _selected_euler = v3euler(ret->dir);
+    _selected_axis = q4axis(ret->dir);
+    _selected_angle = q4angle(ret->dir);
+    _selected_rot = ret->dir;
+  }
+  else {
+    _selected_emitter = SK_NULL;
+  }
+
+  return ret;
+}
+
+void _editor_set_object_mode(Game game, object_mode_t mode) {
+  switch (mode) {
+
+  case OM_ENTITIES:
+    _editor_set_entity(game, _selected_entity);
+    break;
+
+  case OM_EFFECTS:
+    _editor_set_entity(game, SK_NULL);
+    break;
+
+  case OM_EMITTERS:
+    _editor_set_entity(game, SK_NULL);
+    break;
+
+  default:
+    assert(false);
+    break;
+  }
+
+  _object_mode = mode;
+}
+
+void _editor_panel_info_object_mode_select(Game game) {
+  const char* object_modes[OM_COUNT] =
+  { "Entities"
+  , "Effects"
+  , "Emitters"
+  };
+
+  _panel_open_information = igBegin("Information", NULL, flags_information);
+
+  if (_panel_open_information) {
+    ImGuiComboFlags flags = ImGuiComboFlags_NoArrowButton;
+    igPushItemWidth(-1);
+
+    static bool is_open = false;
+    igSetNextItemOpen(true, ImGuiCond_Always);
+    if (igCollapsingHeader_BoolPtr(object_modes[_object_mode], NULL, 0)) {
+
+      if (is_open) {
+        if (igBeginListBox("##object_mode_select", v2imzero)) {
+
+          for (object_mode_t mode = 0; mode < OM_COUNT; ++mode) {
+            if (igSelectable_Bool(object_modes[mode]
+            , mode == _object_mode, 0, v2imzero)
+            ) {
+              _editor_set_object_mode(game, mode);
+              is_open = false;
+            }
+          }
+
+          igEndListBox();
+        }
+      }
+    }
+    else {
+      is_open = !is_open;
+    }
+
+    igPopItemWidth();
+  }
+  igEnd();
+}
+
+ParticleEmitter _editor_selectable_emitters(
+  Game game, const char* label_format, slotkey_t selected, slotkey_t parent
+) {
+  ParticleEmitter ret = NULL;
+  slotkey_t iter = SK_NULL;
+
+  loop {
+    ParticleEmitter emitter = ps_get_next_emitter(game->particle_system, &iter);
+    until(emitter == NULL);
+
+    if (parent.hash && parent.hash != emitter->entity_id.hash) continue;
+
+    String label =
+      str_format(label_format, emitter->effect->name, sk_unique(emitter->id));
+
+    if (igSelectable_Bool(
+      label->begin, emitter->id.hash == selected.hash, 0, v2imzero
+    )) {
+      ret = emitter;
+    }
+
+    str_delete(&label);
+  }
+
+  return ret;
+}
+
 void _editor_panel_info_entities(Game game) {
+  entity_t* entity = entity_ref(_selected_entity);
+
+  igPushItemWidth(-1);
+  if (igBeginListBox("##entity_select", v2imfillspace)) {
+
+    if (igSelectable_Bool("<None>", _selected_entity.hash == 0, 0, v2imzero)) {
+      _selected_entity = SK_NULL;
+    }
+
+    for (slotkey_t id = SK_NULL; entity = entity_next(&id), entity;) {
+      bool is_selected = entity->id.hash == _selected_entity.hash;
+      String label = str_format("{}##{}", entity->name, sk_unique(id));
+      if (igSelectable_Bool(label->begin, is_selected, 0, v2imzero)) {
+        _editor_set_entity(game, entity->id);
+      }
+      str_delete(&label);
+
+      if (!is_selected) continue;
+
+      ParticleEmitter emitter = _editor_selectable_emitters(
+        game, "- Emitter: {0} {1}##{1}", _selected_emitter, _selected_entity
+      );
+
+      if (emitter) {
+        _selected_emitter = emitter->id;
+      }
+    }
+
+    igEndListBox();
+  }
+
+  igPopItemWidth();
+}
+
+void _editor_panel_info_effects(Game game) {
+
+  if (igButton("New Effect", v2imzero)) {
+    ps_add_effect(game->particle_system, S("New Effect"), PF_POINT, 0);
+  }
+
+  igPushItemWidth(-1);
+  if (igBeginListBox("##effect_select", v2imfillspace)) {
+    if (igSelectable_Bool("<None>", _selected_effect == NULL, 0, v2imzero)) {
+      _selected_effect = NULL;
+    }
+
+    Array_slice effect_names = ps_get_effect_names(game->particle_system);
+
+    arr_slice_sort(effect_names);
+
+    slice_t* arr_foreach(name, effect_names) {
+      bool is_selected = false;
+      if (_selected_effect) {
+        is_selected = slice_eq(_selected_effect->name, *name);
+      }
+
+      slice_t label = *name;
+      if (label.length == 0) label = S("##");
+      if (igSelectable_Bool(label.begin, is_selected, 0, v2imzero)) {
+        _editor_set_effect(game, *name);
+      }
+    }
+
+    arr_slice_delete(&effect_names);
+
+    igEndListBox();
+  }
+
+  igPopItemWidth();
+}
+
+void _editor_panel_info_emitters(Game game) {
+  igPushItemWidth(-1);
+  if (igBeginListBox("##entity_select", v2imfillspace)) {
+
+    if (igSelectable_Bool("<None>", _selected_entity.hash == 0, 0, v2imzero)) {
+      _selected_emitter = SK_NULL;
+    }
+
+    ParticleEmitter emitter = _editor_selectable_emitters(
+      game, "{0} {1}##{1}", _selected_emitter, SK_NULL
+    );
+
+    if (emitter) {
+      _selected_emitter = emitter->id;
+    }
+
+    igEndListBox();
+  }
+}
+
+void _editor_panel_info_objects(Game game) {
   ImVec2_c v2imwinsize = _get_winsize(game);
 
   if (game->scene == 2) return;
@@ -400,66 +652,28 @@ void _editor_panel_info_entities(Game game) {
   igSetNextWindowSize(v2imwinsize, ImGuiCond_Always);
 
   if (igBegin("Information", NULL, flags_information)) {
-    if (igCollapsingHeader_BoolPtr("Entities", NULL, ImGuiTreeNodeFlags_DefaultOpen)) {
-      float y = igGetCursorScreenPos().y;
-      float h = (float)game->window.h - 5;
-      igBeginChild_Str("panel_entities", (ImVec2_c) { 234, h - y }, child_flags, 0);
-      entity_t* entity = entity_ref(_selected);
-      //const char* selected_str = entity ? entity->name->begin : "<None>";
-      //if (igBeginCombo("##entity_select", selected_str, 0)) {
+    float y = igGetCursorScreenPos().y;
+    float h = (float)game->window.h - 5;
+    igBeginChild_Str("panel_objects", (ImVec2_c) { 234, h - y }, child_flags, 0);
 
-      igPushItemWidth(-1);
-      if (igBeginListBox("##entity_select", (ImVec2_c) {-FLT_MIN, -FLT_MIN} )) {
+    switch (_object_mode) {
+    case OM_ENTITIES:
+      _editor_panel_info_entities(game);
+      break;
 
-        if (igSelectable_Bool("<None>", _selected.hash == 0, 0, v2imzero)) {
-          _selected = SK_NULL;
-        }
+    case OM_EFFECTS:
+      _editor_panel_info_effects(game);
+      break;
 
-        for (slotkey_t id = SK_NULL; entity = entity_next(&id), entity;) {
-          bool is_selected = entity->id.hash == _selected.hash;
-          String label = str_format("{}##{}", entity->name, sk_unique(id));
-          if (igSelectable_Bool(label->begin, is_selected, 0, v2imzero)) {
-            _selected = entity->id;
-            _selected_euler = v3euler(entity->rot);
-            _selected_axis = q4axis(entity->rot);
-            _selected_angle = q4angle(entity->rot);
-            _selected_rot = entity->rot;
-            _selected_emitter = SK_NULL;
-          }
-          str_delete(&label);
-
-          if (!is_selected) continue;
-
-          slotkey_t iter = SK_NULL;
-          loop {
-            ParticleEmitter emitter = ps_get_next_emitter(
-              game->particle_system, &iter
-            );
-            until (emitter == NULL);
-
-            if (emitter->entity_id.hash != _selected.hash) continue;
-
-            label = str_format("- Emitter: {} {1}##{1}",
-              emitter->effect->name, sk_unique(emitter->id)
-            );
-
-            if (igSelectable_Bool(
-              label->begin, emitter->id.hash == _selected_emitter.hash, 0, v2imzero
-            )) {
-              _selected_emitter = emitter->id;
-            };
-
-            str_delete(&label);
-          }
-        }
-        //igEndCombo();
-        igEndListBox();
-      }
-
-      igPopItemWidth();
-      igEndChild();
+    case OM_EMITTERS:
+      _editor_panel_info_emitters(game);
+      break;
     }
+
+    igEndChild();
+
   }
+
   igEnd();
 }
 
@@ -498,6 +712,21 @@ void _entity_center(Game game, Entity entity) {
   game->camera.pos = v3sub(entity->pos, target_ray);
 }
 
+#define TEXT_INPUT_MAX 1024
+String _editor_text_input(const char* label, slice_t target) {
+  char name_buffer[TEXT_INPUT_MAX + 1];
+  memcpy(name_buffer, target.begin, MIN(TEXT_INPUT_MAX, target.size + 1));
+  String ret = NULL;
+
+  igPushItemWidth(-1);
+  if (igInputText(label, name_buffer, TEXT_INPUT_MAX, 0, NULL, NULL)) {
+    ret = str_copy(&name_buffer[0]);
+  }
+  igPopItemWidth();
+
+  return ret;
+}
+
 void _editor_panel_entity_basic(Game game, Entity entity) {
   ImVec2_c top_right = (ImVec2_c){ (float)game->window.w, 0 };
   igSetNextWindowPos(top_right, ImGuiCond_Always, (ImVec2_c) { 1, 0 });
@@ -506,15 +735,11 @@ void _editor_panel_entity_basic(Game game, Entity entity) {
   if (igBegin("Entity", NULL, flags_inspector)) {
     igText("ID: %d - %llu", sk_index(entity->id), sk_unique(entity->id));
 
-    char name_buffer[1000];
-    memcpy(name_buffer, entity->name->begin, MIN(1000, entity->name->size + 1));
-
-    igPushItemWidth(-1);
-    if (igInputText("##Name", name_buffer, 1000, 0, NULL, NULL)) {
+    String new_name = _editor_text_input("##Name", entity->name->slice);
+    if (new_name) {
       str_delete(&entity->name);
-      entity->name = str_copy(name_buffer);
+      entity->name = new_name;
     }
-    igPopItemWidth();
   }
   igEnd();
 }
@@ -794,6 +1019,28 @@ void _editor_panel_entity_attributes(Game game, Entity entity) {
   igEnd();
 }
 
+void _editor_panel_effect(Game game, ParticleEffect effect) {
+  UNUSED(game);
+
+  if (!effect) return;
+
+  ImVec2_c top_right = (ImVec2_c){ (float)game->window.w, 0 };
+  igSetNextWindowPos(top_right, ImGuiCond_Always, (ImVec2_c) { 1, 0 });
+  igSetNextWindowSize(_get_winsize(game), ImGuiCond_Always);
+
+  if (igBegin("Effect", NULL, flags_inspector)) {
+
+    String new_name = _editor_text_input("##effect_name", effect->name);
+    if (new_name) {
+      ps_set_effect_name(effect, new_name->slice);
+      str_delete(&new_name);
+    }
+
+  }
+
+  igEnd();
+}
+
 void _editor_panel_emitter_basic(Game game, ParticleEmitter emitter) {
   ImVec2_c top_right = (ImVec2_c){ (float)game->window.w, 0 };
   igSetNextWindowPos(top_right, ImGuiCond_Always, (ImVec2_c) { 1, 0 });
@@ -813,6 +1060,7 @@ void _editor_panel_emitter_basic(Game game, ParticleEmitter emitter) {
       }
       igEndCombo();
     }
+    arr_slice_delete(&effect_names);
 
     if (igCollapsingHeader_BoolPtr("Parameters", NULL, ImGuiTreeNodeFlags_DefaultOpen)) {
       igBeginChild_Str("panel_emitter_params", v2imsubmenu, child_flags, 0);
@@ -821,7 +1069,9 @@ void _editor_panel_emitter_basic(Game game, ParticleEmitter emitter) {
         "Point", "Sphere", "Box (aligned)", "Box", "Disc"
       };
 
-      igText("Shape");
+      // Emitter shape
+
+      igText("Shape:");
       if (igBeginCombo("##shape_select", emitter_shape_names[emitter->shape], 0)) {
         for (int i = 0; i < ES_SHAPE_COUNT; ++i) {
           if (igSelectable_Bool
@@ -836,20 +1086,104 @@ void _editor_panel_emitter_basic(Game game, ParticleEmitter emitter) {
         igEndCombo();
       }
 
+      igEndChild();
+
+      // Emitter offset
+
+      igText("Offset:");
+      igBeginChild_Str("emitter_offset", v2imsubmenu, child_flags, 0);
+
+      igText("Angular Variance:");
+      igSliderFloat("##emitter_offset", &emitter->offset, 0.0f, PI, "%.3f", 0);
+
+      igEndChild();
+
+      // Emitter size
+
+      igText("Size:");
+      igBeginChild_Str("emitter_size", v2imsubmenu, child_flags, 0);
+
+      if (emitter->shape == ES_POINT) {
+        igText("Point size: 0\n  Change shape to set emitter size.");
+      }
+      else if (emitter->shape == ES_DISC || emitter->shape == ES_SPHERE) {
+        igText("Radius:");
+        igSliderFloat("##emitter_radius_f", &emitter->radius
+        , 0.1f, 20.f, "%.3f", 0);
+
+        igText("Inner:");
+        igSliderFloat("##emitter_radius_inner", &emitter->inner_radius
+        , 0.f, 1.f, "%.3f", 0);
+      }
+      else if (emitter->shape == ES_BOX || emitter->shape == ES_BOX_ALIGNED) {
+        igText("Size:");
+        igSliderFloat3("##emitter_radius", emitter->size.f, 0.f, 20.f, "%.3f", 0);
+      }
+
+      igEndChild();
+
+      // Emitter rate
+
+      igText("Rate:");
+      igBeginChild_Str("emitter_rate", v2imsubmenu, child_flags, 0);
+
+      igText("Starting:");
+      igSliderFloat("##emitter_rate", &emitter->rate, 0.01f, 1000.f, "%.3f", 0);
+
+      igText("Variance:");
+      igSliderFloat("##variance_rate", &emitter->rate_variance, 0.f, 1000.f, "%.3f", 0);
 
       igEndChild();
     }
 
     if (igCollapsingHeader_BoolPtr("Particles", NULL, ImGuiTreeNodeFlags_DefaultOpen)) {
-      igBeginChild_Str("panel_emitter_particles", v2imsubmenu, child_flags, 0);
+
+      // Particle size
 
       igText("Size:");
+      igBeginChild_Str("particle_size", v2imsubmenu, child_flags, 0);
+
+      igText("Starting:");
       if (emitter->effect->format == PF_DEFAULT) {
-        igSliderFloat3("##particle_size", &emitter->particle_defaults.size, 0.1f, 10.f, "%.3f", 0);
+        igSliderFloat3("##particle_size", &emitter->particle_defaults.size, 0.1f, 20.f, "%.3f", 0);
       }
       else if (emitter->effect->format == PF_POINT) {
-        igSliderFloat("##particle_size_f", &emitter->particle_defaults.size, 0.1f, 10.f, "%.3f", 0);
+        igSliderFloat("##particle_size_f", &emitter->particle_defaults.size, 0.1f, 20.f, "%.3f", 0);
       }
+
+      igText("Variance:");
+      if (emitter->effect->format == PF_DEFAULT) {
+        igSliderFloat3("##variance_size", &emitter->particle_variance.size, 0.0f, 20.f, "%.3f", 0);
+      }
+      else if (emitter->effect->format == PF_POINT) {
+        igSliderFloat("##variance_size_f", &emitter->particle_variance.size, 0.0f, 20.f, "%.3f", 0);
+      }
+
+      igEndChild();
+
+      // Particle speed
+
+      igText("Speed:");
+      igBeginChild_Str("particle_speed", v2imsubmenu, child_flags, 0);
+
+      igText("Starting:");
+      igSliderFloat("##particle_speed", &emitter->particle_defaults.speed, 0.f, 100.f, "%.3f", 0);
+
+      igText("Variance:");
+      igSliderFloat("##variance_speed", &emitter->particle_variance.speed, 0.f, 100.f, "%.3f", 0);
+
+      igEndChild();
+
+      // Particle dDuration
+
+      igText("Duration:");
+      igBeginChild_Str("particle_duration", v2imsubmenu, child_flags, 0);
+
+      igText("Starting:");
+      igSliderFloat("##particle_duration", &emitter->particle_defaults.duration, 0.01f, 20.f, "%.3f", 0);
+
+      igText("Variance:");
+      igSliderFloat("##variance_duration", &emitter->particle_variance.duration, 0.01f, 20.f, "%.3f", 0);
 
       igEndChild();
     }
@@ -870,36 +1204,41 @@ void behavior_editor(Game game, entity_t* e, float dt) {
   _editor_panel_info_tools(game);
   _editor_panel_info_stats(game);
   _editor_panel_info_shortcuts(game);
-  _editor_panel_info_entities(game);
+  _editor_panel_info_object_mode_select(game);
+  _editor_panel_info_objects(game);
   _editor_panel_info_ext_monument(game);
 
-  if (!_panel_open_information) return;
-  if (_selected.hash == 0) return;
+  entity_t* entity = entity_ref(_selected_entity);
 
-  entity_t* entity = entity_ref(_selected);
+  if (entity) {
+    if (input_triggered(IN_CAM_CENTER)) {
+      _entity_center(game, entity);
+    }
 
-  if (!entity) return;
+    if (input_triggered(IN_DELETE_OBJECT)) {
+      entity_remove(entity->id);
+    }
 
-  if (input_triggered(IN_CAM_CENTER)) {
-    _entity_center(game, entity);
-  }
-
-  if (input_triggered(IN_DELETE_OBJECT)) {
-    entity_remove(entity->id);
-  }
-
-  const touch_t* touch = input_touch_get(&game->input, 0);
-  if (touch) {
-    vec2 pos_adj = v2f((float)game->window.x, (float)game->window.y);
-    pos_adj = v2mul(pos_adj, touch->pos);
-    vec3 ray = camera_ray(&game->camera, pos_adj);
-    float t;
-    if (v3ray_plane(game->camera.pos, ray, v3origin, v3up, &t)) {
-      entity_set_position(entity, v3add(game->camera.pos, v3scale(ray, t)));
+    const touch_t* touch = input_touch_get(&game->input, 0);
+    if (touch) {
+      vec2 pos_adj = v2f((float)game->window.x, (float)game->window.y);
+      pos_adj = v2mul(pos_adj, touch->pos);
+      vec3 ray = camera_ray(&game->camera, pos_adj);
+      float t;
+      if (v3ray_plane(game->camera.pos, ray, v3origin, v3up, &t)) {
+        entity_set_position(entity, v3add(game->camera.pos, v3scale(ray, t)));
+      }
     }
   }
 
-  if (_selected_emitter.hash == 0) {
+  if (_selected_emitter.hash != 0) {
+    ParticleEmitter emitter =
+      ps_get_emitter(game->particle_system, _selected_emitter);
+
+    _editor_panel_emitter_basic(game, emitter);
+  }
+  else if (_object_mode == OM_ENTITIES) {
+    if (!entity) return;
     _editor_panel_entity_basic(game, entity);
     _editor_panel_entity_tools(game, entity);
     _editor_panel_entity_transform(game, entity);
@@ -908,11 +1247,8 @@ void behavior_editor(Game game, entity_t* e, float dt) {
     _editor_panel_entity_material(game, entity);
     _editor_panel_entity_attributes(game, entity);
   }
-  else {
-    ParticleEmitter emitter =
-      ps_get_emitter(game->particle_system, _selected_emitter);
-
-    _editor_panel_emitter_basic(game, emitter);
+  else if (_object_mode == OM_EFFECTS) {
+    _editor_panel_effect(game, _selected_effect);
   }
 }
 

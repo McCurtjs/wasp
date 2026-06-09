@@ -165,7 +165,7 @@ void _emitter_create_particle(ParticleEmitter emitter, particle_t particle) {
     break;
 
     case ES_BOX_ALIGNED:
-      pos = v3mul(v3rand_box(), emitter->size);
+      v3add_eq(&pos, v3mul(v3rand_box(), emitter->size));
     break;
 
     case ES_BOX: {
@@ -179,7 +179,8 @@ void _emitter_create_particle(ParticleEmitter emitter, particle_t particle) {
     case ES_DISC: {
       vec3 right = v3rotate(v3right, emitter->dir);
       vec3 up = v3rotate(v3up, emitter->dir);
-      vec2 disc = v2scale(v2rand_dir(), emitter->radius);
+      float inner_radius = emitter->radius * emitter->inner_radius;
+      vec2 disc = v2scale(v2rand_dir(), frand_r(inner_radius, emitter->radius));
       v3add_eq(&pos, v3scale(right, disc.x));
       v3add_eq(&pos, v3scale(up, disc.y));
     } break;
@@ -490,6 +491,25 @@ Array_slice ps_get_effect_names(ParticleSystem _ps) {
   }
 
   return names;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+bool ps_set_effect_name(ParticleEffect _effect, slice_t name) {
+  assert(_effect);
+  assert(slice_is_valid(name));
+  ParticleEffect_Internal* effect = (ParticleEffect_Internal*)_effect;
+  ParticleSystem_Internal* ps = (ParticleSystem_Internal*)_effect->system;
+  assert(ps);
+
+  if (map_effect_contains_key(ps->effects, name)) return false;
+  map_effect_remove(ps->effects, effect->pub.name);
+
+  str_delete(&effect->name_internal);
+  effect->name_internal = str_copy(name);
+  effect->pub.name = effect->name_internal->slice;
+
+  return map_effect_insert(ps->effects, effect->pub.name, effect);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
